@@ -1,4 +1,5 @@
 import { ConversationMessage } from "@/types";
+import { IdGenerator } from "@/lib/id-generator";
 
 const messages: ConversationMessage[] = [];
 
@@ -11,10 +12,10 @@ export function addMessage(
   content: string
 ): ConversationMessage {
   const msg: ConversationMessage = {
-    id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    id: IdGenerator.generate("msg"),
     role,
     content,
-    createdAt: new Date().toISOString(),
+    createdAt: IdGenerator.timestamp(),
   };
   messages.push(msg);
   return msg;

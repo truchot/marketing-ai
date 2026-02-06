@@ -1,4 +1,5 @@
 import { CompanyProfile } from "@/types";
+import { IdGenerator } from "@/lib/id-generator";
 
 let companyProfile: CompanyProfile | null = null;
 
@@ -9,12 +10,12 @@ export function getCompanyProfile(): CompanyProfile | null {
 export function setCompanyProfile(
   data: Omit<CompanyProfile, "id" | "createdAt" | "updatedAt">
 ): CompanyProfile {
-  const now = new Date().toISOString();
+  const now = IdGenerator.timestamp();
   if (companyProfile) {
     companyProfile = { ...companyProfile, ...data, updatedAt: now };
   } else {
     companyProfile = {
-      id: "1",
+      id: IdGenerator.generate("company"),
       ...data,
       createdAt: now,
       updatedAt: now,
