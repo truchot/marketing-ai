@@ -113,7 +113,7 @@ export interface SemanticContext {
   learnedRules: LearnedRule[];
 }
 
-// === Transversal Types ===
+// === Query Types ===
 
 export interface MemoryQueryOptions {
   types?: ("working" | "episodic" | "semantic")[];
