@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { memoryManager } from "@/data/memory";
+import {
+  workingMemory,
+  episodicMemory,
+  semanticMemory,
+  memoryQuery,
+} from "@/data/memory";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -15,8 +20,8 @@ export async function GET(request: NextRequest) {
   const category = categoryParam || undefined;
   const limit = limitParam ? parseInt(limitParam, 10) : undefined;
 
-  const result = memoryManager.query({ types, tags, category, limit });
-  const stats = memoryManager.getStats();
+  const result = memoryQuery.query({ types, tags, category, limit });
+  const stats = memoryQuery.getStats();
 
   return NextResponse.json({ memory: result, stats });
 }
@@ -36,37 +41,37 @@ export async function POST(request: NextRequest) {
   switch (body.action) {
     case "addFact": {
       const { category, fact, source } = body.params;
-      const result = memoryManager.addClientFact(category, fact, source);
+      const result = semanticMemory.addClientFact(category, fact, source);
       return NextResponse.json({ result }, { status: 201 });
     }
     case "addPreference": {
       const { category, key, value, confidence } = body.params;
-      const result = memoryManager.addPreference(category, key, value, confidence);
+      const result = semanticMemory.addPreference(category, key, value, confidence);
       return NextResponse.json({ result }, { status: 201 });
     }
     case "addPattern": {
       const { type, description, trigger, outcome, recommendation } = body.params;
-      const result = memoryManager.addValidatedPattern(type, description, trigger, outcome, recommendation);
+      const result = semanticMemory.addValidatedPattern(type, description, trigger, outcome, recommendation);
       return NextResponse.json({ result }, { status: 201 });
     }
     case "addRule": {
       const { description, domain, action, confidence } = body.params;
-      const result = memoryManager.addLearnedRule(description, domain, action, confidence);
+      const result = semanticMemory.addLearnedRule(description, domain, action, confidence);
       return NextResponse.json({ result }, { status: 201 });
     }
     case "recordEpisode": {
       const { type, description, data, tags, importance } = body.params;
-      const result = memoryManager.recordEpisode(type, description, data, { tags, importance });
+      const result = episodicMemory.recordEpisode(type, description, data, { tags, importance });
       return NextResponse.json({ result }, { status: 201 });
     }
     case "recordFeedback": {
       const { source, sentiment, content, taskId } = body.params;
-      const result = memoryManager.recordFeedback(source, sentiment, content, taskId);
+      const result = episodicMemory.recordFeedback(source, sentiment, content, taskId);
       return NextResponse.json({ result }, { status: 201 });
     }
     case "startSession": {
       const { task, objective } = body.params;
-      memoryManager.startSession(task, objective);
+      workingMemory.startSession(task, objective);
       return NextResponse.json({ result: "session_started" }, { status: 201 });
     }
     default:
