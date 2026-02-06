@@ -8,22 +8,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-
-interface Project {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-  color: string;
-}
-
-interface Message {
-  id: string;
-  projectId: string;
-  role: "user" | "assistant";
-  content: string;
-  createdAt: string;
-}
+import { Project, Message } from "@/types";
 
 export default function ConversationPage() {
   const params = useParams();
