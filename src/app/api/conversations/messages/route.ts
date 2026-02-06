@@ -1,14 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getMessages, addMessage } from "@/data/conversations";
-import { memoryManager } from "@/data/memory";
-
-const assistantResponses = [
-  "C'est une excellente question ! Avec ce que je sais de votre entreprise, je vous recommande d'explorer cette direction. Voulez-vous qu'on approfondisse ensemble ?",
-  "J'ai bien noté cette information. Cela m'aide à mieux comprendre vos besoins. Pouvez-vous me donner plus de détails sur ce point ?",
-  "Très intéressant ! En tenant compte de votre secteur et de votre cible, je pense qu'une approche personnalisée serait la plus efficace ici.",
-  "Merci pour ce retour. Je vais en tenir compte pour mes prochaines recommandations. Y a-t-il un aspect en particulier que vous aimeriez approfondir ?",
-  "Bonne idée ! Je peux vous aider à structurer cela. Commençons par définir les objectifs principaux, puis nous établirons un plan d'action concret.",
-];
+import { episodicMemory } from "@/data/memory";
+import { conversationResponses, pickRandom } from "@/lib/assistant-responses";
 
 export async function GET() {
   const messages = getMessages();
@@ -29,7 +22,7 @@ export async function POST(request: NextRequest) {
   const userMessage = addMessage("user", content);
 
   // Record in episodic memory
-  memoryManager.recordEpisode(
+  episodicMemory.recordEpisode(
     "interaction",
     content,
     { messageId: userMessage.id, role: "user" },
@@ -37,8 +30,7 @@ export async function POST(request: NextRequest) {
   );
 
   // Generate assistant response
-  const responseContent =
-    assistantResponses[Math.floor(Math.random() * assistantResponses.length)];
+  const responseContent = pickRandom(conversationResponses);
   const assistantMessage = addMessage("assistant", responseContent);
 
   return NextResponse.json(
