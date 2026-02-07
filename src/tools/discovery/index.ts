@@ -46,7 +46,7 @@ export async function saveDiscoveryBlock(
 
   const importance = validatedBy && blockNumber === 4 ? "high" : validatedBy ? "medium" : "low";
 
-  const episode = recordEpisodeUseCase.execute({
+  const result = recordEpisodeUseCase.execute({
     type: "discovery",
     description,
     data: {
@@ -59,17 +59,26 @@ export async function saveDiscoveryBlock(
     importance,
   });
 
+  if (result.isErr()) {
+    return {
+      success: false,
+      message: result.error.message,
+      episodeId: "",
+    };
+  }
+
+  const episode = result.value;
+
   // Optionally enrich semantic memory with key facts if validated
   if (validatedBy && data.metadata?.companyName) {
-    try {
-      await addClientFactUseCase.execute({
-        category: "discovery",
-        fact: `${blockNameMap[blockName]} complété pour ${data.metadata.companyName}`,
-        source: "discovery_agent",
-      });
-    } catch (error) {
+    const factResult = addClientFactUseCase.execute({
+      category: "discovery",
+      fact: `${blockNameMap[blockName]} complété pour ${data.metadata.companyName}`,
+      source: "discovery_agent",
+    });
+    if (factResult.isErr()) {
       // Non-blocking: semantic memory enrichment is optional
-      console.warn("Could not enrich semantic memory:", error);
+      console.warn("Could not enrich semantic memory:", factResult.error.message);
     }
   }
 
@@ -77,6 +86,127 @@ export async function saveDiscoveryBlock(
     success: true,
     message: `Bloc ${blockNumber} enregistré avec succès dans la mémoire épisodique.`,
     episodeId: episode.id,
+  };
+}
+
+// ========== Fonctions utilitaires partagées ==========
+
+/**
+ * Retire scripts, styles et tags HTML d'une string.
+ */
+function cleanHtml(html: string, maxChars: number = 8000): string {
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxChars);
+}
+
+/**
+ * Fetch et nettoie le contenu HTML d'une URL.
+ */
+async function fetchAndCleanHtml(url: string, maxChars: number = 8000): Promise<string> {
+  const response = await fetch(url, {
+    headers: { "User-Agent": "Mozilla/5.0 (compatible; DiscoveryBot/1.0)" },
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  }
+  const html = await response.text();
+  return cleanHtml(html, maxChars);
+}
+
+/**
+ * Appelle Claude Haiku pour analyser du contenu et retourner du JSON.
+ */
+async function callClaudeHaiku(prompt: string, maxTokens: number = 1024): Promise<string> {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    throw new Error("ANTHROPIC_API_KEY not configured");
+  }
+
+  const apiResponse = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": process.env.ANTHROPIC_API_KEY!,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: maxTokens,
+      messages: [{ role: "user", content: prompt }],
+    }),
+  });
+
+  if (!apiResponse.ok) {
+    throw new Error(`API error: ${apiResponse.status} ${apiResponse.statusText}`);
+  }
+
+  const result = await apiResponse.json() as {
+    content: Array<{ type: string; text?: string }>;
+  };
+
+  const textContent = result.content.find((block) => block.type === "text") as { type: string; text: string } | undefined;
+  if (!textContent) {
+    throw new Error("No text response from Claude");
+  }
+
+  return textContent.text;
+}
+
+/**
+ * Extrait un objet JSON d'une réponse texte de Claude.
+ */
+function extractJsonFromResponse<T>(text: string): T {
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    throw new Error("Could not parse JSON from Claude response");
+  }
+  return JSON.parse(jsonMatch[0]) as T;
+}
+
+/**
+ * Construit le prompt d'analyse de site web.
+ */
+function buildWebsiteAnalysisPrompt(content: string, companyName?: string): string {
+  return `Analyse cette page web ${companyName ? `de ${companyName}` : ""} et extrais :
+
+1. **Proposition de valeur** : En 1-2 phrases, quelle transformation promettent-ils ?
+2. **Cibles apparentes** : Quels segments de clientèle sont visés ? (max 3)
+3. **Canaux visibles** : Quels canaux marketing sont mentionnés ou évidents ? (réseaux sociaux, blog, webinaires, etc.)
+4. **Modèle de pricing** : Gratuit, freemium, abonnement, one-time, custom, ou inconnu ?
+5. **Offres** : Quels produits/services principaux sont proposés ? (max 3)
+6. **Messaging clés** : Quels mots/phrases marketing reviennent ? (max 5)
+
+Réponds en JSON strict :
+{
+  "valueProposition": "...",
+  "apparentTargets": ["...", "..."],
+  "visibleChannels": ["...", "..."],
+  "pricingModel": "...",
+  "offers": ["...", "..."],
+  "messaging": ["...", "..."]
+}
+
+Contenu de la page :
+${content}`;
+}
+
+/**
+ * Retourne un résultat d'enrichissement vide avec un message d'erreur.
+ */
+function emptyEnrichmentResult(errorMessage: string): WebsiteEnrichmentOutput {
+  return {
+    valueProposition: null,
+    apparentTargets: [],
+    visibleChannels: [],
+    pricingModel: null,
+    offers: [],
+    messaging: [],
+    error: errorMessage,
   };
 }
 
@@ -105,98 +235,14 @@ export async function enrichFromWebsite(
   const { websiteUrl, companyName } = input;
 
   if (!process.env.ANTHROPIC_API_KEY) {
-    return {
-      valueProposition: null,
-      apparentTargets: [],
-      visibleChannels: [],
-      pricingModel: null,
-      offers: [],
-      messaging: [],
-      error: "ANTHROPIC_API_KEY not configured",
-    };
+    return emptyEnrichmentResult("ANTHROPIC_API_KEY not configured");
   }
 
   try {
-    // Fetch the homepage
-    const response = await fetch(websiteUrl, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; DiscoveryBot/1.0)",
-      },
-      signal: AbortSignal.timeout(10000), // 10s timeout
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-
-    const html = await response.text();
-
-    // Simple text extraction (remove scripts, styles, and HTML tags)
-    const cleanText = html
-      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
-      .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/\s+/g, " ")
-      .trim()
-      .slice(0, 8000); // Limit to ~8k chars to stay efficient
-
-    // Use Claude Haiku for fast analysis via direct API call
-    const analysisPrompt = `Analyse cette page web ${companyName ? `de ${companyName}` : ""} et extrais :
-
-1. **Proposition de valeur** : En 1-2 phrases, quelle transformation promettent-ils ?
-2. **Cibles apparentes** : Quels segments de clientèle sont visés ? (max 3)
-3. **Canaux visibles** : Quels canaux marketing sont mentionnés ou évidents ? (réseaux sociaux, blog, webinaires, etc.)
-4. **Modèle de pricing** : Gratuit, freemium, abonnement, one-time, custom, ou inconnu ?
-5. **Offres** : Quels produits/services principaux sont proposés ? (max 3)
-6. **Messaging clés** : Quels mots/phrases marketing reviennent ? (max 5)
-
-Réponds en JSON strict :
-{
-  "valueProposition": "...",
-  "apparentTargets": ["...", "..."],
-  "visibleChannels": ["...", "..."],
-  "pricingModel": "...",
-  "offers": ["...", "..."],
-  "messaging": ["...", "..."]
-}
-
-Contenu de la page :
-${cleanText}`;
-
-    const apiResponse = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": process.env.ANTHROPIC_API_KEY!,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
-        max_tokens: 1024,
-        messages: [{ role: "user", content: analysisPrompt }],
-      }),
-    });
-
-    if (!apiResponse.ok) {
-      throw new Error(`API error: ${apiResponse.status} ${apiResponse.statusText}`);
-    }
-
-    const result = await apiResponse.json() as {
-      content: Array<{ type: string; text?: string }>;
-    };
-
-    const textContent = result.content.find((block: { type: string }) => block.type === "text") as { type: string; text: string } | undefined;
-    if (!textContent) {
-      throw new Error("No text response from Claude");
-    }
-
-    // Parse JSON from response
-    const jsonMatch = textContent.text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error("Could not parse JSON from Claude response");
-    }
-
-    const parsed = JSON.parse(jsonMatch[0]) as WebsiteEnrichmentOutput;
+    const cleanContent = await fetchAndCleanHtml(websiteUrl);
+    const prompt = buildWebsiteAnalysisPrompt(cleanContent, companyName);
+    const responseText = await callClaudeHaiku(prompt);
+    const parsed = extractJsonFromResponse<WebsiteEnrichmentOutput>(responseText);
 
     return {
       valueProposition: parsed.valueProposition || null,
@@ -207,15 +253,7 @@ ${cleanText}`;
       messaging: parsed.messaging || [],
     };
   } catch (error) {
-    return {
-      valueProposition: null,
-      apparentTargets: [],
-      visibleChannels: [],
-      pricingModel: null,
-      offers: [],
-      messaging: [],
-      error: error instanceof Error ? error.message : "Unknown error",
-    };
+    return emptyEnrichmentResult(error instanceof Error ? error.message : "Unknown error");
   }
 }
 
@@ -267,32 +305,7 @@ export async function checkCompetitors(
   try {
     for (const url of urlsToCheck) {
       try {
-        const response = await fetch(url, {
-          headers: {
-            "User-Agent": "Mozilla/5.0 (compatible; DiscoveryBot/1.0)",
-          },
-          signal: AbortSignal.timeout(8000), // 8s timeout per competitor
-        });
-
-        if (!response.ok) {
-          competitors.push({
-            name: new URL(url).hostname,
-            url,
-            positioning: "Erreur de récupération",
-            channels: [],
-            pricingSignals: "Inconnu",
-          });
-          continue;
-        }
-
-        const html = await response.text();
-        const cleanText = html
-          .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
-          .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "")
-          .replace(/<[^>]+>/g, " ")
-          .replace(/\s+/g, " ")
-          .trim()
-          .slice(0, 6000); // Smaller limit for competitors
+        const cleanText = await fetchAndCleanHtml(url, 6000);
 
         const analysisPrompt = `Analyse rapide de ce concurrent :
 
@@ -310,40 +323,16 @@ Réponds en JSON strict :
 Contenu :
 ${cleanText}`;
 
-        const apiResponse = await fetch("https://api.anthropic.com/v1/messages", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-api-key": process.env.ANTHROPIC_API_KEY!,
-            "anthropic-version": "2023-06-01",
-          },
-          body: JSON.stringify({
-            model: "claude-haiku-4-5-20251001",
-            max_tokens: 512,
-            messages: [{ role: "user", content: analysisPrompt }],
-          }),
+        const responseText = await callClaudeHaiku(analysisPrompt, 512);
+        const parsed = extractJsonFromResponse<{ positioning?: string; channels?: string[]; pricingSignals?: string }>(responseText);
+
+        competitors.push({
+          name: new URL(url).hostname,
+          url,
+          positioning: parsed.positioning || "Inconnu",
+          channels: parsed.channels || [],
+          pricingSignals: parsed.pricingSignals || "Inconnu",
         });
-
-        if (apiResponse.ok) {
-          const result = await apiResponse.json() as {
-            content: Array<{ type: string; text?: string }>;
-          };
-
-          const textContent = result.content.find((block) => block.type === "text") as { type: string; text: string } | undefined;
-          if (textContent) {
-            const jsonMatch = textContent.text.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-              const parsed = JSON.parse(jsonMatch[0]);
-              competitors.push({
-                name: new URL(url).hostname,
-                url,
-                positioning: parsed.positioning || "Inconnu",
-                channels: parsed.channels || [],
-                pricingSignals: parsed.pricingSignals || "Inconnu",
-              });
-            }
-          }
-        }
       } catch (error) {
         competitors.push({
           name: new URL(url).hostname,

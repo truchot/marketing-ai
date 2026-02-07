@@ -12,6 +12,32 @@ import {
   suggestQuestions,
 } from "./index";
 
+// ============================================================
+// Per-request state for interview flow control
+// ============================================================
+
+interface ChoiceOption {
+  value: string;
+  label: string;
+  description?: string;
+}
+
+let interviewCompleteSignaled = false;
+let pendingChoices: { question: string; choices: ChoiceOption[] } | null = null;
+
+export function resetRequestState() {
+  interviewCompleteSignaled = false;
+  pendingChoices = null;
+}
+
+export function isInterviewComplete(): boolean {
+  return interviewCompleteSignaled;
+}
+
+export function getPendingChoices(): { question: string; choices: ChoiceOption[] } | null {
+  return pendingChoices;
+}
+
 // Create MCP server with discovery tools
 export const discoveryMcpServer = createSdkMcpServer({
   name: "discovery-tools",
@@ -201,6 +227,66 @@ IMPORTANT :
             {
               type: "text" as const,
               text: JSON.stringify(result, null, 2),
+            },
+          ],
+        };
+      }
+    ),
+
+    // ========================================================
+    // Tool 5: signal_interview_complete (OBLIGATOIRE en fin)
+    // ========================================================
+    tool(
+      "signal_interview_complete",
+      "Appelle cet outil quand l'entretien de découverte est terminé et que tu as couvert les 4 blocs (problème/proposition de valeur, audiences, marketing actuel, contexte business). Appelle-le en même temps que ton message de clôture.",
+      {},
+      async () => {
+        interviewCompleteSignaled = true;
+        return {
+          content: [
+            { type: "text" as const, text: "Interview marked as complete." },
+          ],
+        };
+      }
+    ),
+
+    // ========================================================
+    // Tool 6: present_choices (UI - choix fermés)
+    // ========================================================
+    tool(
+      "present_choices",
+      "Utilise cet outil quand tu poses une question à choix fermés (ex: secteur d'activité, niveau d'urgence, etc.). Au lieu d'écrire les options dans ton message texte, appelle cet outil pour afficher une interface de sélection claire. N'inclus PAS les options dans ton texte — le composant les affichera. Tu peux écrire un court texte d'introduction avant d'appeler l'outil.",
+      {
+        question: z.string().describe("La question posée à l'utilisateur"),
+        choices: z
+          .array(
+            z.object({
+              value: z
+                .string()
+                .describe("Identifiant technique du choix (ex: saas)"),
+              label: z.string().describe("Libellé affiché (ex: SaaS)"),
+              description: z
+                .string()
+                .optional()
+                .describe("Description courte optionnelle"),
+            })
+          )
+          .describe("Les options proposées"),
+      },
+      async (args) => {
+        pendingChoices = {
+          question: args.question,
+          choices: args.choices.map((c) => ({
+            value: c.value,
+            label: c.label,
+            description: c.description ?? undefined,
+          })),
+        };
+        return {
+          content: [
+            {
+              type: "text" as const,
+              text: "Choices presented to user. Wait for their selection.",
             },
           ],
         };
