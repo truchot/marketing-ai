@@ -4,6 +4,7 @@ import {
   getDiscoverySystemPrompt,
   businessDiscoverySchema,
 } from "@/agents/discovery";
+import { discoveryMcpServer } from "@/tools/discovery/tool-definitions";
 
 export const runtime = "nodejs";
 export const maxDuration = 300; // 5 min max for long interviews
@@ -48,7 +49,10 @@ export async function POST(request: NextRequest) {
             permissionMode: "bypassPermissions",
             allowDangerouslySkipPermissions: true,
             tools: [],
-            maxTurns: 1,
+            mcpServers: {
+              "discovery-tools": discoveryMcpServer,
+            },
+            maxTurns: 3, // Allow multiple turns for tool usage
           },
         });
 
