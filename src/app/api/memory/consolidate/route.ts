@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { consolidationPipeline, memoryQuery } from "@/data/memory";
+import { consolidateMemoryUseCase } from "@/infrastructure/composition-root";
 
 export async function POST() {
-  consolidationPipeline.runConsolidation();
-  const stats = memoryQuery.getStats();
+  const stats = consolidateMemoryUseCase.execute();
   return NextResponse.json({ success: true, stats });
 }
