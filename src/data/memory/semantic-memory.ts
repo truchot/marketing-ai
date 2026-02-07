@@ -6,8 +6,9 @@ import {
   LearnedRule,
   SemanticContext,
 } from "@/types/memory";
+import type { ISemanticMemoryRepository } from "@/domains/memory/ports";
 
-export class SemanticMemoryStore {
+export class SemanticMemoryStore implements ISemanticMemoryRepository {
   private clientFacts: ClientFact[] = [];
   private preferences: Preference[] = [];
   private validatedPatterns: ValidatedPattern[] = [];

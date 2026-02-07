@@ -1,6 +1,7 @@
 import { WorkingSession, WorkingContext } from "@/types/memory";
+import type { IWorkingMemoryRepository } from "@/domains/memory/ports";
 
-export class WorkingMemoryStore {
+export class WorkingMemoryStore implements IWorkingMemoryRepository {
   private workingSession: WorkingSession | null = null;
 
   startSession(task: string, objective: string): void {

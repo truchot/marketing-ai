@@ -7,8 +7,9 @@ import {
   EmergentPattern,
   EpisodicContext,
 } from "@/types/memory";
+import type { IEpisodicMemoryRepository } from "@/domains/memory/ports";
 
-export class EpisodicMemoryStore {
+export class EpisodicMemoryStore implements IEpisodicMemoryRepository {
   private episodes: Episode[] = [];
   private feedback: Feedback[] = [];
   private taskResults: TaskResult[] = [];
