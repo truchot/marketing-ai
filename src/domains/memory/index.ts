@@ -1,0 +1,9 @@
+export { RecordEpisodeUseCase } from "./use-cases/record-episode";
+export { RecordFeedbackUseCase } from "./use-cases/record-feedback";
+export { QueryMemoryUseCase } from "./use-cases/query-memory";
+export { ConsolidateMemoryUseCase } from "./use-cases/consolidate-memory";
+export { StartSessionUseCase } from "./use-cases/start-session";
+export { AddClientFactUseCase } from "./use-cases/add-client-fact";
+export { AddPreferenceUseCase } from "./use-cases/add-preference";
+export { AddValidatedPatternUseCase } from "./use-cases/add-validated-pattern";
+export { AddLearnedRuleUseCase } from "./use-cases/add-learned-rule";
