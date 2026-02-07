@@ -5,4 +5,5 @@ export interface ICompanyProfileRepository {
   save(
     data: Omit<CompanyProfile, "id" | "createdAt" | "updatedAt">
   ): CompanyProfile;
+  reset(): void; // For testing
 }

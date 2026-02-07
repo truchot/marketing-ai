@@ -90,6 +90,13 @@ export class SemanticMemoryStore implements ISemanticMemoryRepository {
     return lr;
   }
 
+  reset(): void {
+    this.clientFacts = [];
+    this.preferences = [];
+    this.validatedPatterns = [];
+    this.learnedRules = [];
+  }
+
   getSemanticContext(): SemanticContext {
     return {
       clientFacts: [...this.clientFacts],

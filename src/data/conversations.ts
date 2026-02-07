@@ -26,3 +26,7 @@ export function addMessages(
 ): ConversationMessage[] {
   return msgs.map((m) => addMessage(m.role, m.content));
 }
+
+export function resetConversations(): void {
+  messages.length = 0;
+}

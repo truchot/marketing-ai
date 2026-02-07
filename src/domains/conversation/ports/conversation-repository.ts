@@ -6,4 +6,5 @@ export interface IConversationRepository {
   addBulk(
     msgs: { role: "user" | "assistant"; content: string }[]
   ): ConversationMessage[];
+  reset(): void; // For testing
 }

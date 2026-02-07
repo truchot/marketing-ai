@@ -37,4 +37,5 @@ export interface ISemanticMemoryRepository {
   getPreferences(): Preference[];
   getValidatedPatterns(): ValidatedPattern[];
   getLearnedRules(): LearnedRule[];
+  reset(): void; // For testing
 }

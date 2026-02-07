@@ -7,4 +7,5 @@ export interface IWorkingMemoryRepository {
   setScratchpad(key: string, value: string): void;
   getWorkingContext(): WorkingContext;
   clearSession(): WorkingSession | null;
+  reset(): void; // For testing
 }

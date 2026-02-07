@@ -1,6 +1,10 @@
 import type { ICompanyProfileRepository } from "@/domains/client-knowledge/ports";
 import type { CompanyProfile } from "@/types";
-import { getCompanyProfile, setCompanyProfile } from "./company-profile";
+import {
+  getCompanyProfile,
+  setCompanyProfile,
+  resetCompanyProfile,
+} from "./company-profile";
 
 export class InMemoryCompanyProfileRepository
   implements ICompanyProfileRepository
@@ -13,6 +17,10 @@ export class InMemoryCompanyProfileRepository
     data: Omit<CompanyProfile, "id" | "createdAt" | "updatedAt">
   ): CompanyProfile {
     return setCompanyProfile(data);
+  }
+
+  reset(): void {
+    resetCompanyProfile();
   }
 }
 

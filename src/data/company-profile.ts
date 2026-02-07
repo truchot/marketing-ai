@@ -23,3 +23,7 @@ export function setCompanyProfile(
   }
   return companyProfile;
 }
+
+export function resetCompanyProfile(): void {
+  companyProfile = null;
+}

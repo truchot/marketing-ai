@@ -43,4 +43,8 @@ export class WorkingMemoryStore implements IWorkingMemoryRepository {
     this.workingSession = null;
     return session;
   }
+
+  reset(): void {
+    this.workingSession = null;
+  }
 }

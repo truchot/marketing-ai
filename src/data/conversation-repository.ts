@@ -1,6 +1,11 @@
 import type { IConversationRepository } from "@/domains/conversation/ports";
 import type { ConversationMessage } from "@/types";
-import { getMessages, addMessage, addMessages } from "./conversations";
+import {
+  getMessages,
+  addMessage,
+  addMessages,
+  resetConversations,
+} from "./conversations";
 
 export class InMemoryConversationRepository implements IConversationRepository {
   getAll(): ConversationMessage[] {
@@ -15,6 +20,10 @@ export class InMemoryConversationRepository implements IConversationRepository {
     msgs: { role: "user" | "assistant"; content: string }[]
   ): ConversationMessage[] {
     return addMessages(msgs);
+  }
+
+  reset(): void {
+    resetConversations();
   }
 }
 

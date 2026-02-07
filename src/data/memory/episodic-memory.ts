@@ -116,6 +116,13 @@ export class EpisodicMemoryStore implements IEpisodicMemoryRepository {
     );
   }
 
+  reset(): void {
+    this.episodes = [];
+    this.feedback = [];
+    this.taskResults = [];
+    this.emergentPatterns = [];
+  }
+
   private detectPattern(episode: Episode): void {
     const key = `${episode.type}:${episode.metadata.tags.sort().join(",")}`;
     const existing = this.emergentPatterns.find(

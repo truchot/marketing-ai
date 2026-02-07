@@ -35,4 +35,5 @@ export interface IEpisodicMemoryRepository {
   getFeedback(): Feedback[];
   getEmergentPatterns(): EmergentPattern[];
   prune(retentionDays: number): void;
+  reset(): void; // For testing
 }
