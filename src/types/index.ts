@@ -31,6 +31,7 @@ export interface CompanyProfile {
   description: string;
   target: string;
   brandTone: string;
+  discoveryId?: string;
   createdAt: string;
   updatedAt: string;
 }

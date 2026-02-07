@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { completeOnboardingUseCase } from "@/infrastructure/composition-root";
+import { isBusinessDiscovery } from "@/agents/discovery";
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { answers, messages } = body;
+  const { discovery, messages } = body;
 
-  if (!answers || !answers.name || !answers.sector || !answers.description || !answers.target || !answers.brandTone) {
+  if (!discovery || !isBusinessDiscovery(discovery)) {
     return NextResponse.json(
-      { error: "All answer fields are required." },
+      { error: "Valid BusinessDiscovery object is required." },
       { status: 400 }
     );
   }
@@ -19,7 +20,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const profile = completeOnboardingUseCase.execute(answers, messages);
+  const profile = completeOnboardingUseCase.execute(discovery, messages);
 
   return NextResponse.json({ profile }, { status: 201 });
 }

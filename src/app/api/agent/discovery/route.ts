@@ -2,20 +2,29 @@ import { NextRequest } from "next/server";
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import {
   getDiscoverySystemPrompt,
-  businessDiscoverySchema,
 } from "@/agents/discovery";
-import { discoveryMcpServer } from "@/tools/discovery/tool-definitions";
+import {
+  discoveryMcpServer,
+  resetRequestState,
+  isInterviewComplete,
+  getPendingChoices,
+} from "@/tools/discovery/tool-definitions";
 
 export const runtime = "nodejs";
 export const maxDuration = 300; // 5 min max for long interviews
 
+interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { message } = body;
+  const { messages } = body as { messages?: ChatMessage[] };
 
-  if (!message || typeof message !== "string") {
+  if (!messages || !Array.isArray(messages) || messages.length === 0) {
     return new Response(
-      JSON.stringify({ error: "Message is required" }),
+      JSON.stringify({ error: "messages[] is required" }),
       { status: 400, headers: { "Content-Type": "application/json" } }
     );
   }
@@ -27,7 +36,20 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Reset per-request state
+  resetRequestState();
+
   const systemPrompt = getDiscoverySystemPrompt();
+
+  // Format messages as transcript for the agent
+  const transcript = messages
+    .map(
+      (m) =>
+        `${m.role === "user" ? "Utilisateur" : "Lia"} : ${m.content}`
+    )
+    .join("\n\n");
+
+  const prompt = `${transcript}\n\nContinue l'entretien de découverte.`;
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -42,7 +64,7 @@ export async function POST(request: NextRequest) {
         sendEvent("start", { timestamp: new Date().toISOString() });
 
         const result = query({
-          prompt: message,
+          prompt,
           options: {
             model: "claude-sonnet-4-5-20250929",
             systemPrompt,
@@ -76,6 +98,19 @@ export async function POST(request: NextRequest) {
               });
             }
           }
+        }
+
+        // Emit choices if the tool was called
+        const pendingChoices = getPendingChoices();
+        if (pendingChoices) {
+          sendEvent("choices", pendingChoices);
+        }
+
+        // Emit discovery_complete if the tool was called
+        if (isInterviewComplete()) {
+          sendEvent("discovery_complete", {
+            timestamp: new Date().toISOString(),
+          });
         }
 
         sendEvent("complete", { timestamp: new Date().toISOString() });

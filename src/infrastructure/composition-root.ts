@@ -15,6 +15,7 @@ import {
 } from "@/data/memory";
 import { conversationRepository } from "@/data/conversation-repository";
 import { companyProfileRepository } from "@/data/company-profile-repository";
+import { businessDiscoveryRepository } from "@/data/business-discovery-repository";
 import { RandomResponseGenerator } from "@/data/response-generator";
 
 // --- Use case classes (domain layer) ---
@@ -71,6 +72,7 @@ export const createProfileUseCase = new CreateProfileUseCase(
 // Onboarding
 export const completeOnboardingUseCase = new CompleteOnboardingUseCase(
   companyProfileRepository,
+  businessDiscoveryRepository,
   semanticMemory,
   conversationRepository
 );

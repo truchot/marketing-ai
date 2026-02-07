@@ -1,15 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { CompanyProfile } from "@/types";
-import { useOnboardingFlow, STEPS, FINAL_MESSAGE } from "@/hooks/use-onboarding-flow";
+import { useDiscoveryChat } from "@/hooks/use-discovery-chat";
 import { useChatMessages } from "@/hooks/use-chat-messages";
 import MessageBubble from "@/components/chat/message-bubble";
 import TypingIndicator from "@/components/chat/typing-indicator";
 import ChatHeader from "@/components/chat/chat-header";
 import ChatInput from "@/components/chat/chat-input";
+import DiscoveryChoiceCard from "@/components/chat/discovery-choice-card";
 
 interface OnboardingChatProps {
   mode: "onboarding" | "chat";
@@ -29,117 +30,91 @@ export default function OnboardingChat({
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const initRef = useRef(false);
+  const finalizingRef = useRef(false);
 
-  const onboarding = useOnboardingFlow();
+  const discovery = useDiscoveryChat();
   const chat = useChatMessages();
 
-  // Auto-scroll on message changes
+  // Pick the right message source based on mode
+  const displayMessages =
+    mode === "onboarding" ? discovery.messages : chat.messages;
+  const isTyping =
+    mode === "onboarding" ? discovery.isTyping : chat.isTyping;
+
+  // Auto-scroll on message changes or choices
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chat.messages, chat.isTyping]);
+  }, [displayMessages, isTyping, discovery.pendingChoices]);
 
   // Load history for chat mode
   useEffect(() => {
     if (initialMode === "chat") {
-      chat.loadHistory().then(() => {
-        setHistoryLoaded(true);
-        setTimeout(() => inputRef.current?.focus(), 100);
-      }).catch(() => setHistoryLoaded(true));
+      chat
+        .loadHistory()
+        .then(() => {
+          setHistoryLoaded(true);
+          setTimeout(() => inputRef.current?.focus(), 100);
+        })
+        .catch(() => setHistoryLoaded(true));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialMode]);
 
-  // Send initial onboarding message
+  // Start interview on mount (onboarding mode)
   useEffect(() => {
     if (initialMode !== "onboarding" || initRef.current) return;
     initRef.current = true;
 
-    chat.setIsTyping(true);
-    const delay = 600 + Math.random() * 200;
-    const timer = setTimeout(() => {
-      chat.addLocalMessage("lia-0", "assistant", STEPS[0].question([]));
-      chat.setIsTyping(false);
+    discovery.startInterview().then(() => {
       inputRef.current?.focus();
-    }, delay);
-    return () => clearTimeout(timer);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialMode]);
 
-  const completeOnboarding = useCallback(
-    async (newAnswers: string[]) => {
-      // Build the full message history for saving
-      const allMsgs: { role: "user" | "assistant"; content: string }[] = [
-        { role: "assistant", content: STEPS[0].question([]) },
-      ];
-      for (let i = 0; i < newAnswers.length; i++) {
-        allMsgs.push({ role: "user", content: newAnswers[i] });
-        if (i + 1 < STEPS.length) {
-          allMsgs.push({
-            role: "assistant",
-            content: STEPS[i + 1].question(newAnswers),
-          });
+  // Auto-finalize when interview completes
+  useEffect(() => {
+    if (!discovery.isComplete || finalizingRef.current) return;
+    finalizingRef.current = true;
+
+    (async () => {
+      setSaving(true);
+      try {
+        const discoveryData = await discovery.finalizeDiscovery();
+
+        // Build messages array for saving
+        const allMsgs = discovery.messages.map((m) => ({
+          role: m.role,
+          content: m.content,
+        }));
+
+        const res = await fetch("/api/onboarding/complete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            discovery: discoveryData,
+            messages: allMsgs,
+          }),
+        });
+
+        if (!res.ok) {
+          throw new Error("Failed to complete onboarding");
         }
-      }
-      allMsgs.push({ role: "assistant", content: FINAL_MESSAGE });
 
-      const res = await fetch("/api/onboarding/complete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          answers: {
-            name: newAnswers[0],
-            sector: newAnswers[1],
-            description: newAnswers[2],
-            target: newAnswers[3],
-            brandTone: newAnswers[4],
-          },
-          messages: allMsgs,
-        }),
-      });
-
-      if (!res.ok) {
-        throw new Error("Failed to complete onboarding");
-      }
-    },
-    []
-  );
-
-  function handleOnboardingSend(content: string) {
-    const newAnswers = onboarding.addAnswer(content);
-
-    chat.addLocalMessage(`user-${onboarding.currentStep}`, "user", content);
-
-    const nextQuestion = onboarding.getNextQuestion(newAnswers);
-
-    if (nextQuestion) {
-      // More questions remaining
-      chat.setIsTyping(true);
-      const delay = 600 + Math.random() * 200;
-      setTimeout(() => {
-        chat.addLocalMessage(`lia-${newAnswers.length}`, "assistant", nextQuestion);
-        chat.setIsTyping(false);
+        setSaving(false);
+        setMode("chat");
+        if (onComplete) onComplete();
         inputRef.current?.focus();
-      }, delay);
-    } else {
-      // All questions answered -- show final message then save
-      chat.setIsTyping(true);
-      const delay = 600 + Math.random() * 200;
-      setTimeout(async () => {
-        chat.addLocalMessage("lia-final", "assistant", FINAL_MESSAGE);
-        chat.setIsTyping(false);
-        setSaving(true);
+      } catch {
+        setSaving(false);
+        finalizingRef.current = false;
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [discovery.isComplete]);
 
-        try {
-          await completeOnboarding(newAnswers);
-          setSaving(false);
-          setMode("chat");
-          if (onComplete) onComplete();
-          inputRef.current?.focus();
-        } catch {
-          setSaving(false);
-        }
-      }, delay);
-    }
+  async function handleOnboardingSend(content: string) {
+    await discovery.sendMessage(content);
+    inputRef.current?.focus();
   }
 
   async function handleChatSend(content: string) {
@@ -150,7 +125,7 @@ export default function OnboardingChat({
   function handleSend(e: React.FormEvent) {
     e.preventDefault();
     const content = input.trim();
-    if (!content || chat.isTyping || saving) return;
+    if (!content || isTyping || saving) return;
     setInput("");
 
     if (mode === "onboarding") {
@@ -159,11 +134,6 @@ export default function OnboardingChat({
       handleChatSend(content);
     }
   }
-
-  const completedSteps =
-    mode === "onboarding" ? onboarding.completedSteps : STEPS.length;
-
-  const showProgress = mode === "onboarding" && completedSteps < STEPS.length;
 
   // Loading state for chat mode
   if (initialMode === "chat" && !historyLoaded) {
@@ -175,7 +145,7 @@ export default function OnboardingChat({
   }
 
   const placeholder = saving
-    ? "Sauvegarde en cours..."
+    ? "Analyse en cours..."
     : mode === "onboarding"
     ? "Votre réponse..."
     : "Posez votre question à Lia...";
@@ -184,36 +154,46 @@ export default function OnboardingChat({
     <div className="flex h-screen flex-col bg-zinc-950">
       <ChatHeader
         companyName={profile?.name}
-        showProgress={showProgress}
-        completedSteps={completedSteps}
-        totalSteps={STEPS.length}
+        showProgress={mode === "onboarding" && !discovery.isComplete}
         saving={saving}
       />
 
       <ScrollArea className="flex-1 overflow-hidden">
         <div className="mx-auto max-w-3xl px-4 py-6">
           <div className="space-y-6">
-            {chat.messages.map((message) => (
+            {displayMessages.map((message) => (
               <div key={message.id}>
                 <MessageBubble role={message.role} content={message.content} />
               </div>
             ))}
-            {chat.isTyping && <TypingIndicator />}
+            {mode === "onboarding" &&
+              discovery.pendingChoices &&
+              !isTyping && (
+                <DiscoveryChoiceCard
+                  choices={discovery.pendingChoices}
+                  onSelect={discovery.selectChoice}
+                  disabled={isTyping || saving}
+                />
+              )}
+            {isTyping && <TypingIndicator />}
           </div>
           <div ref={bottomRef} />
         </div>
       </ScrollArea>
 
-      <Separator className="bg-zinc-800" />
-
-      <ChatInput
-        ref={inputRef}
-        value={input}
-        onChange={setInput}
-        onSubmit={handleSend}
-        placeholder={placeholder}
-        disabled={chat.isTyping || saving}
-      />
+      {!(mode === "onboarding" && discovery.pendingChoices) && (
+        <>
+          <Separator className="bg-zinc-800" />
+          <ChatInput
+            ref={inputRef}
+            value={input}
+            onChange={setInput}
+            onSubmit={handleSend}
+            placeholder={placeholder}
+            disabled={isTyping || saving}
+          />
+        </>
+      )}
     </div>
   );
 }
