@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getMessages, addMessage } from "@/data/conversations";
-import { episodicMemory } from "@/data/memory";
-import { conversationResponses, pickRandom } from "@/lib/assistant-responses";
+import { getHistoryUseCase, sendMessageUseCase } from "@/infrastructure/composition-root";
 
 export async function GET() {
-  const messages = getMessages();
+  const messages = getHistoryUseCase.execute();
   return NextResponse.json({ messages });
 }
 
@@ -19,22 +17,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const userMessage = addMessage("user", content);
-
-  // Record in episodic memory
-  episodicMemory.recordEpisode(
-    "interaction",
-    content,
-    { messageId: userMessage.id, role: "user" },
-    { tags: ["conversation", "user_message"], importance: "medium" }
-  );
-
-  // Generate assistant response
-  const responseContent = pickRandom(conversationResponses);
-  const assistantMessage = addMessage("assistant", responseContent);
+  const result = sendMessageUseCase.execute(content);
 
   return NextResponse.json(
-    { messages: [userMessage, assistantMessage] },
+    { messages: [result.userMessage, result.assistantMessage] },
     { status: 201 }
   );
 }
