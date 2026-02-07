@@ -24,6 +24,12 @@ export interface ConversationMessage {
   createdAt: string;
 }
 
+export interface ChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+}
+
 export interface CompanyProfile {
   id: string;
   name: string;
