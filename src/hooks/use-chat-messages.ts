@@ -1,12 +1,7 @@
 "use client";
 import { useState, useCallback } from "react";
-import type { ConversationMessage } from "@/types";
-
-export interface ChatMessage {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-}
+import type { ConversationMessage, ChatMessage } from "@/types";
+import { logError } from "@/lib/error-handler";
 
 export interface UseChatMessagesResult {
   messages: ChatMessage[];
@@ -64,8 +59,14 @@ export function useChatMessages(): UseChatMessagesResult {
           },
         ]);
       }
-    } catch {
-      // Silently handle error
+    } catch (error) {
+      logError("chat:send", error);
+      const errorMsg: ChatMessage = {
+        id: `error-${Date.now()}`,
+        role: "assistant",
+        content: "Désolée, une erreur est survenue. Veuillez réessayer.",
+      };
+      setMessages((prev) => [...prev, errorMsg]);
     } finally {
       setIsTyping(false);
     }
@@ -84,8 +85,8 @@ export function useChatMessages(): UseChatMessagesResult {
           }))
         );
       }
-    } catch {
-      // Silently handle error
+    } catch (error) {
+      logError("chat:history", error);
     }
   }, []);
 
