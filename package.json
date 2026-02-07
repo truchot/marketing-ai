@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "test:ci": "vitest run --reporter=verbose"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.34",
