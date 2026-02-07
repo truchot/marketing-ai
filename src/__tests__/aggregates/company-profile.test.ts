@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { CompanyProfileAggregate } from "@/domains/client-knowledge/aggregates";
 
 describe("CompanyProfileAggregate", () => {

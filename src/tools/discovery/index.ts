@@ -333,7 +333,7 @@ ${cleanText}`;
           channels: parsed.channels || [],
           pricingSignals: parsed.pricingSignals || "Inconnu",
         });
-      } catch (error) {
+      } catch {
         competitors.push({
           name: new URL(url).hostname,
           url,

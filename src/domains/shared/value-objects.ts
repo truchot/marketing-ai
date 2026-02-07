@@ -225,7 +225,7 @@ export class Sector {
 
   static create(value: string): Sector {
     const normalized = value.toLowerCase().trim();
-    if (!Sector.VALID_SECTORS.includes(normalized as any)) {
+    if (!(Sector.VALID_SECTORS as readonly string[]).includes(normalized)) {
       throw new Error(
         `Invalid sector: "${value}". Valid sectors: ${Sector.VALID_SECTORS.join(", ")}`
       );
@@ -320,7 +320,7 @@ export class EpisodeType {
 
   static create(value: string): EpisodeType {
     const normalized = value.toLowerCase().trim();
-    if (!EpisodeType.VALID_TYPES.includes(normalized as any)) {
+    if (!(EpisodeType.VALID_TYPES as readonly string[]).includes(normalized)) {
       throw new Error(
         `Invalid episode type: "${value}". Valid types: ${EpisodeType.VALID_TYPES.join(", ")}`
       );

@@ -71,7 +71,7 @@ IMPORTANT : Toujours demander validation à l'interlocuteur avant de sauvegarder
           .boolean()
           .describe("L'interlocuteur a-t-il validé cette synthèse ? true = validé, false = brouillon"),
       },
-      async (args, _extra) => {
+      async (args) => {
         const result = await saveDiscoveryBlock({
           blockNumber: args.blockNumber as 1 | 2 | 3 | 4,
           blockName: args.blockName,
@@ -120,7 +120,7 @@ IMPORTANT :
         websiteUrl: z.string().url().describe("URL complète du site web (ex: https://example.com)"),
         companyName: z.string().optional().describe("Nom de l'entreprise (optionnel, améliore l'analyse)"),
       },
-      async (args, _extra) => {
+      async (args) => {
         const result = await enrichFromWebsite({
           websiteUrl: args.websiteUrl,
           companyName: args.companyName,
@@ -164,7 +164,7 @@ IMPORTANT :
         competitorUrls: z.array(z.string().url()).optional().describe("URLs des sites concurrents (max 3 recommandé)"),
         competitorNames: z.array(z.string()).optional().describe("Noms des concurrents sans URL (retournera placeholder)"),
       },
-      async (args, _extra) => {
+      async (args) => {
         const result = await checkCompetitors({
           competitorUrls: args.competitorUrls,
           competitorNames: args.competitorNames,
@@ -216,7 +216,7 @@ IMPORTANT :
           .optional()
           .describe("Données partielles du bloc en cours (optionnel, pour contextualisation)"),
       },
-      async (args, _extra) => {
+      async (args) => {
         const result = suggestQuestions({
           sector: args.sector,
           completedBlocks: args.completedBlocks,

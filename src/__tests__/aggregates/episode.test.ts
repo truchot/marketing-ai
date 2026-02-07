@@ -90,7 +90,7 @@ describe("EpisodeAggregate", () => {
           "interaction",
           "Some description",
           {},
-          { tags: ["test"], importance: "critical" as any }
+          { tags: ["test"], importance: "critical" as "low" | "medium" | "high" }
         )
       ).toThrow('Invalid Importance: "critical"');
     });
