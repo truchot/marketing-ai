@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import OnboardingChat from "@/components/onboarding-chat";
+import LoadingSpinner from "@/components/ui/loading-spinner";
 import type { CompanyProfile } from "@/types";
+import { logError } from "@/lib/error-handler";
 
 export default function HomePage() {
   const [profile, setProfile] = useState<CompanyProfile | null>(null);
@@ -15,7 +17,10 @@ export default function HomePage() {
         setProfile(data.profile);
         setProfileChecked(true);
       })
-      .catch(() => setProfileChecked(true));
+      .catch((error: unknown) => {
+        logError("page:load", error);
+        setProfileChecked(true);
+      });
   };
 
   useEffect(() => {
@@ -23,11 +28,7 @@ export default function HomePage() {
   }, []);
 
   if (!profileChecked) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-zinc-950">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-violet-500 border-t-transparent" />
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   if (!profile) {

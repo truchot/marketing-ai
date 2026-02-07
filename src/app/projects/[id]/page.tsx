@@ -8,7 +8,9 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import LoadingSpinner from "@/components/ui/loading-spinner";
 import { Project, Message } from "@/types";
+import { logError } from "@/lib/error-handler";
 
 export default function ConversationPage() {
   const params = useParams();
@@ -31,7 +33,10 @@ export default function ConversationPage() {
         setMessages(messagesData.messages);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch((error: unknown) => {
+        logError("project:load", error);
+        setLoading(false);
+      });
   }, [projectId]);
 
   useEffect(() => {
@@ -69,7 +74,8 @@ export default function ConversationPage() {
         const withoutTemp = prev.filter((m) => m.id !== tempUserMsg.id);
         return [...withoutTemp, ...data.messages];
       });
-    } catch {
+    } catch (error) {
+      logError("project:update", error);
       // Remove optimistic message on error
       setMessages((prev) => prev.filter((m) => m.id !== tempUserMsg.id));
     } finally {
@@ -78,14 +84,7 @@ export default function ConversationPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-zinc-950">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-violet-500 border-t-transparent" />
-          <p className="text-sm text-zinc-500">Chargement...</p>
-        </div>
-      </div>
-    );
+    return <LoadingSpinner message="Chargement..." />;
   }
 
   if (!project) {
