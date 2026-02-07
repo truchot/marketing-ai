@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  workingMemory,
-  episodicMemory,
-  semanticMemory,
-  memoryQuery,
-} from "@/data/memory";
+  queryMemoryUseCase,
+  recordEpisodeUseCase,
+  recordFeedbackUseCase,
+  startSessionUseCase,
+  addClientFactUseCase,
+  addPreferenceUseCase,
+  addValidatedPatternUseCase,
+  addLearnedRuleUseCase,
+} from "@/infrastructure/composition-root";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -20,10 +24,8 @@ export async function GET(request: NextRequest) {
   const category = categoryParam || undefined;
   const limit = limitParam ? parseInt(limitParam, 10) : undefined;
 
-  const result = memoryQuery.query({ types, tags, category, limit });
-  const stats = memoryQuery.getStats();
-
-  return NextResponse.json({ memory: result, stats });
+  const { memory, stats } = queryMemoryUseCase.execute({ types, tags, category, limit });
+  return NextResponse.json({ memory, stats });
 }
 
 type MemoryAction =
@@ -35,46 +37,22 @@ type MemoryAction =
   | { action: "recordFeedback"; params: { source: string; sentiment: "positive" | "neutral" | "negative"; content: string; taskId?: string } }
   | { action: "startSession"; params: { task: string; objective: string } };
 
+const actionHandlers: Record<string, (params: Record<string, unknown>) => { result: unknown }> = {
+  addFact: (p) => ({ result: addClientFactUseCase.execute(p as { category: string; fact: string; source: string }) }),
+  addPreference: (p) => ({ result: addPreferenceUseCase.execute(p as { category: string; key: string; value: string; confidence: "low" | "medium" | "strong" }) }),
+  addPattern: (p) => ({ result: addValidatedPatternUseCase.execute(p as { type: string; description: string; trigger: string; outcome: string; recommendation: string }) }),
+  addRule: (p) => ({ result: addLearnedRuleUseCase.execute(p as { description: string; domain: string; action: string; confidence: "low" | "medium" | "strong" }) }),
+  recordEpisode: (p) => ({ result: recordEpisodeUseCase.execute(p as { type: "interaction" | "task_result" | "feedback" | "discovery"; description: string; data: Record<string, unknown>; tags: string[]; importance: "low" | "medium" | "high" }) }),
+  recordFeedback: (p) => ({ result: recordFeedbackUseCase.execute(p as { source: string; sentiment: "positive" | "neutral" | "negative"; content: string; taskId?: string }) }),
+  startSession: (p) => { startSessionUseCase.execute(p as { task: string; objective: string }); return { result: "session_started" }; },
+};
+
 export async function POST(request: NextRequest) {
   const body = (await request.json()) as MemoryAction;
-
-  switch (body.action) {
-    case "addFact": {
-      const { category, fact, source } = body.params;
-      const result = semanticMemory.addClientFact(category, fact, source);
-      return NextResponse.json({ result }, { status: 201 });
-    }
-    case "addPreference": {
-      const { category, key, value, confidence } = body.params;
-      const result = semanticMemory.addPreference(category, key, value, confidence);
-      return NextResponse.json({ result }, { status: 201 });
-    }
-    case "addPattern": {
-      const { type, description, trigger, outcome, recommendation } = body.params;
-      const result = semanticMemory.addValidatedPattern(type, description, trigger, outcome, recommendation);
-      return NextResponse.json({ result }, { status: 201 });
-    }
-    case "addRule": {
-      const { description, domain, action, confidence } = body.params;
-      const result = semanticMemory.addLearnedRule(description, domain, action, confidence);
-      return NextResponse.json({ result }, { status: 201 });
-    }
-    case "recordEpisode": {
-      const { type, description, data, tags, importance } = body.params;
-      const result = episodicMemory.recordEpisode(type, description, data, { tags, importance });
-      return NextResponse.json({ result }, { status: 201 });
-    }
-    case "recordFeedback": {
-      const { source, sentiment, content, taskId } = body.params;
-      const result = episodicMemory.recordFeedback(source, sentiment, content, taskId);
-      return NextResponse.json({ result }, { status: 201 });
-    }
-    case "startSession": {
-      const { task, objective } = body.params;
-      workingMemory.startSession(task, objective);
-      return NextResponse.json({ result: "session_started" }, { status: 201 });
-    }
-    default:
-      return NextResponse.json({ error: "Unknown action" }, { status: 400 });
+  const handler = actionHandlers[body.action];
+  if (!handler) {
+    return NextResponse.json({ error: "Unknown action" }, { status: 400 });
   }
+  const { result } = handler(body.params as Record<string, unknown>);
+  return NextResponse.json({ result }, { status: 201 });
 }
