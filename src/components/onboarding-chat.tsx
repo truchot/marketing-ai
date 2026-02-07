@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import LoadingSpinner from "@/components/ui/loading-spinner";
 import type { CompanyProfile } from "@/types";
+import { logError } from "@/lib/error-handler";
 import { useDiscoveryChat } from "@/hooks/use-discovery-chat";
 import { useChatMessages } from "@/hooks/use-chat-messages";
 import MessageBubble from "@/components/chat/message-bubble";
@@ -55,7 +57,10 @@ export default function OnboardingChat({
           setHistoryLoaded(true);
           setTimeout(() => inputRef.current?.focus(), 100);
         })
-        .catch(() => setHistoryLoaded(true));
+        .catch((error: unknown) => {
+          logError("onboarding:history", error);
+          setHistoryLoaded(true);
+        });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialMode]);
@@ -104,7 +109,8 @@ export default function OnboardingChat({
         setMode("chat");
         if (onComplete) onComplete();
         inputRef.current?.focus();
-      } catch {
+      } catch (error) {
+        logError("onboarding:complete", error);
         setSaving(false);
         finalizingRef.current = false;
       }
@@ -137,11 +143,7 @@ export default function OnboardingChat({
 
   // Loading state for chat mode
   if (initialMode === "chat" && !historyLoaded) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-zinc-950">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-violet-500 border-t-transparent" />
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   const placeholder = saving
