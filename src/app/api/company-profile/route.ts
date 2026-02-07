@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCompanyProfile, setCompanyProfile } from "@/data/company-profile";
+import { getProfileUseCase, createProfileUseCase } from "@/infrastructure/composition-root";
 
 export async function GET() {
-  const profile = getCompanyProfile();
+  const profile = getProfileUseCase.execute();
   return NextResponse.json({ profile });
 }
 
@@ -17,13 +17,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const profile = setCompanyProfile({
-    name,
-    sector,
-    description,
-    target,
-    brandTone,
-  });
+  const profile = createProfileUseCase.execute({ name, sector, description, target, brandTone });
 
-  return NextResponse.json({ profile });
+  return NextResponse.json({ profile }, { status: 201 });
 }
