@@ -4,6 +4,10 @@ export {
   ConfidenceLevel,
   Importance,
   Tag,
+  Sector,
+  BrandTone,
+  TargetAudience,
+  EpisodeType,
 } from "./value-objects";
 
 export {
@@ -19,3 +23,8 @@ export {
   ONBOARDING_COMPLETED,
   MESSAGE_SENT,
 } from "./domain-events";
+
+export { AggregateRoot } from "./aggregate-root";
+
+export { Result } from "./result";
+export { DomainError, ValidationError, NotFoundError, InvariantViolationError } from "./domain-error";

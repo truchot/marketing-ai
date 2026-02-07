@@ -199,3 +199,140 @@ export class Tag {
     return this.value;
   }
 }
+
+/**
+ * Sector represents the business sector of a company.
+ * Validates against a predefined set of supported sectors.
+ */
+export class Sector {
+  private static readonly VALID_SECTORS = [
+    "saas",
+    "ecommerce",
+    "agency",
+    "startup",
+    "b2c",
+    "other",
+  ] as const;
+
+  static readonly SAAS = new Sector("saas");
+  static readonly ECOMMERCE = new Sector("ecommerce");
+  static readonly AGENCY = new Sector("agency");
+  static readonly STARTUP = new Sector("startup");
+  static readonly B2C = new Sector("b2c");
+  static readonly OTHER = new Sector("other");
+
+  private constructor(readonly value: string) {}
+
+  static create(value: string): Sector {
+    const normalized = value.toLowerCase().trim();
+    if (!Sector.VALID_SECTORS.includes(normalized as any)) {
+      throw new Error(
+        `Invalid sector: "${value}". Valid sectors: ${Sector.VALID_SECTORS.join(", ")}`
+      );
+    }
+    return new Sector(normalized);
+  }
+
+  equals(other: Sector): boolean {
+    return this.value === other.value;
+  }
+
+  toString(): string {
+    return this.value;
+  }
+}
+
+/**
+ * BrandTone represents the communication tone of a brand.
+ * Accepts predefined tones and custom values for flexibility.
+ */
+export class BrandTone {
+  private static readonly COMMON_TONES = [
+    "professional",
+    "casual",
+    "bold",
+    "friendly",
+    "authoritative",
+    "playful",
+  ] as const;
+
+  private constructor(readonly value: string) {}
+
+  static create(value: string): BrandTone {
+    const normalized = value.toLowerCase().trim();
+    if (!normalized) {
+      throw new Error("Brand tone cannot be empty");
+    }
+    return new BrandTone(normalized);
+  }
+
+  equals(other: BrandTone): boolean {
+    return this.value === other.value;
+  }
+
+  toString(): string {
+    return this.value;
+  }
+}
+
+/**
+ * TargetAudience represents the target audience description for a company.
+ * Validates that the value is not empty.
+ */
+export class TargetAudience {
+  private constructor(readonly value: string) {}
+
+  static create(value: string): TargetAudience {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      throw new Error("Target audience cannot be empty");
+    }
+    return new TargetAudience(trimmed);
+  }
+
+  equals(other: TargetAudience): boolean {
+    return this.value === other.value;
+  }
+
+  toString(): string {
+    return this.value;
+  }
+}
+
+/**
+ * EpisodeType represents the type of an episodic memory entry.
+ * Validates against predefined episode types.
+ */
+export class EpisodeType {
+  private static readonly VALID_TYPES = [
+    "interaction",
+    "task_result",
+    "feedback",
+    "discovery",
+  ] as const;
+
+  static readonly INTERACTION = new EpisodeType("interaction");
+  static readonly TASK_RESULT = new EpisodeType("task_result");
+  static readonly FEEDBACK = new EpisodeType("feedback");
+  static readonly DISCOVERY = new EpisodeType("discovery");
+
+  private constructor(readonly value: string) {}
+
+  static create(value: string): EpisodeType {
+    const normalized = value.toLowerCase().trim();
+    if (!EpisodeType.VALID_TYPES.includes(normalized as any)) {
+      throw new Error(
+        `Invalid episode type: "${value}". Valid types: ${EpisodeType.VALID_TYPES.join(", ")}`
+      );
+    }
+    return new EpisodeType(normalized);
+  }
+
+  equals(other: EpisodeType): boolean {
+    return this.value === other.value;
+  }
+
+  toString(): string {
+    return this.value;
+  }
+}
