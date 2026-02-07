@@ -20,7 +20,13 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const profile = completeOnboardingUseCase.execute(discovery, messages);
+  const result = completeOnboardingUseCase.execute(discovery, messages);
+  if (result.isErr()) {
+    return NextResponse.json(
+      { error: result.error.message },
+      { status: result.error.code === "VALIDATION_ERROR" ? 400 : 500 }
+    );
+  }
 
-  return NextResponse.json({ profile }, { status: 201 });
+  return NextResponse.json({ profile: result.value }, { status: 201 });
 }

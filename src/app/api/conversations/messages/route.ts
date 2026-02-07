@@ -2,8 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { getHistoryUseCase, sendMessageUseCase } from "@/infrastructure/composition-root";
 
 export async function GET() {
-  const messages = getHistoryUseCase.execute();
-  return NextResponse.json({ messages });
+  const result = getHistoryUseCase.execute();
+  if (result.isErr()) {
+    return NextResponse.json(
+      { error: result.error.message },
+      { status: 500 }
+    );
+  }
+  return NextResponse.json({ messages: result.value });
 }
 
 export async function POST(request: NextRequest) {
@@ -18,9 +24,15 @@ export async function POST(request: NextRequest) {
   }
 
   const result = sendMessageUseCase.execute(content);
+  if (result.isErr()) {
+    return NextResponse.json(
+      { error: result.error.message },
+      { status: result.error.code === "VALIDATION_ERROR" ? 400 : 500 }
+    );
+  }
 
   return NextResponse.json(
-    { messages: [result.userMessage, result.assistantMessage] },
+    { messages: [result.value.userMessage, result.value.assistantMessage] },
     { status: 201 }
   );
 }
