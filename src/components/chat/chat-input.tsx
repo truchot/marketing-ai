@@ -24,12 +24,11 @@ const ChatInput = forwardRef<HTMLInputElement, ChatInputProps>(
             value={value}
             onChange={(e) => onChange(e.target.value)}
             placeholder={placeholder}
-            disabled={disabled}
             className="flex-1 border-zinc-800 bg-zinc-900 text-zinc-100 placeholder:text-zinc-600 focus-visible:border-violet-500 focus-visible:ring-violet-500/20"
           />
           <Button
             type="submit"
-            disabled={disabled || !value.trim()}
+            disabled={!value.trim()}
             className="bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-40"
           >
             <svg

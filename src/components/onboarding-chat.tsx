@@ -131,7 +131,7 @@ export default function OnboardingChat({
   function handleSend(e: React.FormEvent) {
     e.preventDefault();
     const content = input.trim();
-    if (!content || isTyping || saving) return;
+    if (!content) return;
     setInput("");
 
     if (mode === "onboarding") {
@@ -174,7 +174,6 @@ export default function OnboardingChat({
                 <DiscoveryChoiceCard
                   choices={discovery.pendingChoices}
                   onSelect={discovery.selectChoice}
-                  disabled={isTyping || saving}
                 />
               )}
             {isTyping && <TypingIndicator />}
@@ -192,7 +191,6 @@ export default function OnboardingChat({
             onChange={setInput}
             onSubmit={handleSend}
             placeholder={placeholder}
-            disabled={isTyping || saving}
           />
         </>
       )}

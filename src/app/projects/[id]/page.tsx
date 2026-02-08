@@ -46,7 +46,7 @@ export default function ConversationPage() {
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
     const content = input.trim();
-    if (!content || sending) return;
+    if (!content) return;
 
     setInput("");
     setSending(true);
@@ -240,12 +240,11 @@ export default function ConversationPage() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ecrivez votre message..."
-            disabled={sending}
             className="flex-1 border-zinc-800 bg-zinc-900 text-zinc-100 placeholder:text-zinc-600 focus-visible:border-violet-500 focus-visible:ring-violet-500/20"
           />
           <Button
             type="submit"
-            disabled={sending || !input.trim()}
+            disabled={!input.trim()}
             className="bg-violet-600 text-white hover:bg-violet-700 disabled:opacity-40"
           >
             <svg
