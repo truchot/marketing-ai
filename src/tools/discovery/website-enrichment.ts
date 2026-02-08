@@ -40,7 +40,7 @@ export interface WebsiteInsights {
     chatWidget: string | null;
     leadCapture: boolean;
   };
-  socialLinks: Record<string, string>;
+  socialLinks: Record<string, ScoredSocialLink>;
   pricingModel: string | null;
   messaging: string[];
 }
@@ -74,8 +74,20 @@ function extractMeta(html: string): { title: string | null; description: string 
   return { title, description, ogImage };
 }
 
-function extractSocialLinks(html: string): Record<string, string> {
-  const links: Record<string, string> = {};
+interface ScoredSocialLink {
+  url: string;
+  confidence: "high" | "medium" | "low";
+}
+
+function extractSocialLinks(html: string, websiteUrl: string, companyName?: string): Record<string, ScoredSocialLink> {
+  // Build reference tokens from company name and domain for matching
+  const domain = new URL(websiteUrl).hostname.replace(/^www\./, "").split(".")[0].toLowerCase();
+  const tokens = new Set<string>([domain]);
+  if (companyName) {
+    tokens.add(companyName.toLowerCase().replace(/[^a-z0-9]/g, ""));
+  }
+
+  const links: Record<string, ScoredSocialLink> = {};
   const patterns: [string, RegExp][] = [
     ["linkedin", /https?:\/\/(?:www\.)?linkedin\.com\/(?:company|in)\/[^\s"'<>]+/gi],
     ["twitter", /https?:\/\/(?:www\.)?(?:twitter\.com|x\.com)\/[^\s"'<>]+/gi],
@@ -84,11 +96,55 @@ function extractSocialLinks(html: string): Record<string, string> {
     ["facebook", /https?:\/\/(?:www\.)?facebook\.com\/[^\s"'<>]+/gi],
     ["tiktok", /https?:\/\/(?:www\.)?tiktok\.com\/@[^\s"'<>]+/gi],
   ];
+
   for (const [name, regex] of patterns) {
-    const match = html.match(regex);
-    if (match) links[name] = match[0];
+    const allMatches = html.match(regex);
+    if (!allMatches) continue;
+
+    // Score each match and pick the best one
+    let best: ScoredSocialLink | null = null;
+    for (const url of allMatches) {
+      const confidence = scoreSocialLink(url, name, tokens);
+      if (!best || confidenceRank(confidence) > confidenceRank(best.confidence)) {
+        best = { url, confidence };
+      }
+      if (confidence === "high") break; // No need to check more
+    }
+
+    // Only keep medium+ confidence links
+    if (best && best.confidence !== "low") {
+      links[name] = best;
+    }
   }
+
   return links;
+}
+
+function scoreSocialLink(url: string, platform: string, companyTokens: Set<string>): "high" | "medium" | "low" {
+  const urlLower = url.toLowerCase();
+
+  // Extract the path segment (the handle/slug) from the URL
+  const pathSegment = urlLower
+    .replace(/https?:\/\/(?:www\.)?(?:linkedin\.com|twitter\.com|x\.com|instagram\.com|youtube\.com|facebook\.com|tiktok\.com)\//, "")
+    .replace(/^(?:company|in|@|channel|c)\//, "")
+    .replace(/[/?#].*$/, "")
+    .replace(/[^a-z0-9]/g, "");
+
+  // High: the handle/slug contains a company token
+  for (const token of companyTokens) {
+    if (token.length >= 3 && pathSegment.includes(token)) return "high";
+  }
+
+  // Medium: LinkedIn /company/ pages (likely official even without name match)
+  // or links found in structured social sections (heuristic: linkedin company pages are almost always official)
+  if (platform === "linkedin" && urlLower.includes("/company/")) return "medium";
+
+  // Low: personal profiles, unrelated handles
+  return "low";
+}
+
+function confidenceRank(c: "high" | "medium" | "low"): number {
+  return c === "high" ? 3 : c === "medium" ? 2 : 1;
 }
 
 function detectTechnicalSignals(html: string): WebsiteInsights["technicalSignals"] {
@@ -217,7 +273,7 @@ async function runEnrichmentPipeline(
 
   // 2. Parallel deterministic extractions
   const meta = extractMeta(homepageHtml);
-  const socialLinks = extractSocialLinks(homepageHtml);
+  const socialLinks = extractSocialLinks(homepageHtml, websiteUrl, companyName);
   const technicalSignals = detectTechnicalSignals(homepageHtml);
   const { aboutUrl, pricingUrl } = detectSubpages(homepageHtml, websiteUrl);
   const homepageText = extractText(homepageHtml);
@@ -320,7 +376,7 @@ function storeInsightsAsFacts(
 
   const socialEntries = Object.entries(insights.socialLinks);
   if (socialEntries.length > 0) {
-    facts.push({ category: "social_links", fact: socialEntries.map(([k, v]) => `${k}: ${v}`).join(" | ") });
+    facts.push({ category: "social_links", fact: socialEntries.map(([k, v]) => `${k}: ${v.url} (${v.confidence})`).join(" | ") });
   }
 
   if (insights.pricingModel) {

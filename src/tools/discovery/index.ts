@@ -131,16 +131,25 @@ export async function callClaudeHaiku(prompt: string, _maxTokens: number = 1024)
       model: "claude-haiku-4-5-20251001",
       permissionMode: "bypassPermissions",
       allowDangerouslySkipPermissions: true,
-      maxTurns: 1,
+      maxTurns: 2,
+      persistSession: false,
     },
   });
 
+  let text = "";
   for await (const msg of result) {
-    if (msg.type === "result") {
-      if (msg.subtype === "success") {
-        return msg.result;
+    if (msg.type === "assistant") {
+      for (const block of msg.message.content) {
+        if (block.type === "text") {
+          text += block.text;
+        }
       }
-      throw new Error(msg.errors?.join(", ") ?? "Claude Haiku query failed");
+    } else if (msg.type === "result") {
+      if (msg.subtype === "success") {
+        return text || msg.result;
+      }
+      console.error("[callClaudeHaiku] Query failed:", msg.subtype, msg.errors);
+      throw new Error(`Claude Haiku query failed: ${msg.subtype}${msg.errors?.length ? ` - ${msg.errors.join(", ")}` : ""}`);
     }
   }
 
