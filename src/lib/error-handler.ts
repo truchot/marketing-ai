@@ -5,6 +5,7 @@ export type ErrorContext =
   | "discovery:send"
   | "discovery:sse-parse"
   | "discovery:finalize"
+  | "discovery:enrichment"
   | "onboarding:complete"
   | "onboarding:history"
   | "page:load"

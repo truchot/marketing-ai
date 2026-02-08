@@ -5,6 +5,7 @@
 
 import { recordEpisodeUseCase, addClientFactUseCase } from "@/infrastructure/composition-root";
 import type { BusinessDiscovery } from "@/types/business-discovery";
+import { startEnrichmentInBackground } from "./website-enrichment";
 
 // ============================================================
 // Tool 1: saveDiscoveryBlock (OBLIGATOIRE)
@@ -89,12 +90,12 @@ export async function saveDiscoveryBlock(
   };
 }
 
-// ========== Fonctions utilitaires partagées ==========
+// ========== Fonctions utilitaires partagées (exportées) ==========
 
 /**
  * Retire scripts, styles et tags HTML d'une string.
  */
-function cleanHtml(html: string, maxChars: number = 8000): string {
+export function cleanHtml(html: string, maxChars: number = 8000): string {
   return html
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
     .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "")
@@ -107,7 +108,7 @@ function cleanHtml(html: string, maxChars: number = 8000): string {
 /**
  * Fetch et nettoie le contenu HTML d'une URL.
  */
-async function fetchAndCleanHtml(url: string, maxChars: number = 8000): Promise<string> {
+export async function fetchAndCleanHtml(url: string, maxChars: number = 8000): Promise<string> {
   const response = await fetch(url, {
     headers: { "User-Agent": "Mozilla/5.0 (compatible; DiscoveryBot/1.0)" },
     signal: AbortSignal.timeout(10000),
@@ -122,7 +123,7 @@ async function fetchAndCleanHtml(url: string, maxChars: number = 8000): Promise<
 /**
  * Appelle Claude Haiku pour analyser du contenu et retourner du JSON.
  */
-async function callClaudeHaiku(prompt: string, maxTokens: number = 1024): Promise<string> {
+export async function callClaudeHaiku(prompt: string, maxTokens: number = 1024): Promise<string> {
   if (!process.env.ANTHROPIC_API_KEY) {
     throw new Error("ANTHROPIC_API_KEY not configured");
   }
@@ -160,7 +161,7 @@ async function callClaudeHaiku(prompt: string, maxTokens: number = 1024): Promis
 /**
  * Extrait un objet JSON d'une réponse texte de Claude.
  */
-function extractJsonFromResponse<T>(text: string): T {
+export function extractJsonFromResponse<T>(text: string): T {
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {
     throw new Error("Could not parse JSON from Claude response");
@@ -168,50 +169,8 @@ function extractJsonFromResponse<T>(text: string): T {
   return JSON.parse(jsonMatch[0]) as T;
 }
 
-/**
- * Construit le prompt d'analyse de site web.
- */
-function buildWebsiteAnalysisPrompt(content: string, companyName?: string): string {
-  return `Analyse cette page web ${companyName ? `de ${companyName}` : ""} et extrais :
-
-1. **Proposition de valeur** : En 1-2 phrases, quelle transformation promettent-ils ?
-2. **Cibles apparentes** : Quels segments de clientèle sont visés ? (max 3)
-3. **Canaux visibles** : Quels canaux marketing sont mentionnés ou évidents ? (réseaux sociaux, blog, webinaires, etc.)
-4. **Modèle de pricing** : Gratuit, freemium, abonnement, one-time, custom, ou inconnu ?
-5. **Offres** : Quels produits/services principaux sont proposés ? (max 3)
-6. **Messaging clés** : Quels mots/phrases marketing reviennent ? (max 5)
-
-Réponds en JSON strict :
-{
-  "valueProposition": "...",
-  "apparentTargets": ["...", "..."],
-  "visibleChannels": ["...", "..."],
-  "pricingModel": "...",
-  "offers": ["...", "..."],
-  "messaging": ["...", "..."]
-}
-
-Contenu de la page :
-${content}`;
-}
-
-/**
- * Retourne un résultat d'enrichissement vide avec un message d'erreur.
- */
-function emptyEnrichmentResult(errorMessage: string): WebsiteEnrichmentOutput {
-  return {
-    valueProposition: null,
-    apparentTargets: [],
-    visibleChannels: [],
-    pricingModel: null,
-    offers: [],
-    messaging: [],
-    error: errorMessage,
-  };
-}
-
 // ============================================================
-// Tool 2: enrichFromWebsite (RECOMMANDÉ)
+// Tool 2: enrichFromWebsite (NON-BLOQUANT)
 // ============================================================
 
 interface EnrichFromWebsiteInput {
@@ -219,42 +178,16 @@ interface EnrichFromWebsiteInput {
   companyName?: string;
 }
 
-interface WebsiteEnrichmentOutput {
-  valueProposition: string | null;
-  apparentTargets: string[];
-  visibleChannels: string[];
-  pricingModel: string | null;
-  offers: string[];
-  messaging: string[];
-  error?: string;
+interface EnrichFromWebsiteOutput {
+  started: boolean;
+  message: string;
 }
 
 export async function enrichFromWebsite(
   input: EnrichFromWebsiteInput
-): Promise<WebsiteEnrichmentOutput> {
-  const { websiteUrl, companyName } = input;
-
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return emptyEnrichmentResult("ANTHROPIC_API_KEY not configured");
-  }
-
-  try {
-    const cleanContent = await fetchAndCleanHtml(websiteUrl);
-    const prompt = buildWebsiteAnalysisPrompt(cleanContent, companyName);
-    const responseText = await callClaudeHaiku(prompt);
-    const parsed = extractJsonFromResponse<WebsiteEnrichmentOutput>(responseText);
-
-    return {
-      valueProposition: parsed.valueProposition || null,
-      apparentTargets: parsed.apparentTargets || [],
-      visibleChannels: parsed.visibleChannels || [],
-      pricingModel: parsed.pricingModel || null,
-      offers: parsed.offers || [],
-      messaging: parsed.messaging || [],
-    };
-  } catch (error) {
-    return emptyEnrichmentResult(error instanceof Error ? error.message : "Unknown error");
-  }
+): Promise<EnrichFromWebsiteOutput> {
+  startEnrichmentInBackground(input.websiteUrl, input.companyName, addClientFactUseCase);
+  return { started: true, message: "Enrichissement lancé en arrière-plan. Les insights seront stockés automatiquement en mémoire." };
 }
 
 // ============================================================

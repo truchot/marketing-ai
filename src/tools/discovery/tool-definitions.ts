@@ -94,28 +94,23 @@ IMPORTANT : Toujours demander validation à l'interlocuteur avant de sauvegarder
     // ========================================================
     tool(
       "enrichFromWebsite",
-      `Enrichit la découverte en analysant le site web de l'entreprise avec Claude Haiku.
+      `Enrichit la découverte en analysant le site web de l'entreprise — NON-BLOQUANT.
+
+L'outil lance l'analyse en arrière-plan et retourne immédiatement. Les insights (proposition de valeur, offres, audience, stack technique, réseaux sociaux, pricing, etc.) sont stockés automatiquement en mémoire sémantique sous forme de ClientFacts.
 
 QUAND L'UTILISER :
-- En début d'entretien si l'URL du site est mentionnée
-- Pour préparer des questions plus pertinentes
-- Pour identifier les écarts entre "ce que le site dit" et "ce que le dirigeant dit"
+- Dès que l'interlocuteur fournit une URL de site web
+- Appeler UNE SEULE FOIS par URL, puis continuer l'entretien sans attendre
 
-ANALYSE EXTRAITE :
-- Proposition de valeur visible
-- Cibles apparentes
-- Canaux marketing visibles (réseaux sociaux, blog, etc.)
-- Modèle de pricing (freemium, abonnement, etc.)
-- Offres principales
-- Messaging clés (mots/phrases récurrents)
-
-TEMPS : ~5-8 secondes
-MODÈLE : Claude Haiku (rapide et économique)
+COMPORTEMENT :
+- Retour immédiat (pas de blocage)
+- Pipeline en arrière-plan : fetch homepage + about/pricing, analyse Claude Haiku, stockage ~10 ClientFacts
+- Les insights enrichissent automatiquement la mémoire sémantique (source: "website_enrichment")
+- En cas d'erreur, le pipeline échoue silencieusement — l'entretien n'est jamais impacté
 
 IMPORTANT :
-- Ne pas bloquer la conversation en attendant le résultat
-- Utiliser les insights pour enrichir les questions, pas pour remplacer l'écoute
-- L'écart site/discours est souvent révélateur`,
+- Ne PAS mentionner l'analyse au client — continuer la conversation normalement
+- Les insights seront disponibles via la mémoire sémantique pour les agents suivants`,
       {
         websiteUrl: z.string().url().describe("URL complète du site web (ex: https://example.com)"),
         companyName: z.string().optional().describe("Nom de l'entreprise (optionnel, améliore l'analyse)"),
