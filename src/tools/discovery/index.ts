@@ -3,6 +3,7 @@
 // Coupled with the existing memory system
 // ============================================================
 
+import { query } from "@anthropic-ai/claude-agent-sdk";
 import { recordEpisodeUseCase, addClientFactUseCase } from "@/infrastructure/composition-root";
 import type { BusinessDiscovery } from "@/types/business-discovery";
 import { startEnrichmentInBackground } from "./website-enrichment";
@@ -121,41 +122,29 @@ export async function fetchAndCleanHtml(url: string, maxChars: number = 8000): P
 }
 
 /**
- * Appelle Claude Haiku pour analyser du contenu et retourner du JSON.
+ * Appelle Claude Haiku via le Claude Agent SDK pour analyser du contenu.
  */
-export async function callClaudeHaiku(prompt: string, maxTokens: number = 1024): Promise<string> {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    throw new Error("ANTHROPIC_API_KEY not configured");
-  }
-
-  const apiResponse = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": process.env.ANTHROPIC_API_KEY!,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
+export async function callClaudeHaiku(prompt: string, _maxTokens: number = 1024): Promise<string> {
+  const result = query({
+    prompt,
+    options: {
       model: "claude-haiku-4-5-20251001",
-      max_tokens: maxTokens,
-      messages: [{ role: "user", content: prompt }],
-    }),
+      permissionMode: "bypassPermissions",
+      allowDangerouslySkipPermissions: true,
+      maxTurns: 1,
+    },
   });
 
-  if (!apiResponse.ok) {
-    throw new Error(`API error: ${apiResponse.status} ${apiResponse.statusText}`);
+  for await (const msg of result) {
+    if (msg.type === "result") {
+      if (msg.subtype === "success") {
+        return msg.result;
+      }
+      throw new Error(msg.errors?.join(", ") ?? "Claude Haiku query failed");
+    }
   }
 
-  const result = await apiResponse.json() as {
-    content: Array<{ type: string; text?: string }>;
-  };
-
-  const textContent = result.content.find((block) => block.type === "text") as { type: string; text: string } | undefined;
-  if (!textContent) {
-    throw new Error("No text response from Claude");
-  }
-
-  return textContent.text;
+  throw new Error("No result from Claude Haiku query");
 }
 
 /**
@@ -221,13 +210,6 @@ export async function checkCompetitors(
     return {
       competitors: [],
       error: "No competitors provided",
-    };
-  }
-
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return {
-      competitors: [],
-      error: "ANTHROPIC_API_KEY not configured",
     };
   }
 
