@@ -89,12 +89,12 @@ function extractSocialLinks(html: string, websiteUrl: string, companyName?: stri
 
   const links: Record<string, ScoredSocialLink> = {};
   const patterns: [string, RegExp][] = [
-    ["linkedin", /https?:\/\/(?:www\.)?linkedin\.com\/(?:company|in)\/[^\s"'<>]+/gi],
-    ["twitter", /https?:\/\/(?:www\.)?(?:twitter\.com|x\.com)\/[^\s"'<>]+/gi],
-    ["instagram", /https?:\/\/(?:www\.)?instagram\.com\/[^\s"'<>]+/gi],
-    ["youtube", /https?:\/\/(?:www\.)?youtube\.com\/(?:@|channel\/|c\/)[^\s"'<>]+/gi],
-    ["facebook", /https?:\/\/(?:www\.)?facebook\.com\/[^\s"'<>]+/gi],
-    ["tiktok", /https?:\/\/(?:www\.)?tiktok\.com\/@[^\s"'<>]+/gi],
+    ["linkedin", /https?:\/\/(?:www\.)?linkedin\.com\/(?:company|in)\/[^\s"'<>\\]+/gi],
+    ["twitter", /https?:\/\/(?:www\.)?(?:twitter\.com|x\.com)\/[^\s"'<>\\]+/gi],
+    ["instagram", /https?:\/\/(?:www\.)?instagram\.com\/[^\s"'<>\\]+/gi],
+    ["youtube", /https?:\/\/(?:www\.)?youtube\.com\/(?:@|channel\/|c\/)[^\s"'<>\\]+/gi],
+    ["facebook", /https?:\/\/(?:www\.)?facebook\.com\/[^\s"'<>\\]+/gi],
+    ["tiktok", /https?:\/\/(?:www\.)?tiktok\.com\/@[^\s"'<>\\]+/gi],
   ];
 
   for (const [name, regex] of patterns) {
@@ -401,12 +401,25 @@ function storeInsightsAsFacts(
 // Public API (fire-and-forget)
 // ============================================================
 
+const enrichmentInProgress = new Set<string>();
+
 export function startEnrichmentInBackground(
   websiteUrl: string,
   companyName: string | undefined,
   addClientFact: AddClientFactUseCase,
 ): void {
-  runEnrichmentPipeline(websiteUrl, companyName, addClientFact).catch((err) => {
-    logError("discovery:enrichment", err);
-  });
+  const normalizedUrl = websiteUrl.replace(/\/+$/, "").toLowerCase();
+  if (enrichmentInProgress.has(normalizedUrl)) {
+    console.log("[website-enrichment] Already in progress for:", normalizedUrl);
+    return;
+  }
+  enrichmentInProgress.add(normalizedUrl);
+
+  runEnrichmentPipeline(websiteUrl, companyName, addClientFact)
+    .catch((err) => {
+      logError("discovery:enrichment", err);
+    })
+    .finally(() => {
+      enrichmentInProgress.delete(normalizedUrl);
+    });
 }
