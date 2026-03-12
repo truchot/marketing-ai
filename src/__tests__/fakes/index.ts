@@ -16,3 +16,4 @@ export { SemanticMemoryStore } from "@/data/memory/semantic-memory";
 export { FakeConversationRepository } from "./fake-conversation-repository";
 export { FakeCompanyProfileRepository } from "./fake-company-profile-repository";
 export { FakeResponseGenerator } from "./fake-response-generator";
+export { FakeStrategyRepository } from "./fake-strategy-repository";

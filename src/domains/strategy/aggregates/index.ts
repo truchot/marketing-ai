@@ -1,0 +1,1 @@
+export { StrategyAggregate } from "./strategy";

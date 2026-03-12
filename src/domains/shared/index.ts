@@ -22,6 +22,7 @@ export {
   FEEDBACK_RECORDED,
   ONBOARDING_COMPLETED,
   MESSAGE_SENT,
+  STRATEGY_GENERATED,
 } from "./domain-events";
 
 export { AggregateRoot } from "./aggregate-root";
