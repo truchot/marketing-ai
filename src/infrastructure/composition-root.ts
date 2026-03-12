@@ -34,6 +34,9 @@ import { GetHistoryUseCase } from "@/domains/conversation/use-cases/get-history"
 import { GetProfileUseCase } from "@/domains/client-knowledge/use-cases/get-profile";
 import { CreateProfileUseCase } from "@/domains/client-knowledge/use-cases/create-profile";
 import { CompleteOnboardingUseCase } from "@/domains/onboarding/use-cases/complete-onboarding";
+import { SaveStrategyUseCase } from "@/domains/strategy/use-cases/save-strategy";
+import { GetStrategyUseCase } from "@/domains/strategy/use-cases/get-strategy";
+import { strategyRepository } from "@/data/strategy-repository";
 
 // --- Wire use case instances ---
 
@@ -69,6 +72,10 @@ export const getProfileUseCase = new GetProfileUseCase(
 export const createProfileUseCase = new CreateProfileUseCase(
   companyProfileRepository
 );
+
+// Strategy
+export const saveStrategyUseCase = new SaveStrategyUseCase(strategyRepository);
+export const getStrategyUseCase = new GetStrategyUseCase(strategyRepository);
 
 // Onboarding
 const memoryFacade = new MemoryFacade(semanticMemory);

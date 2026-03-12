@@ -1,0 +1,122 @@
+// ============================================================
+// Strategy Aggregate
+// Represents a validated marketing strategy with OKRs and actions.
+// ============================================================
+
+import { AggregateRoot } from "@/domains/shared";
+import type {
+  MarketingStrategy,
+  MarketingDiagnostic,
+  OKR,
+  Action,
+  ExecutionRoadmap,
+  ConstraintsFit,
+} from "@/types/marketing-strategy";
+import { STRATEGY_GENERATED } from "@/domains/shared/domain-events";
+
+export class StrategyAggregate extends AggregateRoot {
+  private constructor(
+    public readonly id: string,
+    public readonly companyName: string,
+    public readonly diagnostic: MarketingDiagnostic,
+    private _okrs: OKR[],
+    private _actions: Action[],
+    private _roadmap: ExecutionRoadmap,
+    private _constraints: ConstraintsFit,
+    private _narrativeSummary: string,
+    public readonly createdAt: string
+  ) {
+    super();
+  }
+
+  get okrs(): readonly OKR[] {
+    return this._okrs;
+  }
+
+  get actions(): readonly Action[] {
+    return this._actions;
+  }
+
+  get roadmap(): ExecutionRoadmap {
+    return this._roadmap;
+  }
+
+  get constraints(): ConstraintsFit {
+    return this._constraints;
+  }
+
+  get narrativeSummary(): string {
+    return this._narrativeSummary;
+  }
+
+  static create(strategy: MarketingStrategy): StrategyAggregate {
+    if (strategy.okrs.length === 0) {
+      throw new Error("A strategy must have at least one OKR");
+    }
+    if (strategy.okrs.length > 3) {
+      throw new Error("A strategy must have at most 3 OKRs");
+    }
+    if (strategy.actions.length === 0) {
+      throw new Error("A strategy must have at least one action");
+    }
+
+    const aggregate = new StrategyAggregate(
+      `strategy-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      strategy.metadata.companyName,
+      strategy.diagnostic,
+      strategy.okrs,
+      strategy.actions,
+      strategy.executionRoadmap,
+      strategy.constraints,
+      strategy.narrativeSummary,
+      new Date().toISOString()
+    );
+
+    aggregate.addDomainEvent({
+      type: STRATEGY_GENERATED,
+      occurredAt: new Date().toISOString(),
+      payload: {
+        strategyId: aggregate.id,
+        companyName: aggregate.companyName,
+        okrCount: aggregate.okrs.length,
+        actionCount: aggregate.actions.length,
+        maturityScore: aggregate.diagnostic.maturityScore,
+      },
+    });
+
+    return aggregate;
+  }
+
+  updateOKR(okrId: string, updates: Partial<OKR>): void {
+    const index = this._okrs.findIndex((o) => o.id === okrId);
+    if (index === -1) {
+      throw new Error(`OKR ${okrId} not found`);
+    }
+    this._okrs[index] = { ...this._okrs[index], ...updates };
+  }
+
+  removeOKR(okrId: string): void {
+    this._okrs = this._okrs.filter((o) => o.id !== okrId);
+    this._actions = this._actions.filter((a) => a.okrId !== okrId);
+    if (this._okrs.length === 0) {
+      throw new Error("Cannot remove last OKR — strategy must have at least one");
+    }
+  }
+
+  toStrategy(): MarketingStrategy {
+    return {
+      metadata: {
+        companyName: this.companyName,
+        generatedAt: this.createdAt,
+        discoveryCompletionStatus: "complete",
+        strategyVersion: 1,
+      },
+      diagnostic: this.diagnostic,
+      okrs: [...this._okrs],
+      actions: [...this._actions],
+      executionRoadmap: this._roadmap,
+      constraints: this._constraints,
+      narrativeSummary: this._narrativeSummary,
+    };
+  }
+}

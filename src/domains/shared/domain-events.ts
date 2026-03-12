@@ -14,6 +14,7 @@ export const PREFERENCE_UPDATED = "PREFERENCE_UPDATED" as const;
 export const FEEDBACK_RECORDED = "FEEDBACK_RECORDED" as const;
 export const ONBOARDING_COMPLETED = "ONBOARDING_COMPLETED" as const;
 export const MESSAGE_SENT = "MESSAGE_SENT" as const;
+export const STRATEGY_GENERATED = "STRATEGY_GENERATED" as const;
 
 // --- Event interface ---
 
