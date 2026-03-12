@@ -7,6 +7,7 @@ import {
   defaultDiscoveryClient,
   type IDiscoveryAPIClient,
 } from "@/lib/discovery-api-client";
+import type { SSEResult } from "@/lib/sse-parser";
 
 export interface ChoiceOption {
   value: string;
@@ -40,7 +41,6 @@ export function useDiscoveryChat(
 ): UseDiscoveryChatResult {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isTyping, setIsTyping] = useState(false);
-  const [isComplete, setIsComplete] = useState(false);
   const [phase, setPhase] = useState<DiscoveryPhase>("fast_track");
   const [fastTrackSummary, setFastTrackSummary] = useState<string | null>(null);
   const [discoveryData, setDiscoveryData] = useState<BusinessDiscovery | null>(
@@ -60,7 +60,7 @@ export function useDiscoveryChat(
    * Process SSE result: update phase, choices, and completion state.
    */
   const processResult = useCallback(
-    (result: { text: string; interviewComplete: boolean; fastTrackComplete: boolean; fastTrackSummary: string | null; choices: PendingChoices | null }) => {
+    (result: SSEResult) => {
       if (result.choices) {
         setPendingChoices(result.choices);
       }
@@ -69,7 +69,6 @@ export function useDiscoveryChat(
       }
       if (result.interviewComplete) {
         setPhase("complete");
-        setIsComplete(true);
       }
     },
     []
@@ -137,12 +136,6 @@ export function useDiscoveryChat(
         };
         setMessages((prev) => [...prev, assistantMsg]);
         processResult(result);
-
-        // Transition to deep_dive phase when user chooses to continue
-        if (result.fastTrackComplete && phase === "fast_track") {
-          // The agent will present the choice; if user picks deep_dive, the next message will trigger it
-          setPhase("deep_dive");
-        }
       } catch (error) {
         logError("discovery:send", error);
         const errorMsg: ChatMessage = {
@@ -156,7 +149,7 @@ export function useDiscoveryChat(
         setIsTyping(false);
       }
     },
-    [messages, apiClient, nextId, processResult, phase]
+    [messages, apiClient, nextId, processResult]
   );
 
   /**
@@ -168,6 +161,12 @@ export function useDiscoveryChat(
       if (!pendingChoices) return;
       const choice = pendingChoices.choices.find((c) => c.value === value);
       if (!choice) return;
+
+      // Transition to deep_dive only when user explicitly chooses it
+      if (value === "deep_dive") {
+        setPhase("deep_dive");
+      }
+
       await sendMessage(choice.label);
     },
     [pendingChoices, sendMessage]
@@ -193,6 +192,8 @@ export function useDiscoveryChat(
       setDiscoveryData(discovery);
       return discovery;
     }, [messages, apiClient]);
+
+  const isComplete = phase === "complete";
 
   return {
     messages,

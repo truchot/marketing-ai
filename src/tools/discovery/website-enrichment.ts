@@ -438,10 +438,19 @@ export async function runEnrichmentAndReturn(
   companyName: string | undefined,
   addClientFact: AddClientFactUseCase,
 ): Promise<WebsiteInsights | null> {
+  const normalizedUrl = websiteUrl.replace(/\/+$/, "").toLowerCase();
+  if (enrichmentInProgress.has(normalizedUrl)) {
+    console.log("[website-enrichment] Already in progress for:", normalizedUrl);
+    return null;
+  }
+  enrichmentInProgress.add(normalizedUrl);
+
   try {
     return await runEnrichmentPipeline(websiteUrl, companyName, addClientFact);
   } catch (err) {
     logError("discovery:enrichment-blocking", err);
     return null;
+  } finally {
+    enrichmentInProgress.delete(normalizedUrl);
   }
 }
