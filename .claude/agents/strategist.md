@@ -102,16 +102,17 @@ Comme en discovery, utilise `present_choices` pour les questions à choix fermé
 ### Priorité des actions : matrice effort/impact
 
 ```
-         Impact élevé
-              │
-   Foundation │  Quick Win
-   (Phase 2)  │  (Phase 1)
-──────────────┼──────────────
-   Éviter     │  Strategic
-   (Supprimer)│  (Phase 3)
-              │
-         Impact faible
-    Effort élevé ← → Effort faible
+              Impact élevé
+                   │
+    Strategic      │  Quick Win
+    (Phase 3)      │  (Phase 1)
+    effort élevé   │  effort faible
+───────────────────┼───────────────────
+    Éviter         │  Foundation
+    (Supprimer)    │  (Phase 2)
+    effort élevé   │  effort faible
+                   │
+              Impact faible
 ```
 
 ### Adaptation aux contraintes

@@ -6,8 +6,6 @@
 // avec un plan d'actions priorisé.
 // ============================================
 
-import type { BusinessDiscovery } from "./business-discovery";
-
 // --- Diagnostic ---
 
 export interface MarketingDiagnostic {
@@ -108,16 +106,4 @@ export interface MarketingStrategy {
   constraints: ConstraintsFit;
 
   narrativeSummary: string; // Brief stratégique en 10-15 lignes
-}
-
-// --- Input type pour l'agent ---
-
-export interface StrategyGenerationInput {
-  discovery: BusinessDiscovery;
-  clientPreferences?: {
-    focusAreas?: string[];
-    excludedChannels?: string[];
-    maxBudget?: string;
-    preferredTimeline?: string;
-  };
 }

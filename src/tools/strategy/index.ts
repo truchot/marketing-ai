@@ -3,7 +3,11 @@
 // Takes BusinessDiscovery as input and produces OKRs + Actions
 // ============================================================
 
-import { recordEpisodeUseCase, addClientFactUseCase } from "@/infrastructure/composition-root";
+import {
+  recordEpisodeUseCase,
+  addClientFactUseCase,
+  saveStrategyUseCase,
+} from "@/infrastructure/composition-root";
 import type { BusinessDiscovery } from "@/types/business-discovery";
 import type {
   MarketingDiagnostic,
@@ -11,7 +15,11 @@ import type {
   Action,
   MarketingStrategy,
 } from "@/types/marketing-strategy";
-import { callClaudeHaiku, extractJsonFromResponse } from "@/tools/discovery/index";
+import {
+  callClaudeHaiku,
+  callClaudeSonnet,
+  extractJsonFromResponse,
+} from "@/tools/discovery/index";
 
 // ============================================================
 // Tool 1: generateDiagnostic
@@ -51,10 +59,14 @@ export async function generateDiagnostic(
   const underused = tools.filter((t) => t.maturity === "underused").length;
   const toolScore = Math.min(20, wellConfigured * 6 + underused * 2 + tools.length);
 
-  // 4. Budget (0-20)
+  // 4. Budget (0-20) — uses flexibility + range presence
   const flexibility = discovery.currentMarketing.budget.flexibility;
+  const hasRange = discovery.currentMarketing.budget.range.length > 0;
+  const hasAllocation = discovery.currentMarketing.budget.allocation.length > 0;
   const budgetScore =
-    flexibility === "adjustable" ? 15 : flexibility === "fixed" ? 8 : 4;
+    (flexibility === "adjustable" ? 12 : flexibility === "fixed" ? 6 : 2) +
+    (hasRange ? 4 : 0) +
+    (hasAllocation ? 4 : 0);
 
   // 5. Strategy (0-20)
   const hasMetric = discovery.businessContext.primaryGoal.metric !== null;
@@ -65,7 +77,7 @@ export async function generateDiagnostic(
 
   const maturityScore = channelScore + teamScore + toolScore + budgetScore + strategyScore;
 
-  // --- Generate SWOT via Claude Haiku ---
+  // --- Generate SWOT via Claude Haiku (extraction task, not strategic reasoning) ---
   const swotPrompt = `Tu es un analyste marketing senior. Analyse ce diagnostic de découverte business et produis un SWOT concis.
 
 Données de découverte :
@@ -127,7 +139,7 @@ Maximum 3 éléments par catégorie. Sois concis et actionnable.`;
 }
 
 // ============================================================
-// Tool 2: proposeOKR
+// Tool 2: proposeOKR (uses Sonnet for strategic reasoning)
 // ============================================================
 
 interface ProposeOKRInput {
@@ -182,7 +194,7 @@ Réponds en JSON strict :
   }
 ]`;
 
-  const responseText = await callClaudeHaiku(prompt, 2048);
+  const responseText = await callClaudeSonnet(prompt);
   const okrs = extractJsonFromResponse<OKR[]>(responseText);
 
   // Ensure it's an array
@@ -201,7 +213,7 @@ Réponds en JSON strict :
 }
 
 // ============================================================
-// Tool 3: proposeActions
+// Tool 3: proposeActions (uses Sonnet for strategic reasoning)
 // ============================================================
 
 interface ProposeActionsInput {
@@ -256,53 +268,39 @@ Réponds en JSON strict :
   }
 ]`;
 
-  const responseText = await callClaudeHaiku(prompt, 2048);
+  const responseText = await callClaudeSonnet(prompt);
   const actions = extractJsonFromResponse<Action[]>(responseText);
 
-  const actionArray = Array.isArray(actions) ? actions : [actions];
-
-  return actionArray;
+  return Array.isArray(actions) ? actions : [actions];
 }
 
 // ============================================================
-// Tool 4: saveStrategy (persiste en mémoire)
+// Tool 4: saveStrategy — delegates to SaveStrategyUseCase
 // ============================================================
-
-interface SaveStrategyInput {
-  strategy: MarketingStrategy;
-}
 
 interface SaveStrategyOutput {
   success: boolean;
   message: string;
   strategyId: string;
-  episodeId: string;
 }
 
 export async function saveStrategy(
-  input: SaveStrategyInput
+  strategy: MarketingStrategy
 ): Promise<SaveStrategyOutput> {
-  const { strategy } = input;
+  // Delegate to use case (validates invariants via aggregate, persists via repository)
+  const result = saveStrategyUseCase.execute(strategy);
 
-  // Store as high-importance episode
-  const episodeResult = recordEpisodeUseCase.execute({
-    type: "task_result",
-    description: `Stratégie marketing complète générée pour ${strategy.metadata.companyName} — ${strategy.okrs.length} OKR, ${strategy.actions.length} actions`,
-    data: { strategy },
-    tags: ["strategy", "complete", "validated"],
-    importance: "high",
-  });
-
-  if (episodeResult.isErr()) {
+  if (result.isErr()) {
     return {
       success: false,
-      message: episodeResult.error.message,
+      message: result.error.message,
       strategyId: "",
-      episodeId: "",
     };
   }
 
-  // Store key strategic facts in semantic memory
+  const strategyId = result.value;
+
+  // Also store key strategic facts in semantic memory for cross-phase retrieval
   for (const okr of strategy.okrs) {
     addClientFactUseCase.execute({
       category: "strategy",
@@ -328,13 +326,12 @@ export async function saveStrategy(
   return {
     success: true,
     message: `Stratégie sauvegardée : ${strategy.okrs.length} OKR, ${strategy.actions.length} actions.`,
-    strategyId: `strategy-${Date.now()}`,
-    episodeId: episodeResult.value.id,
+    strategyId,
   };
 }
 
 // ============================================================
-// Tool 5: adjustOKR
+// Tool 5: adjustOKR (uses Haiku — lightweight adjustment task)
 // ============================================================
 
 interface AdjustOKRInput {

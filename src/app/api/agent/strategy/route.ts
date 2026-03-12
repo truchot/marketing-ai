@@ -49,10 +49,19 @@ export async function POST(request: NextRequest) {
     )
     .join("\n\n");
 
-  // Include discovery JSON as context if provided
-  const discoveryContext = discoveryJson
-    ? `\n\n## BusinessDiscovery (input de la phase discovery)\n\`\`\`json\n${discoveryJson}\n\`\`\``
-    : "";
+  // Validate discoveryJson if provided
+  let discoveryContext = "";
+  if (discoveryJson && typeof discoveryJson === "string") {
+    try {
+      JSON.parse(discoveryJson);
+      discoveryContext = `\n\n## BusinessDiscovery (input de la phase discovery)\n\`\`\`json\n${discoveryJson}\n\`\`\``;
+    } catch {
+      return new Response(
+        JSON.stringify({ error: "discoveryJson must be valid JSON" }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
+      );
+    }
+  }
 
   const prompt = `${transcript}${discoveryContext}\n\nContinue la session stratégique.`;
 

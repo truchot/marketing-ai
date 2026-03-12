@@ -124,6 +124,38 @@ export async function fetchAndCleanHtml(url: string, maxChars: number = 8000): P
 /**
  * Appelle Claude Haiku via le Claude Agent SDK pour analyser du contenu.
  */
+export async function callClaudeSonnet(prompt: string): Promise<string> {
+  const result = query({
+    prompt,
+    options: {
+      model: "claude-sonnet-4-5-20250929",
+      permissionMode: "bypassPermissions",
+      allowDangerouslySkipPermissions: true,
+      maxTurns: 1,
+      persistSession: false,
+    },
+  });
+
+  let text = "";
+  for await (const msg of result) {
+    if (msg.type === "assistant") {
+      for (const block of msg.message.content) {
+        if (block.type === "text") {
+          text += block.text;
+        }
+      }
+    } else if (msg.type === "result") {
+      if (msg.subtype === "success") {
+        return text || msg.result;
+      }
+      console.error("[callClaudeSonnet] Query failed:", msg.subtype, msg.errors);
+      throw new Error(`Claude Sonnet query failed: ${msg.subtype}${msg.errors?.length ? ` - ${msg.errors.join(", ")}` : ""}`);
+    }
+  }
+
+  throw new Error("No result from Claude Sonnet query");
+}
+
 export async function callClaudeHaiku(prompt: string, _maxTokens: number = 1024): Promise<string> {
   const result = query({
     prompt,

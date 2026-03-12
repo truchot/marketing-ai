@@ -13,20 +13,28 @@ import type {
   ConstraintsFit,
 } from "@/types/marketing-strategy";
 import { STRATEGY_GENERATED } from "@/domains/shared/domain-events";
+import { IdGenerator } from "@/lib/id-generator";
 
 export class StrategyAggregate extends AggregateRoot {
   private constructor(
     public readonly id: string,
-    public readonly companyName: string,
+    private readonly _metadata: MarketingStrategy["metadata"],
     public readonly diagnostic: MarketingDiagnostic,
     private _okrs: OKR[],
     private _actions: Action[],
     private _roadmap: ExecutionRoadmap,
     private _constraints: ConstraintsFit,
-    private _narrativeSummary: string,
-    public readonly createdAt: string
+    private _narrativeSummary: string
   ) {
     super();
+  }
+
+  get companyName(): string {
+    return this._metadata.companyName;
+  }
+
+  get metadata(): MarketingStrategy["metadata"] {
+    return this._metadata;
   }
 
   get okrs(): readonly OKR[] {
@@ -60,23 +68,24 @@ export class StrategyAggregate extends AggregateRoot {
       throw new Error("A strategy must have at least one action");
     }
 
+    const id = IdGenerator.generate("strategy");
+
     const aggregate = new StrategyAggregate(
-      `strategy-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      strategy.metadata.companyName,
+      id,
+      strategy.metadata,
       strategy.diagnostic,
       strategy.okrs,
       strategy.actions,
       strategy.executionRoadmap,
       strategy.constraints,
-      strategy.narrativeSummary,
-      new Date().toISOString()
+      strategy.narrativeSummary
     );
 
     aggregate.addDomainEvent({
       type: STRATEGY_GENERATED,
       occurredAt: new Date().toISOString(),
       payload: {
-        strategyId: aggregate.id,
+        strategyId: id,
         companyName: aggregate.companyName,
         okrCount: aggregate.okrs.length,
         actionCount: aggregate.actions.length,
@@ -105,12 +114,7 @@ export class StrategyAggregate extends AggregateRoot {
 
   toStrategy(): MarketingStrategy {
     return {
-      metadata: {
-        companyName: this.companyName,
-        generatedAt: this.createdAt,
-        discoveryCompletionStatus: "complete",
-        strategyVersion: 1,
-      },
+      metadata: { ...this._metadata },
       diagnostic: this.diagnostic,
       okrs: [...this._okrs],
       actions: [...this._actions],

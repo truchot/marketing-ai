@@ -13,7 +13,7 @@ import {
   adjustOKR,
 } from "./index";
 import type { BusinessDiscovery } from "@/types/business-discovery";
-import type { MarketingDiagnostic, OKR, MarketingStrategy } from "@/types/marketing-strategy";
+import type { MarketingDiagnostic, OKR } from "@/types/marketing-strategy";
 
 // ============================================================
 // Per-request state for strategy session flow control
@@ -285,8 +285,8 @@ EFFET :
             .describe("L'objet MarketingStrategy complet"),
         },
         async (args) => {
-          const strategy = args.strategy as unknown as MarketingStrategy;
-          const result = await saveStrategy({ strategy });
+          const strategy = args.strategy as unknown as import("@/types/marketing-strategy").MarketingStrategy;
+          const result = await saveStrategy(strategy);
           if (result.success) {
             state.strategyComplete = true;
           }
