@@ -6,7 +6,7 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import { recordEpisodeUseCase, addClientFactUseCase } from "@/infrastructure/composition-root";
 import type { BusinessDiscovery } from "@/types/business-discovery";
-import { startEnrichmentInBackground } from "./website-enrichment";
+import { runEnrichmentAndReturn, type WebsiteInsights } from "./website-enrichment";
 
 // ============================================================
 // Tool 1: saveDiscoveryBlock (OBLIGATOIRE)
@@ -176,16 +176,32 @@ interface EnrichFromWebsiteInput {
   companyName?: string;
 }
 
+type AgentFacingInsights = Omit<WebsiteInsights, "technicalSignals" | "socialLinks">;
+
 interface EnrichFromWebsiteOutput {
-  started: boolean;
+  success: boolean;
   message: string;
+  insights: AgentFacingInsights | null;
 }
 
 export async function enrichFromWebsite(
   input: EnrichFromWebsiteInput
 ): Promise<EnrichFromWebsiteOutput> {
-  startEnrichmentInBackground(input.websiteUrl, input.companyName, addClientFactUseCase);
-  return { started: true, message: "Enrichissement lancé en arrière-plan. Les insights seront stockés automatiquement en mémoire." };
+  const insights = await runEnrichmentAndReturn(input.websiteUrl, input.companyName, addClientFactUseCase);
+  if (!insights) {
+    return {
+      success: false,
+      message: "Le site web n'a pas pu être analysé. Continue l'entretien normalement.",
+      insights: null,
+    };
+  }
+  // Exclude technicalSignals and socialLinks (internal data, not useful for the agent interview)
+  const { technicalSignals: _, socialLinks: __, ...agentInsights } = insights;
+  return {
+    success: true,
+    message: "Site web analysé avec succès. Utilise ces insights pour pré-remplir les réponses et éviter les questions redondantes.",
+    insights: agentInsights,
+  };
 }
 
 // ============================================================

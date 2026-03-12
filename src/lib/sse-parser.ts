@@ -1,6 +1,8 @@
 export interface SSEResult {
   text: string;
   interviewComplete: boolean;
+  fastTrackComplete: boolean;
+  fastTrackSummary: string | null;
   choices: {
     question: string;
     choices: Array<{ value: string; label: string; description?: string }>;
@@ -19,6 +21,8 @@ export async function parseSSEStream(response: Response): Promise<SSEResult> {
   let buffer = "";
   let fullText = "";
   let interviewComplete = false;
+  let fastTrackComplete = false;
+  let fastTrackSummary: string | null = null;
   let choices: SSEResult["choices"] = null;
 
   while (true) {
@@ -41,6 +45,9 @@ export async function parseSSEStream(response: Response): Promise<SSEResult> {
           const data = JSON.parse(dataStr);
           if (currentEvent === "message" && data.text) {
             fullText += data.text;
+          } else if (currentEvent === "fast_track_complete") {
+            fastTrackComplete = true;
+            fastTrackSummary = data.summary ?? null;
           } else if (currentEvent === "discovery_complete") {
             interviewComplete = true;
           } else if (currentEvent === "choices" && data.question) {
@@ -57,5 +64,5 @@ export async function parseSSEStream(response: Response): Promise<SSEResult> {
     }
   }
 
-  return { text: fullText, interviewComplete, choices };
+  return { text: fullText, interviewComplete, fastTrackComplete, fastTrackSummary, choices };
 }
