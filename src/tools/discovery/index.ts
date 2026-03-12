@@ -6,7 +6,7 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import { recordEpisodeUseCase, addClientFactUseCase } from "@/infrastructure/composition-root";
 import type { BusinessDiscovery } from "@/types/business-discovery";
-import { startEnrichmentInBackground, runEnrichmentAndReturn, type WebsiteInsights } from "./website-enrichment";
+import { runEnrichmentAndReturn, type WebsiteInsights } from "./website-enrichment";
 
 // ============================================================
 // Tool 1: saveDiscoveryBlock (OBLIGATOIRE)
