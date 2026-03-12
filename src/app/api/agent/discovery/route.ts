@@ -4,12 +4,8 @@ import {
   getDiscoverySystemPrompt,
 } from "@/agents/discovery";
 import {
-  discoveryMcpServer,
-  resetRequestState,
-  isInterviewComplete,
-  isFastTrackComplete,
-  getFastTrackSummary,
-  getPendingChoices,
+  createDiscoveryMcpServer,
+  createRequestState,
 } from "@/tools/discovery/tool-definitions";
 
 export const runtime = "nodejs";
@@ -38,8 +34,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Reset per-request state
-  resetRequestState();
+  // Create request-scoped state and MCP server
+  const requestState = createRequestState();
+  const discoveryMcpServer = createDiscoveryMcpServer(requestState);
 
   const systemPrompt = getDiscoverySystemPrompt();
 
@@ -103,21 +100,20 @@ export async function POST(request: NextRequest) {
         }
 
         // Emit choices if the tool was called
-        const pendingChoices = getPendingChoices();
-        if (pendingChoices) {
-          sendEvent("choices", pendingChoices);
+        if (requestState.pendingChoices) {
+          sendEvent("choices", requestState.pendingChoices);
         }
 
         // Emit fast_track_complete if the Fast Track phase is done
-        if (isFastTrackComplete()) {
+        if (requestState.fastTrackComplete) {
           sendEvent("fast_track_complete", {
             timestamp: new Date().toISOString(),
-            summary: getFastTrackSummary(),
+            summary: requestState.fastTrackSummary,
           });
         }
 
         // Emit discovery_complete if the full interview is done
-        if (isInterviewComplete()) {
+        if (requestState.interviewComplete) {
           sendEvent("discovery_complete", {
             timestamp: new Date().toISOString(),
           });
