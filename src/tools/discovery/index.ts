@@ -6,7 +6,7 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import { recordEpisodeUseCase, addClientFactUseCase } from "@/infrastructure/composition-root";
 import type { BusinessDiscovery } from "@/types/business-discovery";
-import { startEnrichmentInBackground } from "./website-enrichment";
+import { startEnrichmentInBackground, runEnrichmentAndReturn } from "./website-enrichment";
 
 // ============================================================
 // Tool 1: saveDiscoveryBlock (OBLIGATOIRE)
@@ -177,15 +177,45 @@ interface EnrichFromWebsiteInput {
 }
 
 interface EnrichFromWebsiteOutput {
-  started: boolean;
+  success: boolean;
   message: string;
+  insights: {
+    valueProposition: string | null;
+    offerings: string[];
+    targetAudience: string[];
+    pricingModel: string | null;
+    contentPresence: { blog: boolean; newsletter: boolean; podcast: boolean; webinars: boolean; resources: boolean };
+    socialProof: { testimonials: boolean; caseStudies: boolean; metrics: string[]; logos: boolean };
+    messaging: string[];
+    company: { name: string | null; description: string | null; size: string | null; location: string | null };
+  } | null;
 }
 
 export async function enrichFromWebsite(
   input: EnrichFromWebsiteInput
 ): Promise<EnrichFromWebsiteOutput> {
-  startEnrichmentInBackground(input.websiteUrl, input.companyName, addClientFactUseCase);
-  return { started: true, message: "Enrichissement lancé en arrière-plan. Les insights seront stockés automatiquement en mémoire." };
+  const insights = await runEnrichmentAndReturn(input.websiteUrl, input.companyName, addClientFactUseCase);
+  if (!insights) {
+    return {
+      success: false,
+      message: "Le site web n'a pas pu être analysé. Continue l'entretien normalement.",
+      insights: null,
+    };
+  }
+  return {
+    success: true,
+    message: "Site web analysé avec succès. Utilise ces insights pour pré-remplir les réponses et éviter les questions redondantes.",
+    insights: {
+      valueProposition: insights.valueProposition,
+      offerings: insights.offerings,
+      targetAudience: insights.targetAudience,
+      pricingModel: insights.pricingModel,
+      contentPresence: insights.contentPresence,
+      socialProof: insights.socialProof,
+      messaging: insights.messaging,
+      company: insights.company,
+    },
+  };
 }
 
 // ============================================================

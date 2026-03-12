@@ -7,6 +7,8 @@ import {
   discoveryMcpServer,
   resetRequestState,
   isInterviewComplete,
+  isFastTrackComplete,
+  getFastTrackSummary,
   getPendingChoices,
 } from "@/tools/discovery/tool-definitions";
 
@@ -74,7 +76,7 @@ export async function POST(request: NextRequest) {
             mcpServers: {
               "discovery-tools": discoveryMcpServer,
             },
-            maxTurns: 3, // Allow multiple turns for tool usage
+            maxTurns: 5, // Allow multiple turns for tool usage (enrichment + choices + signals)
           },
         });
 
@@ -106,7 +108,15 @@ export async function POST(request: NextRequest) {
           sendEvent("choices", pendingChoices);
         }
 
-        // Emit discovery_complete if the tool was called
+        // Emit fast_track_complete if the Fast Track phase is done
+        if (isFastTrackComplete()) {
+          sendEvent("fast_track_complete", {
+            timestamp: new Date().toISOString(),
+            summary: getFastTrackSummary(),
+          });
+        }
+
+        // Emit discovery_complete if the full interview is done
         if (isInterviewComplete()) {
           sendEvent("discovery_complete", {
             timestamp: new Date().toISOString(),

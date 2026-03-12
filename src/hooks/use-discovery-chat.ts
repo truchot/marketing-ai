@@ -19,10 +19,14 @@ export interface PendingChoices {
   choices: ChoiceOption[];
 }
 
+export type DiscoveryPhase = "fast_track" | "deep_dive" | "complete";
+
 export interface UseDiscoveryChatResult {
   messages: ChatMessage[];
   isTyping: boolean;
   isComplete: boolean;
+  phase: DiscoveryPhase;
+  fastTrackSummary: string | null;
   discoveryData: BusinessDiscovery | null;
   pendingChoices: PendingChoices | null;
   sendMessage: (content: string) => Promise<void>;
@@ -37,6 +41,8 @@ export function useDiscoveryChat(
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
+  const [phase, setPhase] = useState<DiscoveryPhase>("fast_track");
+  const [fastTrackSummary, setFastTrackSummary] = useState<string | null>(null);
   const [discoveryData, setDiscoveryData] = useState<BusinessDiscovery | null>(
     null
   );
@@ -49,6 +55,25 @@ export function useDiscoveryChat(
     msgIdCounter.current += 1;
     return `${prefix}-${msgIdCounter.current}`;
   }, []);
+
+  /**
+   * Process SSE result: update phase, choices, and completion state.
+   */
+  const processResult = useCallback(
+    (result: { text: string; interviewComplete: boolean; fastTrackComplete: boolean; fastTrackSummary: string | null; choices: PendingChoices | null }) => {
+      if (result.choices) {
+        setPendingChoices(result.choices);
+      }
+      if (result.fastTrackComplete && result.fastTrackSummary) {
+        setFastTrackSummary(result.fastTrackSummary);
+      }
+      if (result.interviewComplete) {
+        setPhase("complete");
+        setIsComplete(true);
+      }
+    },
+    []
+  );
 
   /**
    * Start the interview by sending an initial "Bonjour" to trigger the agent's opening.
@@ -67,13 +92,7 @@ export function useDiscoveryChat(
         content: result.text,
       };
       setMessages([assistantMsg]);
-
-      if (result.choices) {
-        setPendingChoices(result.choices);
-      }
-      if (result.interviewComplete) {
-        setIsComplete(true);
-      }
+      processResult(result);
     } catch (error) {
       logError("discovery:start", error);
       const errorMsg: ChatMessage = {
@@ -86,7 +105,7 @@ export function useDiscoveryChat(
     } finally {
       setIsTyping(false);
     }
-  }, [apiClient, nextId]);
+  }, [apiClient, nextId, processResult]);
 
   /**
    * Send a user message and get the agent's response.
@@ -117,12 +136,12 @@ export function useDiscoveryChat(
           content: result.text,
         };
         setMessages((prev) => [...prev, assistantMsg]);
+        processResult(result);
 
-        if (result.choices) {
-          setPendingChoices(result.choices);
-        }
-        if (result.interviewComplete) {
-          setIsComplete(true);
+        // Transition to deep_dive phase when user chooses to continue
+        if (result.fastTrackComplete && phase === "fast_track") {
+          // The agent will present the choice; if user picks deep_dive, the next message will trigger it
+          setPhase("deep_dive");
         }
       } catch (error) {
         logError("discovery:send", error);
@@ -137,7 +156,7 @@ export function useDiscoveryChat(
         setIsTyping(false);
       }
     },
-    [messages, apiClient, nextId]
+    [messages, apiClient, nextId, processResult, phase]
   );
 
   /**
@@ -179,6 +198,8 @@ export function useDiscoveryChat(
     messages,
     isTyping,
     isComplete,
+    phase,
+    fastTrackSummary,
     discoveryData,
     pendingChoices,
     sendMessage,

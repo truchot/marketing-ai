@@ -263,12 +263,12 @@ async function runEnrichmentPipeline(
   websiteUrl: string,
   companyName: string | undefined,
   addClientFact: AddClientFactUseCase,
-): Promise<void> {
+): Promise<WebsiteInsights> {
   // 1. Fetch homepage
   const homepageHtml = await fetchPageContent(websiteUrl);
   if (!homepageHtml) {
     console.warn("[website-enrichment] Homepage inaccessible:", websiteUrl);
-    return;
+    throw new Error(`Homepage inaccessible: ${websiteUrl}`);
   }
 
   // 2. Parallel deterministic extractions
@@ -312,6 +312,8 @@ async function runEnrichmentPipeline(
 
   // 6. Store as ClientFacts
   storeInsightsAsFacts(websiteUrl, insights, addClientFact);
+
+  return insights;
 }
 
 function storeInsightsAsFacts(
@@ -398,11 +400,14 @@ function storeInsightsAsFacts(
 }
 
 // ============================================================
-// Public API (fire-and-forget)
+// Public API
 // ============================================================
 
 const enrichmentInProgress = new Set<string>();
 
+/**
+ * Fire-and-forget: runs enrichment in background, stores facts, returns nothing.
+ */
 export function startEnrichmentInBackground(
   websiteUrl: string,
   companyName: string | undefined,
@@ -422,4 +427,21 @@ export function startEnrichmentInBackground(
     .finally(() => {
       enrichmentInProgress.delete(normalizedUrl);
     });
+}
+
+/**
+ * Blocking: runs enrichment, stores facts, AND returns the insights to the caller.
+ * Used by the Fast Track flow so the agent can exploit website data immediately.
+ */
+export async function runEnrichmentAndReturn(
+  websiteUrl: string,
+  companyName: string | undefined,
+  addClientFact: AddClientFactUseCase,
+): Promise<WebsiteInsights | null> {
+  try {
+    return await runEnrichmentPipeline(websiteUrl, companyName, addClientFact);
+  } catch (err) {
+    logError("discovery:enrichment-blocking", err);
+    return null;
+  }
 }

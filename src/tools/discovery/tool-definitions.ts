@@ -23,15 +23,27 @@ interface ChoiceOption {
 }
 
 let interviewCompleteSignaled = false;
+let fastTrackCompleteSignaled = false;
+let fastTrackSummary: string | null = null;
 let pendingChoices: { question: string; choices: ChoiceOption[] } | null = null;
 
 export function resetRequestState() {
   interviewCompleteSignaled = false;
+  fastTrackCompleteSignaled = false;
+  fastTrackSummary = null;
   pendingChoices = null;
 }
 
 export function isInterviewComplete(): boolean {
   return interviewCompleteSignaled;
+}
+
+export function isFastTrackComplete(): boolean {
+  return fastTrackCompleteSignaled;
+}
+
+export function getFastTrackSummary(): string | null {
+  return fastTrackSummary;
 }
 
 export function getPendingChoices(): { question: string; choices: ChoiceOption[] } | null {
@@ -94,23 +106,29 @@ IMPORTANT : Toujours demander validation à l'interlocuteur avant de sauvegarder
     // ========================================================
     tool(
       "enrichFromWebsite",
-      `Enrichit la découverte en analysant le site web de l'entreprise — NON-BLOQUANT.
+      `Analyse le site web de l'entreprise et RETOURNE les insights extraits — BLOQUANT.
 
-L'outil lance l'analyse en arrière-plan et retourne immédiatement. Les insights (proposition de valeur, offres, audience, stack technique, réseaux sociaux, pricing, etc.) sont stockés automatiquement en mémoire sémantique sous forme de ClientFacts.
+L'outil analyse le site (homepage + about + pricing), extrait les insights via Claude Haiku, les stocke en mémoire, ET retourne les résultats pour que tu puisses les exploiter immédiatement dans la conversation.
 
 QUAND L'UTILISER :
 - Dès que l'interlocuteur fournit une URL de site web
-- Appeler UNE SEULE FOIS par URL, puis continuer l'entretien sans attendre
+- Appeler UNE SEULE FOIS par URL
 
 COMPORTEMENT :
-- Retour immédiat (pas de blocage)
-- Pipeline en arrière-plan : fetch homepage + about/pricing, analyse Claude Haiku, stockage ~10 ClientFacts
-- Les insights enrichissent automatiquement la mémoire sémantique (source: "website_enrichment")
-- En cas d'erreur, le pipeline échoue silencieusement — l'entretien n'est jamais impacté
+- Bloquant : attend la fin de l'analyse (~5-10 secondes)
+- Retourne : proposition de valeur, offres, audience cible, pricing, contenu, social proof, messaging
+- Les insights sont aussi stockés en mémoire sémantique automatiquement
 
-IMPORTANT :
-- Ne PAS mentionner l'analyse au client — continuer la conversation normalement
-- Les insights seront disponibles via la mémoire sémantique pour les agents suivants`,
+COMMENT EXPLOITER LES RÉSULTATS :
+- Si valueProposition trouvée → Présente-la et demande validation ("D'après votre site, votre proposition de valeur est X. C'est correct ?")
+- Si targetAudience trouvée → Idem, présente et valide
+- Si offerings trouvées → Mentionne-les pour confirmer
+- Ne pose PAS de question dont la réponse est déjà dans les insights
+- Cela accélère considérablement le Fast Track en éliminant les questions redondantes
+
+EN CAS D'ÉCHEC :
+- Si le site est inaccessible, insights sera null
+- Continue l'entretien normalement en posant toutes les questions`,
       {
         websiteUrl: z.string().url().describe("URL complète du site web (ex: https://example.com)"),
         companyName: z.string().optional().describe("Nom de l'entreprise (optionnel, améliore l'analyse)"),
@@ -229,11 +247,35 @@ IMPORTANT :
     ),
 
     // ========================================================
-    // Tool 5: signal_interview_complete (OBLIGATOIRE en fin)
+    // Tool 5: signal_fast_track_complete (OBLIGATOIRE fin Fast Track)
+    // ========================================================
+    tool(
+      "signal_fast_track_complete",
+      `Appelle cet outil quand la phase Fast Track est terminée — c'est-à-dire quand tu as collecté : nom, secteur, problème principal, audience principale, objectif prioritaire, et stade de l'entreprise (certains via le site web, d'autres via les questions).
+
+IMPORTANT : Inclus un résumé structuré de ce que tu sais déjà. Ce résumé sera utilisé pour générer les premières recommandations.
+
+Appelle cet outil AVANT de proposer le choix "approfondir ou voir les recommandations".`,
+      {
+        summary: z.string().describe("Synthèse structurée de ce que tu sais : contexte en 3 lignes, hypothèses stratégiques rapides, gaps identifiés"),
+      },
+      async (args) => {
+        fastTrackCompleteSignaled = true;
+        fastTrackSummary = args.summary;
+        return {
+          content: [
+            { type: "text" as const, text: "Fast Track marked as complete. Summary saved." },
+          ],
+        };
+      }
+    ),
+
+    // ========================================================
+    // Tool 6: signal_interview_complete (OBLIGATOIRE fin Deep Dive)
     // ========================================================
     tool(
       "signal_interview_complete",
-      "Appelle cet outil quand l'entretien de découverte est terminé et que tu as couvert les 4 blocs (problème/proposition de valeur, audiences, marketing actuel, contexte business). Appelle-le en même temps que ton message de clôture.",
+      "Appelle cet outil quand l'entretien de découverte complet (Deep Dive) est terminé et que tu as couvert les 4 blocs. Appelle-le en même temps que ton message de clôture.",
       {},
       async () => {
         interviewCompleteSignaled = true;
