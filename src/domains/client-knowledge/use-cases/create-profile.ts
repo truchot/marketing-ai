@@ -23,14 +23,7 @@ export class CreateProfileUseCase {
         brandTone: input.brandTone,
       });
       aggregate.publishEvents();
-      return this.profileRepo.save({
-        name: aggregate.name,
-        sector: aggregate.sector,
-        description: aggregate.description,
-        target: aggregate.target,
-        brandTone: aggregate.brandTone,
-        discoveryId: aggregate.discoveryId,
-      });
+      return this.profileRepo.save(aggregate.toDTO());
     });
   }
 }

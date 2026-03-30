@@ -38,6 +38,9 @@ import { SaveStrategyUseCase } from "@/domains/strategy/use-cases/save-strategy"
 import { GetStrategyUseCase } from "@/domains/strategy/use-cases/get-strategy";
 import { strategyRepository } from "@/data/strategy-repository";
 
+// --- Event handlers ---
+import { registerEventHandlers } from "./event-handlers";
+
 // --- Wire use case instances ---
 
 // Memory
@@ -85,3 +88,9 @@ export const completeOnboardingUseCase = new CompleteOnboardingUseCase(
   memoryFacade,
   conversationRepository
 );
+
+// --- Register event handlers ---
+registerEventHandlers({
+  strategyRepo: strategyRepository,
+  semanticRepo: semanticMemory,
+});

@@ -4,7 +4,7 @@
 // This file should ONLY be imported from test files.
 // ============================================================
 
-import { resetCompanyProfile } from "@/data/company-profile";
+import { companyProfileRepository } from "@/data/company-profile-repository";
 import { resetConversations } from "@/data/conversations";
 import {
   episodicMemory,
@@ -16,7 +16,7 @@ import { domainEventBus } from "@/domains/shared/domain-events";
 
 export function resetAllState(): void {
   // Data stores
-  resetCompanyProfile();
+  companyProfileRepository.reset();
   resetConversations();
 
   // Memory stores

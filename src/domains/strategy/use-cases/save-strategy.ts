@@ -9,9 +9,9 @@ export class SaveStrategyUseCase {
   execute(strategy: MarketingStrategy) {
     return executeUseCase(() => {
       const aggregate = StrategyAggregate.create(strategy);
+      this.strategyRepo.save(aggregate.id, aggregate.toStrategy());
       aggregate.publishEvents();
-      const id = this.strategyRepo.save(aggregate.toStrategy());
-      return id;
+      return aggregate.id;
     });
   }
 }

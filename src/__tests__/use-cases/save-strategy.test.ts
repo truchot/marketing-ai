@@ -17,7 +17,7 @@ describe("SaveStrategyUseCase", () => {
     const result = useCase.execute(strategy);
 
     expect(result.isOk()).toBe(true);
-    expect(result.value).toMatch(/^strategy-test-/);
+    expect(result.value).toMatch(/^strategy-/);
     expect(repo.getLatest()).not.toBeNull();
     expect(repo.getLatest()!.metadata.companyName).toBe("TestCo");
   });

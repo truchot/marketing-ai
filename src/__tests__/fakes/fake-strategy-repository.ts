@@ -8,14 +8,10 @@ import type { MarketingStrategy } from "@/types/marketing-strategy";
 export class FakeStrategyRepository implements IStrategyRepository {
   private store = new Map<string, MarketingStrategy>();
   private latestId: string | null = null;
-  private counter = 0;
 
-  save(strategy: MarketingStrategy): string {
-    this.counter += 1;
-    const id = `strategy-test-${this.counter}`;
+  save(id: string, strategy: MarketingStrategy): void {
     this.store.set(id, strategy);
     this.latestId = id;
-    return id;
   }
 
   get(strategyId: string): MarketingStrategy | null {
@@ -34,6 +30,5 @@ export class FakeStrategyRepository implements IStrategyRepository {
   reset(): void {
     this.store.clear();
     this.latestId = null;
-    this.counter = 0;
   }
 }

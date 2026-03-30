@@ -120,11 +120,15 @@ type EventHandler = (event: DomainEvent) => void;
  * Handlers are invoked synchronously in subscription order when an event is
  * published. This keeps things predictable and easy to reason about for the
  * current in-memory, single-process architecture.
+ *
+ * Note: Some bounded contexts (Conversation, Memory) publish events directly
+ * from use cases rather than through aggregates. This is an accepted trade-off
+ * for contexts where introducing a full aggregate would be over-engineering.
  */
 export class DomainEventBus {
   private handlers: Map<string, EventHandler[]> = new Map();
 
-  subscribe(eventType: string, handler: EventHandler): void {
+  subscribe(eventType: DomainEvent["type"], handler: EventHandler): void {
     const existing = this.handlers.get(eventType) ?? [];
     existing.push(handler);
     this.handlers.set(eventType, existing);
