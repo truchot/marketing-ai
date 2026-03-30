@@ -139,6 +139,11 @@ export interface StrategicLayer {
 }
 
 // ========== NIVEAU 2 : TACTIQUE ==========
+// 2 sous-systèmes :
+//   5. Marketing Plan (quoi faire : campagnes, canaux, contenu, budget, KPIs, roadmap)
+//   6. Marketing System (comment faire tourner : backlog, processus, automations, architecture)
+
+// --- Interfaces partagées (utilisées dans Marketing Plan) ---
 
 export interface Campaign {
   id: string;
@@ -170,18 +175,104 @@ export interface ContentPlan {
   targetSegment: string; // Pour quel segment
 }
 
-export interface TacticalLayer {
-  campaigns: Campaign[];
-  channelStrategy: ChannelStrategy[];
-  contentPlan: ContentPlan[];
-  budgetAllocation: BudgetAllocation[];
-}
-
 export interface BudgetAllocation {
   channel: string;
   monthlyBudget: string;
   percentage: number; // % du budget total
   justification: string;
+}
+
+// --- Subsystem 5 : Marketing Plan ---
+
+export interface TacticalKPI {
+  id: string;
+  campaignId: string; // Lié à quelle campagne
+  metric: string; // Ex: "Taux de conversion landing page"
+  baseline: string | null; // Valeur actuelle si connue
+  target: string; // Cible
+  trackingMethod: string; // Comment mesurer
+}
+
+export interface RoadmapPhase {
+  phase: string; // Ex: "Phase 1 - Fondations"
+  startWeek: string; // Ex: "S1"
+  endWeek: string; // Ex: "S6"
+  focus: string; // Focus principal de cette phase
+  campaigns: string[]; // IDs des campagnes actives dans cette phase
+  milestones: string[]; // Jalons clés
+}
+
+export interface MarketingPlan {
+  campaigns: Campaign[];
+  channelStrategy: ChannelStrategy[];
+  contentPlan: ContentPlan[];
+  budgetAllocation: BudgetAllocation[];
+  kpis: TacticalKPI[];
+  roadmap: RoadmapPhase[];
+}
+
+// --- Subsystem 6 : Marketing System ---
+
+export type BacklogItemStatus = "todo" | "in_progress" | "done";
+export type BacklogItemType = "tool_setup" | "template" | "automation" | "process" | "integration";
+
+export interface BacklogItem {
+  id: string;
+  title: string;
+  type: BacklogItemType;
+  description: string;
+  priority: "high" | "medium" | "low";
+  status: BacklogItemStatus;
+  estimatedEffort: string; // Ex: "2h", "1 jour"
+  linkedCampaignIds: string[]; // Quelles campagnes ont besoin de ça
+}
+
+export interface MarketingProcess {
+  id: string;
+  name: string; // Ex: "Production de contenu", "Nurturing leads"
+  description: string;
+  steps: string[]; // Étapes ordonnées
+  frequency: string; // Ex: "hebdomadaire", "par campagne"
+  owner: string; // Rôle responsable
+  tools: string[]; // Outils utilisés
+}
+
+export interface AutomationRule {
+  id: string;
+  name: string;
+  trigger: string; // Ce qui déclenche l'automation
+  action: string; // Ce qui se passe
+  tool: string; // Quel outil exécute
+  linkedProcessId: string; // À quel processus elle appartient
+}
+
+export interface SystemArchitecture {
+  tools: Array<{
+    name: string;
+    role: string; // Ce qu'il fait dans le système
+    category: string; // "CRM", "email", "analytics", "social", "content"
+    integrations: string[]; // Connecté à quels autres outils
+    configurationNeeded: string; // Ce qui doit être configuré
+  }>;
+  dataFlows: Array<{
+    from: string;
+    to: string;
+    data: string; // Quelles données circulent
+  }>;
+}
+
+export interface MarketingSystem {
+  backlog: BacklogItem[];
+  processes: MarketingProcess[];
+  automations: AutomationRule[];
+  systemArchitecture: SystemArchitecture;
+}
+
+// --- Tactical Layer (compose les 2 sous-systèmes) ---
+
+export interface TacticalLayer {
+  marketingPlan: MarketingPlan;
+  marketingSystem: MarketingSystem;
 }
 
 // ========== NIVEAU 3 : OPÉRATIONNEL ==========

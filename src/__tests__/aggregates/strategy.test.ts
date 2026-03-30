@@ -142,37 +142,108 @@ function makeStrategy(
       okrs: [okr1, okr2],
     },
     tactical: {
-      campaigns: [
-        makeCampaign("campaign-1", "okr-1"),
-        makeCampaign("campaign-2", "okr-2"),
-      ],
-      channelStrategy: [
-        {
-          channel: "LinkedIn",
-          role: "acquisition",
-          targetSegments: ["PME SaaS"],
-          frequency: "3 posts/semaine",
-          contentTypes: ["article", "post"],
-          estimatedBudget: "500€/mois",
+      marketingPlan: {
+        campaigns: [
+          makeCampaign("campaign-1", "okr-1"),
+          makeCampaign("campaign-2", "okr-2"),
+        ],
+        channelStrategy: [
+          {
+            channel: "LinkedIn",
+            role: "acquisition",
+            targetSegments: ["PME SaaS"],
+            frequency: "3 posts/semaine",
+            contentTypes: ["article", "post"],
+            estimatedBudget: "500€/mois",
+          },
+        ],
+        contentPlan: [
+          {
+            pillar: "Expertise technique",
+            themes: ["SEO", "Content marketing"],
+            formats: ["article", "infographie"],
+            cadence: "2/semaine",
+            targetSegment: "PME SaaS",
+          },
+        ],
+        budgetAllocation: [
+          {
+            channel: "LinkedIn",
+            monthlyBudget: "500€",
+            percentage: 100,
+            justification: "Canal principal d'acquisition B2B",
+          },
+        ],
+        kpis: [
+          {
+            id: "kpi-1",
+            campaignId: "campaign-1",
+            metric: "Leads générés",
+            baseline: null,
+            target: "50/mois",
+            trackingMethod: "CRM",
+          },
+        ],
+        roadmap: [
+          {
+            phase: "Phase 1 - Fondations",
+            startWeek: "S1",
+            endWeek: "S6",
+            focus: "Mise en place des canaux",
+            campaigns: ["campaign-1"],
+            milestones: ["Premiers contenus publiés"],
+          },
+        ],
+      },
+      marketingSystem: {
+        backlog: [
+          {
+            id: "backlog-1",
+            title: "Configurer LinkedIn Ads",
+            type: "tool_setup",
+            description: "Setup du compte publicitaire",
+            priority: "high",
+            status: "todo",
+            estimatedEffort: "2h",
+            linkedCampaignIds: ["campaign-1"],
+          },
+        ],
+        processes: [
+          {
+            id: "process-1",
+            name: "Production de contenu",
+            description: "Workflow de création de contenu",
+            steps: ["Brief", "Rédaction", "Review", "Publication"],
+            frequency: "hebdomadaire",
+            owner: "Content Manager",
+            tools: ["Notion", "LinkedIn"],
+          },
+        ],
+        automations: [
+          {
+            id: "auto-1",
+            name: "Publication automatique",
+            trigger: "Contenu validé dans Notion",
+            action: "Publication programmée sur LinkedIn",
+            tool: "Buffer",
+            linkedProcessId: "process-1",
+          },
+        ],
+        systemArchitecture: {
+          tools: [
+            {
+              name: "LinkedIn",
+              role: "Canal d'acquisition principal",
+              category: "social",
+              integrations: ["Buffer"],
+              configurationNeeded: "Compte publicitaire",
+            },
+          ],
+          dataFlows: [
+            { from: "LinkedIn", to: "CRM", data: "Leads générés" },
+          ],
         },
-      ],
-      contentPlan: [
-        {
-          pillar: "Expertise technique",
-          themes: ["SEO", "Content marketing"],
-          formats: ["article", "infographie"],
-          cadence: "2/semaine",
-          targetSegment: "PME SaaS",
-        },
-      ],
-      budgetAllocation: [
-        {
-          channel: "LinkedIn",
-          monthlyBudget: "500€",
-          percentage: 100,
-          justification: "Canal principal d'acquisition B2B",
-        },
-      ],
+      },
     },
     operational: {
       tasks: [
@@ -215,7 +286,9 @@ describe("StrategyAggregate", () => {
       expect(aggregate.feedbackLoop.hypotheses).toHaveLength(1);
       expect(aggregate.marketingFoundation.messaging.primaryMessage).toBe("Structurez votre marketing en 30 jours");
       expect(aggregate.okrs).toHaveLength(2);
-      expect(aggregate.tactical.campaigns).toHaveLength(2);
+      expect(aggregate.marketingPlan.campaigns).toHaveLength(2);
+      expect(aggregate.marketingPlan.roadmap).toHaveLength(1);
+      expect(aggregate.marketingSystem.processes).toHaveLength(1);
       expect(aggregate.operational.tasks).toHaveLength(2);
       expect(aggregate.narrativeSummary).toBe("Test narrative summary for strategy.");
     });
@@ -252,6 +325,7 @@ describe("StrategyAggregate", () => {
         segmentCount: 1,
         hypothesisCount: 1,
         campaignCount: 2,
+        processCount: 1,
         taskCount: 2,
         maturityScore: 55,
       });
@@ -347,10 +421,28 @@ describe("StrategyAggregate", () => {
 
     it("should reject strategy with zero campaigns", () => {
       const strategy = makeStrategy();
-      strategy.tactical.campaigns = [];
+      strategy.tactical.marketingPlan.campaigns = [];
 
       expect(() => StrategyAggregate.create(strategy)).toThrow(
-        "A strategy must have at least one campaign"
+        "Marketing plan must have at least one campaign"
+      );
+    });
+
+    it("should reject strategy with zero roadmap phases", () => {
+      const strategy = makeStrategy();
+      strategy.tactical.marketingPlan.roadmap = [];
+
+      expect(() => StrategyAggregate.create(strategy)).toThrow(
+        "Marketing plan must have at least one roadmap phase"
+      );
+    });
+
+    it("should reject strategy with zero marketing system processes", () => {
+      const strategy = makeStrategy();
+      strategy.tactical.marketingSystem.processes = [];
+
+      expect(() => StrategyAggregate.create(strategy)).toThrow(
+        "Marketing system must have at least one process"
       );
     });
 
@@ -397,7 +489,7 @@ describe("StrategyAggregate", () => {
       expect(aggregate.okrs).toHaveLength(1);
       expect(aggregate.okrs[0].id).toBe("okr-2");
       // Campaigns for okr-1 should be removed
-      expect(aggregate.tactical.campaigns.every((c) => c.okrId !== "okr-1")).toBe(true);
+      expect(aggregate.marketingPlan.campaigns.every((c) => c.okrId !== "okr-1")).toBe(true);
       // Tasks linked to campaign-1 (which was linked to okr-1) should be removed
       expect(aggregate.operational.tasks.every((t) => t.campaignId !== "campaign-1")).toBe(true);
     });
@@ -435,10 +527,15 @@ describe("StrategyAggregate", () => {
       expect(output.strategic.feedbackLoop.hypotheses).toEqual(input.strategic.feedbackLoop.hypotheses);
       expect(output.strategic.marketingFoundation.offer).toEqual(input.strategic.marketingFoundation.offer);
       expect(output.strategic.okrs).toHaveLength(2);
-      expect(output.tactical.campaigns).toHaveLength(2);
-      expect(output.tactical.channelStrategy).toHaveLength(1);
-      expect(output.tactical.contentPlan).toHaveLength(1);
-      expect(output.tactical.budgetAllocation).toHaveLength(1);
+      expect(output.tactical.marketingPlan.campaigns).toHaveLength(2);
+      expect(output.tactical.marketingPlan.channelStrategy).toHaveLength(1);
+      expect(output.tactical.marketingPlan.contentPlan).toHaveLength(1);
+      expect(output.tactical.marketingPlan.budgetAllocation).toHaveLength(1);
+      expect(output.tactical.marketingPlan.kpis).toHaveLength(1);
+      expect(output.tactical.marketingPlan.roadmap).toHaveLength(1);
+      expect(output.tactical.marketingSystem.processes).toHaveLength(1);
+      expect(output.tactical.marketingSystem.backlog).toHaveLength(1);
+      expect(output.tactical.marketingSystem.automations).toHaveLength(1);
       expect(output.operational.tasks).toHaveLength(2);
       expect(output.operational.calendar).toHaveLength(1);
       expect(output.operational.weeklyKPIs).toHaveLength(1);
@@ -454,7 +551,7 @@ describe("StrategyAggregate", () => {
 
       // Different array references
       expect(output1.strategic.okrs).not.toBe(output2.strategic.okrs);
-      expect(output1.tactical.campaigns).not.toBe(output2.tactical.campaigns);
+      expect(output1.tactical.marketingPlan.campaigns).not.toBe(output2.tactical.marketingPlan.campaigns);
       expect(output1.operational.tasks).not.toBe(output2.operational.tasks);
       // But equal content
       expect(output1.strategic.okrs).toEqual(output2.strategic.okrs);

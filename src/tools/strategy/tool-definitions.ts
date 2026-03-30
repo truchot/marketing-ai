@@ -12,7 +12,8 @@ import {
   defineMarketingFoundation,
   defineFeedbackLoop,
   proposeOKRs,
-  proposeCampaigns,
+  proposeMarketingPlan,
+  proposeMarketingSystem,
   proposeTasks,
   saveStrategy,
   adjustOKR,
@@ -24,6 +25,8 @@ import type {
   BusinessStrategy,
   MarketingFoundation,
   FeedbackLoop,
+  MarketingPlan,
+  MarketingSystem,
   OKR,
   Campaign,
 } from "@/types/marketing-strategy";
@@ -46,7 +49,8 @@ export interface StrategyRequestState {
   marketingFoundation: MarketingFoundation | null;
   feedbackLoop: FeedbackLoop | null;
   validatedOKRs: OKR[];
-  validatedCampaigns: Campaign[];
+  validatedMarketingPlan: MarketingPlan | null;
+  validatedMarketingSystem: MarketingSystem | null;
   strategyComplete: boolean;
   pendingChoices: { question: string; choices: ChoiceOption[] } | null;
 }
@@ -60,7 +64,8 @@ export function createStrategyRequestState(): StrategyRequestState {
     marketingFoundation: null,
     feedbackLoop: null,
     validatedOKRs: [],
-    validatedCampaigns: [],
+    validatedMarketingPlan: null,
+    validatedMarketingSystem: null,
     strategyComplete: false,
     pendingChoices: null,
   };
@@ -380,55 +385,62 @@ APRÈS L'APPEL :
       ),
 
       // ========================================================
-      // Tool 7: proposeCampaigns (TACTIQUE)
+      // Tool 7: proposeMarketingPlan (TACTIQUE — Subsystem 5)
       // ========================================================
       tool(
-        "proposeCampaigns",
-        `Génère des campagnes tactiques pour un OKR validé, avec stratégie de canaux et plan de contenu.
+        "proposeMarketingPlan",
+        `Génère le Marketing Plan complet : campagnes pour tous les OKRs, stratégie de canaux, plan de contenu, allocation budget, KPIs tactiques et roadmap.
 
 QUAND L'UTILISER :
-- Après validation d'un OKR par le client
-- Pour chaque OKR validé séparément
+- Après validation de tous les OKR par le client
+- UNE SEULE FOIS (génère le plan pour tous les OKRs d'un coup)
+
+PRÉCONDITION :
+- Tous les OKRs doivent être validés
+- Les 4 sous-systèmes stratégiques doivent être validés
 
 EFFET :
 - Génère 1-2 campagnes par OKR avec canaux, messages clés, thèmes de contenu
-- Définit la stratégie de canal et le plan de contenu
+- Définit la stratégie de canal globale et le plan de contenu
+- Alloue le budget sur l'ensemble des campagnes (~100%)
+- Définit les KPIs tactiques par campagne
+- Crée un roadmap phasé avec jalons
 
 APRÈS L'APPEL :
-- Présente les campagnes au client
-- Explique le choix des canaux`,
-        {
-          okrId: z.string().describe("ID de l'OKR pour lequel générer les campagnes"),
-        },
-        async (args) => {
-          if (!state.discovery) {
-            return {
-              content: [
-                {
-                  type: "text" as const,
-                  text: JSON.stringify({ error: "Discovery manquant." }),
-                },
-              ],
-            };
-          }
-          const okr = state.validatedOKRs.find((o) => o.id === args.okrId);
-          if (!okr) {
+- Présente le Marketing Plan au client
+- Explique le choix des canaux et le phasage`,
+        {},
+        async () => {
+          if (!state.discovery || !state.targetMarket || !state.businessStrategy || !state.marketingFoundation) {
             return {
               content: [
                 {
                   type: "text" as const,
                   text: JSON.stringify({
-                    error: `OKR ${args.okrId} non trouvé. OKRs disponibles : ${state.validatedOKRs.map((o) => o.id).join(", ")}`,
+                    error: "Sous-systèmes stratégiques manquants. Complète d'abord les phases stratégiques.",
                   }),
                 },
               ],
             };
           }
-          const result = await proposeCampaigns({
+          if (state.validatedOKRs.length === 0) {
+            return {
+              content: [
+                {
+                  type: "text" as const,
+                  text: JSON.stringify({ error: "Aucun OKR validé. Appelle proposeOKR d'abord." }),
+                },
+              ],
+            };
+          }
+          const result = await proposeMarketingPlan({
             discovery: state.discovery,
-            okr,
+            okrs: state.validatedOKRs,
+            targetMarket: state.targetMarket,
+            businessStrategy: state.businessStrategy,
+            marketingFoundation: state.marketingFoundation,
           });
-          state.validatedCampaigns.push(...result.campaigns);
+          state.validatedMarketingPlan = result;
           return {
             content: [
               {
@@ -441,7 +453,71 @@ APRÈS L'APPEL :
       ),
 
       // ========================================================
-      // Tool 8: proposeTasks (OPÉRATIONNEL)
+      // Tool 8: proposeMarketingSystem (TACTIQUE — Subsystem 6)
+      // ========================================================
+      tool(
+        "proposeMarketingSystem",
+        `Conçoit le Marketing System : backlog d'items à configurer, processus récurrents, automations et architecture système.
+
+QUAND L'UTILISER :
+- Après validation du Marketing Plan par le client
+- UNE SEULE FOIS
+
+PRÉCONDITION :
+- Le Marketing Plan doit être validé
+
+EFFET :
+- Crée un backlog d'items à configurer (outils, templates, intégrations)
+- Définit les processus marketing récurrents
+- Propose des automations réalistes avec les outils disponibles
+- Dessine l'architecture système avec flux de données
+
+APRÈS L'APPEL :
+- Présente le Marketing System au client
+- Explique les priorités du backlog et les processus clés`,
+        {},
+        async () => {
+          if (!state.discovery || !state.businessStrategy) {
+            return {
+              content: [
+                {
+                  type: "text" as const,
+                  text: JSON.stringify({ error: "Discovery ou stratégie business manquant." }),
+                },
+              ],
+            };
+          }
+          if (!state.validatedMarketingPlan) {
+            return {
+              content: [
+                {
+                  type: "text" as const,
+                  text: JSON.stringify({
+                    error: "Marketing Plan manquant. Appelle proposeMarketingPlan d'abord.",
+                  }),
+                },
+              ],
+            };
+          }
+          const result = await proposeMarketingSystem({
+            discovery: state.discovery,
+            marketingPlan: state.validatedMarketingPlan,
+            businessStrategy: state.businessStrategy,
+          });
+          state.validatedMarketingSystem = result;
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: JSON.stringify(result, null, 2),
+              },
+            ],
+          };
+        }
+      ),
+
+      // ========================================================
+      // Tool 9: proposeTasks (OPÉRATIONNEL)
       // ========================================================
       tool(
         "proposeTasks",
@@ -469,14 +545,24 @@ EFFET :
               ],
             };
           }
-          const campaign = state.validatedCampaigns.find((c) => c.id === args.campaignId);
+          if (!state.validatedMarketingPlan) {
+            return {
+              content: [
+                {
+                  type: "text" as const,
+                  text: JSON.stringify({ error: "Marketing Plan manquant. Appelle proposeMarketingPlan d'abord." }),
+                },
+              ],
+            };
+          }
+          const campaign = state.validatedMarketingPlan.campaigns.find((c) => c.id === args.campaignId);
           if (!campaign) {
             return {
               content: [
                 {
                   type: "text" as const,
                   text: JSON.stringify({
-                    error: `Campagne ${args.campaignId} non trouvée. Campagnes disponibles : ${state.validatedCampaigns.map((c) => c.id).join(", ")}`,
+                    error: `Campagne ${args.campaignId} non trouvée. Campagnes disponibles : ${state.validatedMarketingPlan.campaigns.map((c) => c.id).join(", ")}`,
                   }),
                 },
               ],
@@ -498,7 +584,7 @@ EFFET :
       ),
 
       // ========================================================
-      // Tool 9: adjustOKR (STRATÉGIQUE — feedback loop)
+      // Tool 10: adjustOKR (STRATÉGIQUE — feedback loop)
       // ========================================================
       tool(
         "adjustOKR",
@@ -555,11 +641,11 @@ QUAND L'UTILISER :
       ),
 
       // ========================================================
-      // Tool 10: saveStrategy
+      // Tool 11: saveStrategy
       // ========================================================
       tool(
         "saveStrategy",
-        `Persiste la stratégie complète (3 niveaux avec 4 sous-systèmes stratégiques) en mémoire.
+        `Persiste la stratégie complète (3 niveaux avec 6 sous-systèmes) en mémoire.
 
 QUAND L'UTILISER :
 - À la fin de la session, quand tout est validé
@@ -587,7 +673,7 @@ QUAND L'UTILISER :
       ),
 
       // ========================================================
-      // Tool 11: present_choices
+      // Tool 12: present_choices
       // ========================================================
       tool(
         "present_choices",

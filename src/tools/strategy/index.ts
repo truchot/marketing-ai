@@ -1,7 +1,7 @@
 // ============================================================
 // Strategy Tools Implementation
 // Takes BusinessDiscovery as input and produces a 3-layer strategy:
-//   Strategic (4 subsystems + OKRs) → Tactical (campaigns) → Operational (tasks)
+//   Strategic (4 subsystems + OKRs) → Tactical (2 subsystems) → Operational (tasks)
 // ============================================================
 
 import {
@@ -17,10 +17,9 @@ import type {
   BusinessStrategy,
   FeedbackLoop,
   MarketingFoundation,
+  MarketingPlan,
+  MarketingSystem,
   Campaign,
-  ChannelStrategy,
-  ContentPlan,
-  BudgetAllocation,
   OperationalTask,
   CalendarEntry,
   WeeklyKPI,
@@ -506,32 +505,40 @@ Réponds en JSON strict :
 }
 
 // ============================================================
-// Tool 3: proposeCampaigns (TACTIQUE — uses Sonnet)
+// Tool 7: proposeMarketingPlan (TACTIQUE — Subsystem 5, uses Sonnet)
 // ============================================================
 
-interface ProposeCampaignsInput {
+interface ProposeMarketingPlanInput {
   discovery: BusinessDiscovery;
-  okr: OKR;
+  okrs: OKR[];
+  targetMarket: TargetMarket;
+  businessStrategy: BusinessStrategy;
+  marketingFoundation: MarketingFoundation;
 }
 
-interface ProposeCampaignsOutput {
-  campaigns: Campaign[];
-  channelStrategy: ChannelStrategy[];
-  contentPlan: ContentPlan[];
-  budgetAllocation: BudgetAllocation[];
-}
+export async function proposeMarketingPlan(
+  input: ProposeMarketingPlanInput
+): Promise<MarketingPlan> {
+  const { discovery, okrs, targetMarket, businessStrategy, marketingFoundation } = input;
 
-export async function proposeCampaigns(
-  input: ProposeCampaignsInput
-): Promise<ProposeCampaignsOutput> {
-  const { discovery, okr } = input;
+  const okrSummary = okrs.map((o) =>
+    `- [${o.id}] ${o.objective} (${o.priority}) — KRs: ${o.keyResults.map((kr) => `${kr.metric} → ${kr.target}`).join("; ")}`
+  ).join("\n");
 
-  const prompt = `Tu es un stratège marketing senior. Génère un plan tactique pour cet OKR : campagnes, stratégie de canaux, plan de contenu et allocation budget.
+  const prompt = `Tu es un stratège marketing senior. Génère le Marketing Plan complet : campagnes pour tous les OKRs, stratégie de canaux, plan de contenu, allocation budget, KPIs tactiques et roadmap.
 
-## OKR
-- Objectif : ${okr.objective}
-- Rationnel : ${okr.rationale}
-- Key Results : ${okr.keyResults.map((kr) => `${kr.metric} → ${kr.target} (${kr.timeline})`).join("; ")}
+## OKRs validés
+${okrSummary}
+
+## Sous-systèmes stratégiques
+- Marché cible : ${targetMarket.marketDefinition}
+- Segments : ${targetMarket.segments.map((s) => `${s.segment} (${s.priority}): "${s.mainPain}"`).join("; ")}
+- ICP : ${targetMarket.icp.description}
+- Proposition de valeur : ${businessStrategy.valueProposition}
+- Différenciateur : ${businessStrategy.uniqueDifferentiator}
+- Angle concurrentiel : ${businessStrategy.competitiveAngle}
+- Message principal : ${marketingFoundation.messaging.primaryMessage}
+- Positionnement : ${marketingFoundation.positioning.uniqueValue}
 
 ## Contexte entreprise
 - ${discovery.metadata.companyName} (${discovery.metadata.sector}, stade: ${discovery.businessContext.stage})
@@ -545,65 +552,43 @@ export async function proposeCampaigns(
 
 ## Règles
 - 1-2 campagnes par OKR, chacune avec un objectif clair et un segment cible
-- Choisis les canaux en fonction de là où se trouvent réellement les audiences (pas où on voudrait qu'elles soient)
+- Choisis les canaux en fonction de là où se trouvent réellement les audiences
 - Le plan de contenu doit être réaliste pour la taille de l'équipe
-- L'allocation budget doit totaliser ~100%
+- L'allocation budget doit totaliser ~100% sur l'ensemble des campagnes (pas par OKR)
 - Ne recommande PAS un canal abandonné sauf si tu justifies clairement
+- Chaque KPI tactique doit être lié à une campagne
+- Le roadmap doit avoir 2-3 phases avec des jalons clairs
 
 Réponds en JSON strict :
 {
   "campaigns": [
-    {
-      "id": "campaign-1",
-      "okrId": "${okr.id}",
-      "name": "...",
-      "objective": "...",
-      "targetSegment": "...",
-      "channels": ["..."],
-      "contentThemes": ["..."],
-      "keyMessages": ["..."],
-      "duration": "...",
-      "successMetric": "..."
-    }
+    { "id": "campaign-1", "okrId": "okr-1", "name": "...", "objective": "...", "targetSegment": "...", "channels": ["..."], "contentThemes": ["..."], "keyMessages": ["..."], "duration": "...", "successMetric": "..." }
   ],
   "channelStrategy": [
-    {
-      "channel": "...",
-      "role": "acquisition",
-      "targetSegments": ["..."],
-      "frequency": "...",
-      "contentTypes": ["..."],
-      "estimatedBudget": "..."
-    }
+    { "channel": "...", "role": "acquisition", "targetSegments": ["..."], "frequency": "...", "contentTypes": ["..."], "estimatedBudget": "..." }
   ],
   "contentPlan": [
-    {
-      "pillar": "...",
-      "themes": ["..."],
-      "formats": ["..."],
-      "cadence": "...",
-      "targetSegment": "..."
-    }
+    { "pillar": "...", "themes": ["..."], "formats": ["..."], "cadence": "...", "targetSegment": "..." }
   ],
   "budgetAllocation": [
-    {
-      "channel": "...",
-      "monthlyBudget": "...",
-      "percentage": 50,
-      "justification": "..."
-    }
+    { "channel": "...", "monthlyBudget": "...", "percentage": 50, "justification": "..." }
+  ],
+  "kpis": [
+    { "id": "kpi-1", "campaignId": "campaign-1", "metric": "...", "baseline": null, "target": "...", "trackingMethod": "..." }
+  ],
+  "roadmap": [
+    { "phase": "Phase 1 - ...", "startWeek": "S1", "endWeek": "S6", "focus": "...", "campaigns": ["campaign-1"], "milestones": ["..."] }
   ]
 }`;
 
   const responseText = await callClaudeSonnet(prompt);
-  const result = extractJsonFromResponse<ProposeCampaignsOutput>(responseText);
+  const result = extractJsonFromResponse<MarketingPlan>(responseText);
 
-  // Store as episode
   recordEpisodeUseCase.execute({
     type: "task_result",
-    description: `Plan tactique proposé pour OKR "${okr.objective}" — ${result.campaigns?.length || 0} campagne(s)`,
-    data: { campaigns: result.campaigns, okrId: okr.id },
-    tags: ["strategy", "tactical", "campaigns"],
+    description: `Marketing Plan proposé pour ${discovery.metadata.companyName} — ${result.campaigns?.length || 0} campagne(s), ${result.roadmap?.length || 0} phase(s)`,
+    data: { marketingPlan: result },
+    tags: ["strategy", "tactical", "marketing-plan"],
     importance: "high",
   });
 
@@ -612,6 +597,96 @@ Réponds en JSON strict :
     channelStrategy: result.channelStrategy || [],
     contentPlan: result.contentPlan || [],
     budgetAllocation: result.budgetAllocation || [],
+    kpis: result.kpis || [],
+    roadmap: result.roadmap || [],
+  };
+}
+
+// ============================================================
+// Tool 8: proposeMarketingSystem (TACTIQUE — Subsystem 6, uses Sonnet)
+// ============================================================
+
+interface ProposeMarketingSystemInput {
+  discovery: BusinessDiscovery;
+  marketingPlan: MarketingPlan;
+  businessStrategy: BusinessStrategy;
+}
+
+export async function proposeMarketingSystem(
+  input: ProposeMarketingSystemInput
+): Promise<MarketingSystem> {
+  const { discovery, marketingPlan, businessStrategy } = input;
+
+  const campaignSummary = marketingPlan.campaigns
+    .map((c) => `- [${c.id}] ${c.name} — canaux: ${c.channels.join(", ")}`)
+    .join("\n");
+
+  const channelSummary = marketingPlan.channelStrategy
+    .map((ch) => `- ${ch.channel} (${ch.role}) — fréquence: ${ch.frequency}`)
+    .join("\n");
+
+  const prompt = `Tu es un consultant marketing ops. Conçois le Marketing System : backlog d'items à configurer, processus récurrents, automations et architecture système.
+
+## Marketing Plan validé
+### Campagnes
+${campaignSummary}
+
+### Canaux
+${channelSummary}
+
+## Contexte
+- Entreprise : ${discovery.metadata.companyName} (stade: ${businessStrategy.businessStage})
+- Équipe : ${discovery.currentMarketing.team.size} pers., dédiée: ${discovery.currentMarketing.team.dedicatedToMarketing}
+  Skills: ${discovery.currentMarketing.team.skills.join(", ")}
+  Gaps: ${discovery.currentMarketing.team.gaps.join(", ")}
+- Outils actuels : ${discovery.currentMarketing.tools.map((t) => `${t.name} (${t.category}, ${t.maturity})`).join("; ")}
+- Contraintes : ${discovery.businessContext.constraints.map((c) => `${c.type}: ${c.description} (${c.severity})`).join("; ")}
+
+## Règles
+- Le backlog doit inclure les items nécessaires pour exécuter les campagnes (config outils, templates, intégrations)
+- Les processus doivent couvrir la production de contenu, le nurturing et le reporting au minimum
+- Les automations doivent être réalistes avec les outils disponibles
+- L'architecture système doit montrer les flux de données entre outils
+- Chaque item du backlog doit être lié aux campagnes qui en dépendent
+- Adapte la complexité au stade de l'entreprise (${businessStrategy.businessStage})
+
+Réponds en JSON strict :
+{
+  "backlog": [
+    { "id": "backlog-1", "title": "...", "type": "tool_setup", "description": "...", "priority": "high", "status": "todo", "estimatedEffort": "2h", "linkedCampaignIds": ["campaign-1"] }
+  ],
+  "processes": [
+    { "id": "process-1", "name": "...", "description": "...", "steps": ["..."], "frequency": "hebdomadaire", "owner": "...", "tools": ["..."] }
+  ],
+  "automations": [
+    { "id": "auto-1", "name": "...", "trigger": "...", "action": "...", "tool": "...", "linkedProcessId": "process-1" }
+  ],
+  "systemArchitecture": {
+    "tools": [
+      { "name": "...", "role": "...", "category": "...", "integrations": ["..."], "configurationNeeded": "..." }
+    ],
+    "dataFlows": [
+      { "from": "...", "to": "...", "data": "..." }
+    ]
+  }
+}`;
+
+  const responseText = await callClaudeSonnet(prompt);
+  const result = extractJsonFromResponse<MarketingSystem>(responseText);
+
+  recordEpisodeUseCase.execute({
+    type: "task_result",
+    description: `Marketing System proposé — ${result.backlog?.length || 0} backlog item(s), ${result.processes?.length || 0} processus, ${result.automations?.length || 0} automation(s)`,
+    data: { marketingSystem: result },
+    tags: ["strategy", "tactical", "marketing-system"],
+    importance: "high",
+  });
+
+  return {
+    backlog: result.backlog || [],
+    processes: result.processes || [],
+    automations: result.automations || [],
+    systemArchitecture: result.systemArchitecture || { tools: [], dataFlows: [] },
   };
 }
 
@@ -775,11 +850,20 @@ export async function saveStrategy(
     }
   }
 
-  // Store tactical facts
-  for (const campaign of strategy.tactical.campaigns) {
+  // Store tactical facts — Marketing Plan
+  for (const campaign of strategy.tactical.marketingPlan.campaigns) {
     addClientFactUseCase.execute({
       category: "strategy",
       fact: `Campagne "${campaign.name}" — segment: ${campaign.targetSegment}, canaux: ${campaign.channels.join(", ")}`,
+      source: "strategy_agent",
+    });
+  }
+
+  // Store tactical facts — Marketing System
+  for (const process of strategy.tactical.marketingSystem.processes) {
+    addClientFactUseCase.execute({
+      category: "strategy",
+      fact: `Processus marketing: "${process.name}" — fréquence: ${process.frequency}`,
       source: "strategy_agent",
     });
   }
@@ -791,7 +875,7 @@ export async function saveStrategy(
   });
 
   const taskCount = strategy.operational.tasks.length;
-  const campaignCount = strategy.tactical.campaigns.length;
+  const campaignCount = strategy.tactical.marketingPlan.campaigns.length;
 
   return {
     success: true,

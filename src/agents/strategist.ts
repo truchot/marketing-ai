@@ -292,90 +292,193 @@ export const marketingStrategySchema: Record<string, unknown> = {
       },
     },
 
-    // ========== TACTICAL LAYER ==========
+    // ========== TACTICAL LAYER (2 subsystems) ==========
     tactical: {
       type: "object",
-      required: ["campaigns", "channelStrategy", "contentPlan", "budgetAllocation"],
+      required: ["marketingPlan", "marketingSystem"],
       properties: {
-        campaigns: {
-          type: "array",
-          items: {
-            type: "object",
-            required: [
-              "id",
-              "okrId",
-              "name",
-              "objective",
-              "targetSegment",
-              "channels",
-              "contentThemes",
-              "keyMessages",
-              "duration",
-              "successMetric",
-            ],
-            properties: {
-              id: { type: "string" },
-              okrId: { type: "string" },
-              name: { type: "string" },
-              objective: { type: "string" },
-              targetSegment: { type: "string" },
-              channels: { type: "array", items: { type: "string" } },
-              contentThemes: { type: "array", items: { type: "string" } },
-              keyMessages: { type: "array", items: { type: "string" } },
-              duration: { type: "string" },
-              successMetric: { type: "string" },
-            },
-          },
-        },
-        channelStrategy: {
-          type: "array",
-          items: {
-            type: "object",
-            required: [
-              "channel",
-              "role",
-              "targetSegments",
-              "frequency",
-              "contentTypes",
-              "estimatedBudget",
-            ],
-            properties: {
-              channel: { type: "string" },
-              role: {
-                type: "string",
-                enum: ["acquisition", "nurturing", "retention", "brand"],
+        // --- Subsystem 5: Marketing Plan ---
+        marketingPlan: {
+          type: "object",
+          required: ["campaigns", "channelStrategy", "contentPlan", "budgetAllocation", "kpis", "roadmap"],
+          properties: {
+            campaigns: {
+              type: "array",
+              items: {
+                type: "object",
+                required: ["id", "okrId", "name", "objective", "targetSegment", "channels", "contentThemes", "keyMessages", "duration", "successMetric"],
+                properties: {
+                  id: { type: "string" },
+                  okrId: { type: "string" },
+                  name: { type: "string" },
+                  objective: { type: "string" },
+                  targetSegment: { type: "string" },
+                  channels: { type: "array", items: { type: "string" } },
+                  contentThemes: { type: "array", items: { type: "string" } },
+                  keyMessages: { type: "array", items: { type: "string" } },
+                  duration: { type: "string" },
+                  successMetric: { type: "string" },
+                },
               },
-              targetSegments: { type: "array", items: { type: "string" } },
-              frequency: { type: "string" },
-              contentTypes: { type: "array", items: { type: "string" } },
-              estimatedBudget: { type: "string" },
+            },
+            channelStrategy: {
+              type: "array",
+              items: {
+                type: "object",
+                required: ["channel", "role", "targetSegments", "frequency", "contentTypes", "estimatedBudget"],
+                properties: {
+                  channel: { type: "string" },
+                  role: { type: "string", enum: ["acquisition", "nurturing", "retention", "brand"] },
+                  targetSegments: { type: "array", items: { type: "string" } },
+                  frequency: { type: "string" },
+                  contentTypes: { type: "array", items: { type: "string" } },
+                  estimatedBudget: { type: "string" },
+                },
+              },
+            },
+            contentPlan: {
+              type: "array",
+              items: {
+                type: "object",
+                required: ["pillar", "themes", "formats", "cadence", "targetSegment"],
+                properties: {
+                  pillar: { type: "string" },
+                  themes: { type: "array", items: { type: "string" } },
+                  formats: { type: "array", items: { type: "string" } },
+                  cadence: { type: "string" },
+                  targetSegment: { type: "string" },
+                },
+              },
+            },
+            budgetAllocation: {
+              type: "array",
+              items: {
+                type: "object",
+                required: ["channel", "monthlyBudget", "percentage", "justification"],
+                properties: {
+                  channel: { type: "string" },
+                  monthlyBudget: { type: "string" },
+                  percentage: { type: "number" },
+                  justification: { type: "string" },
+                },
+              },
+            },
+            kpis: {
+              type: "array",
+              items: {
+                type: "object",
+                required: ["id", "campaignId", "metric", "baseline", "target", "trackingMethod"],
+                properties: {
+                  id: { type: "string" },
+                  campaignId: { type: "string" },
+                  metric: { type: "string" },
+                  baseline: { type: ["string", "null"] },
+                  target: { type: "string" },
+                  trackingMethod: { type: "string" },
+                },
+              },
+            },
+            roadmap: {
+              type: "array",
+              items: {
+                type: "object",
+                required: ["phase", "startWeek", "endWeek", "focus", "campaigns", "milestones"],
+                properties: {
+                  phase: { type: "string" },
+                  startWeek: { type: "string" },
+                  endWeek: { type: "string" },
+                  focus: { type: "string" },
+                  campaigns: { type: "array", items: { type: "string" } },
+                  milestones: { type: "array", items: { type: "string" } },
+                },
+              },
             },
           },
         },
-        contentPlan: {
-          type: "array",
-          items: {
-            type: "object",
-            required: ["pillar", "themes", "formats", "cadence", "targetSegment"],
-            properties: {
-              pillar: { type: "string" },
-              themes: { type: "array", items: { type: "string" } },
-              formats: { type: "array", items: { type: "string" } },
-              cadence: { type: "string" },
-              targetSegment: { type: "string" },
+        // --- Subsystem 6: Marketing System ---
+        marketingSystem: {
+          type: "object",
+          required: ["backlog", "processes", "automations", "systemArchitecture"],
+          properties: {
+            backlog: {
+              type: "array",
+              items: {
+                type: "object",
+                required: ["id", "title", "type", "description", "priority", "status", "estimatedEffort", "linkedCampaignIds"],
+                properties: {
+                  id: { type: "string" },
+                  title: { type: "string" },
+                  type: { type: "string", enum: ["tool_setup", "template", "automation", "process", "integration"] },
+                  description: { type: "string" },
+                  priority: { type: "string", enum: ["high", "medium", "low"] },
+                  status: { type: "string", enum: ["todo", "in_progress", "done"] },
+                  estimatedEffort: { type: "string" },
+                  linkedCampaignIds: { type: "array", items: { type: "string" } },
+                },
+              },
             },
-          },
-        },
-        budgetAllocation: {
-          type: "array",
-          items: {
-            type: "object",
-            required: ["channel", "monthlyBudget", "percentage", "justification"],
-            properties: {
-              channel: { type: "string" },
-              monthlyBudget: { type: "string" },
-              percentage: { type: "number" },
-              justification: { type: "string" },
+            processes: {
+              type: "array",
+              items: {
+                type: "object",
+                required: ["id", "name", "description", "steps", "frequency", "owner", "tools"],
+                properties: {
+                  id: { type: "string" },
+                  name: { type: "string" },
+                  description: { type: "string" },
+                  steps: { type: "array", items: { type: "string" } },
+                  frequency: { type: "string" },
+                  owner: { type: "string" },
+                  tools: { type: "array", items: { type: "string" } },
+                },
+              },
+            },
+            automations: {
+              type: "array",
+              items: {
+                type: "object",
+                required: ["id", "name", "trigger", "action", "tool", "linkedProcessId"],
+                properties: {
+                  id: { type: "string" },
+                  name: { type: "string" },
+                  trigger: { type: "string" },
+                  action: { type: "string" },
+                  tool: { type: "string" },
+                  linkedProcessId: { type: "string" },
+                },
+              },
+            },
+            systemArchitecture: {
+              type: "object",
+              required: ["tools", "dataFlows"],
+              properties: {
+                tools: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    required: ["name", "role", "category", "integrations", "configurationNeeded"],
+                    properties: {
+                      name: { type: "string" },
+                      role: { type: "string" },
+                      category: { type: "string" },
+                      integrations: { type: "array", items: { type: "string" } },
+                      configurationNeeded: { type: "string" },
+                    },
+                  },
+                },
+                dataFlows: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    required: ["from", "to", "data"],
+                    properties: {
+                      from: { type: "string" },
+                      to: { type: "string" },
+                      data: { type: "string" },
+                    },
+                  },
+                },
+              },
             },
           },
         },
@@ -486,12 +589,17 @@ export function isMarketingStrategy(
     return false;
   }
   const strategic = (data as Record<string, unknown>).strategic;
+  const tactical = (data as Record<string, unknown>).tactical;
   return (
     typeof strategic === "object" &&
     strategic !== null &&
     "targetMarket" in strategic &&
     "businessStrategy" in strategic &&
     "feedbackLoop" in strategic &&
-    "marketingFoundation" in strategic
+    "marketingFoundation" in strategic &&
+    typeof tactical === "object" &&
+    tactical !== null &&
+    "marketingPlan" in tactical &&
+    "marketingSystem" in tactical
   );
 }

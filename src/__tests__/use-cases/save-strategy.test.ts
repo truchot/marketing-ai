@@ -108,47 +108,118 @@ function makeStrategy(
       ],
     },
     tactical: {
-      campaigns: [
-        {
-          id: "campaign-1",
-          okrId: "okr-1",
-          name: "Campagne SEO",
-          objective: "Augmenter le trafic organique",
-          targetSegment: "PME SaaS",
-          channels: ["Blog", "LinkedIn"],
-          contentThemes: ["SEO technique"],
-          keyMessages: ["Visibilité organique"],
-          duration: "3 mois",
-          successMetric: "Trafic organique mensuel",
+      marketingPlan: {
+        campaigns: [
+          {
+            id: "campaign-1",
+            okrId: "okr-1",
+            name: "Campagne SEO",
+            objective: "Augmenter le trafic organique",
+            targetSegment: "PME SaaS",
+            channels: ["Blog", "LinkedIn"],
+            contentThemes: ["SEO technique"],
+            keyMessages: ["Visibilité organique"],
+            duration: "3 mois",
+            successMetric: "Trafic organique mensuel",
+          },
+        ],
+        channelStrategy: [
+          {
+            channel: "Blog",
+            role: "acquisition",
+            targetSegments: ["PME SaaS"],
+            frequency: "2 articles/semaine",
+            contentTypes: ["article"],
+            estimatedBudget: "0€",
+          },
+        ],
+        contentPlan: [
+          {
+            pillar: "SEO technique",
+            themes: ["Optimisation on-page", "Link building"],
+            formats: ["article"],
+            cadence: "2/semaine",
+            targetSegment: "PME SaaS",
+          },
+        ],
+        budgetAllocation: [
+          {
+            channel: "Blog",
+            monthlyBudget: "0€",
+            percentage: 100,
+            justification: "Contenu organique, pas de coût média",
+          },
+        ],
+        kpis: [
+          {
+            id: "kpi-1",
+            campaignId: "campaign-1",
+            metric: "Trafic organique",
+            baseline: "1000",
+            target: "5000",
+            trackingMethod: "Google Analytics",
+          },
+        ],
+        roadmap: [
+          {
+            phase: "Phase 1 - SEO",
+            startWeek: "S1",
+            endWeek: "S12",
+            focus: "Fondations SEO",
+            campaigns: ["campaign-1"],
+            milestones: ["Audit SEO terminé"],
+          },
+        ],
+      },
+      marketingSystem: {
+        backlog: [
+          {
+            id: "backlog-1",
+            title: "Setup Google Search Console",
+            type: "tool_setup",
+            description: "Configurer GSC",
+            priority: "high",
+            status: "todo",
+            estimatedEffort: "1h",
+            linkedCampaignIds: ["campaign-1"],
+          },
+        ],
+        processes: [
+          {
+            id: "process-1",
+            name: "Production articles SEO",
+            description: "Workflow de création d'articles",
+            steps: ["Keyword research", "Rédaction", "Optimisation", "Publication"],
+            frequency: "2/semaine",
+            owner: "Content Manager",
+            tools: ["Notion", "WordPress"],
+          },
+        ],
+        automations: [
+          {
+            id: "auto-1",
+            name: "Notification nouveau lead",
+            trigger: "Formulaire soumis",
+            action: "Notification Slack",
+            tool: "Zapier",
+            linkedProcessId: "process-1",
+          },
+        ],
+        systemArchitecture: {
+          tools: [
+            {
+              name: "Google Analytics",
+              role: "Tracking et analytics",
+              category: "analytics",
+              integrations: ["Google Search Console"],
+              configurationNeeded: "Goals et events",
+            },
+          ],
+          dataFlows: [
+            { from: "Blog", to: "Google Analytics", data: "Page views et conversions" },
+          ],
         },
-      ],
-      channelStrategy: [
-        {
-          channel: "Blog",
-          role: "acquisition",
-          targetSegments: ["PME SaaS"],
-          frequency: "2 articles/semaine",
-          contentTypes: ["article"],
-          estimatedBudget: "0€",
-        },
-      ],
-      contentPlan: [
-        {
-          pillar: "SEO technique",
-          themes: ["Optimisation on-page", "Link building"],
-          formats: ["article"],
-          cadence: "2/semaine",
-          targetSegment: "PME SaaS",
-        },
-      ],
-      budgetAllocation: [
-        {
-          channel: "Blog",
-          monthlyBudget: "0€",
-          percentage: 100,
-          justification: "Contenu organique, pas de coût média",
-        },
-      ],
+      },
     },
     operational: {
       tasks: [
@@ -265,7 +336,7 @@ describe("SaveStrategyUseCase", () => {
   it("should reject strategy with zero campaigns", () => {
     const { useCase } = setup();
     const strategy = makeStrategy();
-    strategy.tactical.campaigns = [];
+    strategy.tactical.marketingPlan.campaigns = [];
 
     const result = useCase.execute(strategy);
 

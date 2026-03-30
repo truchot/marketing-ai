@@ -16,6 +16,8 @@ import type {
   BusinessStrategy,
   FeedbackLoop,
   MarketingFoundation,
+  MarketingPlan,
+  MarketingSystem,
 } from "@/types/marketing-strategy";
 import { STRATEGY_GENERATED } from "@/domains/shared/domain-events";
 import { IdGenerator } from "@/lib/id-generator";
@@ -86,6 +88,14 @@ export class StrategyAggregate extends AggregateRoot {
     return this._strategic.marketingFoundation;
   }
 
+  get marketingPlan(): MarketingPlan {
+    return this._tactical.marketingPlan;
+  }
+
+  get marketingSystem(): MarketingSystem {
+    return this._tactical.marketingSystem;
+  }
+
   static create(strategy: MarketingStrategy): StrategyAggregate {
     // --- Strategic layer invariants ---
 
@@ -121,8 +131,18 @@ export class StrategyAggregate extends AggregateRoot {
     }
 
     // --- Tactical layer invariants ---
-    if (strategy.tactical.campaigns.length === 0) {
-      throw new Error("A strategy must have at least one campaign");
+
+    // Marketing Plan
+    if (strategy.tactical.marketingPlan.campaigns.length === 0) {
+      throw new Error("Marketing plan must have at least one campaign");
+    }
+    if (strategy.tactical.marketingPlan.roadmap.length === 0) {
+      throw new Error("Marketing plan must have at least one roadmap phase");
+    }
+
+    // Marketing System
+    if (strategy.tactical.marketingSystem.processes.length === 0) {
+      throw new Error("Marketing system must have at least one process");
     }
 
     // --- Operational layer invariants ---
@@ -151,7 +171,8 @@ export class StrategyAggregate extends AggregateRoot {
         okrCount: aggregate.okrs.length,
         segmentCount: aggregate.targetMarket.segments.length,
         hypothesisCount: aggregate.feedbackLoop.hypotheses.length,
-        campaignCount: aggregate.tactical.campaigns.length,
+        campaignCount: aggregate.marketingPlan.campaigns.length,
+        processCount: aggregate.marketingSystem.processes.length,
         taskCount: aggregate.operational.tasks.length,
         maturityScore: aggregate.diagnostic.maturityScore,
       },
@@ -171,10 +192,18 @@ export class StrategyAggregate extends AggregateRoot {
   removeOKR(okrId: string): void {
     this._strategic.okrs = this._strategic.okrs.filter((o) => o.id !== okrId);
     // Cascade: remove campaigns linked to this OKR
-    const removedCampaignIds = this._tactical.campaigns
+    const removedCampaignIds = this._tactical.marketingPlan.campaigns
       .filter((c) => c.okrId === okrId)
       .map((c) => c.id);
-    this._tactical.campaigns = this._tactical.campaigns.filter((c) => c.okrId !== okrId);
+    this._tactical.marketingPlan.campaigns = this._tactical.marketingPlan.campaigns.filter((c) => c.okrId !== okrId);
+    // Cascade: remove KPIs linked to removed campaigns
+    this._tactical.marketingPlan.kpis = this._tactical.marketingPlan.kpis.filter(
+      (k) => !removedCampaignIds.includes(k.campaignId)
+    );
+    // Cascade: remove backlog items linked to removed campaigns
+    this._tactical.marketingSystem.backlog = this._tactical.marketingSystem.backlog.filter(
+      (b) => !b.linkedCampaignIds.some((id) => removedCampaignIds.includes(id))
+    );
     // Cascade: remove tasks linked to removed campaigns
     this._operational.tasks = this._operational.tasks.filter(
       (t) => !removedCampaignIds.includes(t.campaignId)
@@ -213,10 +242,23 @@ export class StrategyAggregate extends AggregateRoot {
         okrs: [...this._strategic.okrs],
       },
       tactical: {
-        campaigns: [...this._tactical.campaigns],
-        channelStrategy: [...this._tactical.channelStrategy],
-        contentPlan: [...this._tactical.contentPlan],
-        budgetAllocation: [...this._tactical.budgetAllocation],
+        marketingPlan: {
+          campaigns: [...this._tactical.marketingPlan.campaigns],
+          channelStrategy: [...this._tactical.marketingPlan.channelStrategy],
+          contentPlan: [...this._tactical.marketingPlan.contentPlan],
+          budgetAllocation: [...this._tactical.marketingPlan.budgetAllocation],
+          kpis: [...this._tactical.marketingPlan.kpis],
+          roadmap: [...this._tactical.marketingPlan.roadmap],
+        },
+        marketingSystem: {
+          backlog: [...this._tactical.marketingSystem.backlog],
+          processes: [...this._tactical.marketingSystem.processes],
+          automations: [...this._tactical.marketingSystem.automations],
+          systemArchitecture: {
+            tools: [...this._tactical.marketingSystem.systemArchitecture.tools],
+            dataFlows: [...this._tactical.marketingSystem.systemArchitecture.dataFlows],
+          },
+        },
       },
       operational: {
         tasks: [...this._operational.tasks],
