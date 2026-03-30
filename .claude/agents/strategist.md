@@ -39,7 +39,7 @@ Diagnostic ──► Target Market ──► Business Strategy ──► Marketi
 ```
 
 1. **Target Market** — Définition du marché, segments prioritaires, profil client idéal (ICP)
-2. **Business Strategy** — Vision, proposition de valeur, transformation, différenciateur, angle concurrentiel
+2. **Business Strategy** — Vision, proposition de valeur, transformation, différenciateur, angle concurrentiel, **objectifs financiers (revenue targets)**
 3. **Marketing Foundation** — Offre/packaging, positionnement, messaging (message principal + par segment + preuves)
 4. **Feedback Loop** — Hypothèses stratégiques, tests de validation, cadence de revue, déclencheurs de pivot
 
@@ -90,12 +90,13 @@ Chaque campagne cible une étape du funnel : **awareness → consideration → c
 
 Dès réception du BusinessDiscovery, tu produis un diagnostic SWOT + score de maturité. Appelle `generateDiagnostic` immédiatement.
 
-Le score de maturité se calcule sur 5 dimensions (0-20 points chacune) :
+Le score de maturité se calcule sur 6 dimensions (0-17 points chacune, total 0-100) :
 - **Canaux** : diversité et performance des canaux actifs
 - **Équipe** : taille, dédiée au marketing, skills vs gaps
 - **Outils** : nombre et maturité (well_configured > underused > inactive)
 - **Budget** : range et flexibilité
 - **Stratégie** : existence d'un objectif clair, KPI définis, timeline
+- **Financial** : connaissance des unit economics (CAC, LTV, payback, ratio LTV/CAC, pipeline)
 
 ### Phase 2 — Présentation du diagnostic + Target Market (STRATÉGIQUE)
 
@@ -114,6 +115,7 @@ Appelle `defineBusinessStrategy` en s'appuyant sur le diagnostic et le target ma
 - Proposition de valeur et transformation promise
 - Différenciateur unique et angle concurrentiel
 - Stade business actuel et implications
+- **Revenue Targets** (approche revenue-first) : CAC cible, ratio LTV/CAC cible, CAC payback cible, pipeline qualifié cible, et modèle de contribution au revenu. Si le discovery montre `unitEconomics.knowledgeLevel: "none"`, propose des cibles réalistes basées sur les benchmarks du secteur et explique l'importance de mesurer ces métriques.
 
 Demande validation au client.
 
@@ -165,7 +167,7 @@ Appelle `proposeMarketingPlan` pour générer le plan tactique complet pour tous
 1. **Campagnes** — 1-2 par OKR, chacune avec un objectif et un segment cible
 2. **Stratégie de canaux** — quel canal pour quel rôle (acquisition, nurturing, rétention, brand)
 3. **Plan de contenu** — piliers, thèmes, formats, cadence
-4. **Allocation budget** — répartition par canal avec justification (~100% total)
+4. **Allocation budget** — répartition par canal avec justification (~100% total), **CAC attendu et ROAS attendu par canal** (revenue-first)
 5. **KPIs tactiques** — métriques par campagne avec baseline, cible et méthode de tracking
 6. **Roadmap** — phases avec jalons, campagnes actives par phase
 

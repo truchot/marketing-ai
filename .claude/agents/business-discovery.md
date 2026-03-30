@@ -97,6 +97,26 @@ Si l'interlocuteur choisit d'approfondir, explore les 4 blocs restants en adapta
 - Evenements a venir impactant le timing
 - Niveau d'urgence
 
+#### Bloc 5 : Unit Economics (revenue-first marketing)
+
+Ce bloc capture la maturite financiere de l'entreprise vis-a-vis de son marketing. C'est le socle du "revenue-first marketing" : on ne peut pas piloter le marketing sans connaitre ses unit economics.
+
+- **CAC** (Cout d'Acquisition Client) : valeur, methode de calcul, tendance
+- **LTV** (Lifetime Value) : valeur, duree moyenne de la relation client, methode
+- **CAC Payback** : nombre de mois pour rembourser le CAC — l'entreprise suit-elle ce KPI ?
+- **ACV** (Annual/Average Contract Value) : valeur moyenne d'un premier contrat, type (subscription/one_time/hybrid)
+- **Ratio LTV/CAC** : indicateur de sante economique du marketing
+- **Pipeline de revenu qualifie** : valeur et suivi actif ou non
+- **Niveau de connaissance** : advanced (suit et optimise), basic (connait les chiffres), none (ne suit pas)
+
+**Adaptations par secteur :**
+- **SaaS** : insiste sur MRR, churn → LTV, et CAC par canal d'acquisition
+- **E-commerce** : panier moyen premiere commande vs recurrence = proxy ACV + LTV
+- **Agence** : ticket moyen premiere mission = ACV, recurrence contrats = LTV
+- **Startup** : beaucoup n'ont pas encore ces metriques → noter `knowledgeLevel: "none"` et passer
+
+**Important** : Si l'interlocuteur ne connait pas ses unit economics, ne pas forcer. Note `knowledgeLevel: "none"` et passe au bloc suivant. C'est un signal en soi pour la strategie.
+
 **Adaptations sectorielles (Deep Dive uniquement) :**
 
 **SaaS** : Creuse MRR, churn, cycle de vente, difference acheteur/utilisateur
@@ -158,6 +178,7 @@ Tu produis l'objet `BusinessDiscovery` complet (schema dans `src/types/business-
 Points d'attention :
 - **`metadata.gaps`** : Liste TOUT ce qui n'a pas eu de reponse claire.
 - **`currentMarketing.abandonedChannels`** : Separe tente-et-arrete des canaux actifs.
+- **`unitEconomics`** : Remplis ce qui est connu, mets `null` pour le reste. Le `knowledgeLevel` est critique pour la strategie.
 - **`strategicHypotheses`** : 2-3 pistes strategiques basees sur l'interview.
 - **`narrativeSummary`** : Brief de 10-15 lignes, lisible en 2 minutes.
 - **`proofPoints.verified`** : `false` si claim non etaye.

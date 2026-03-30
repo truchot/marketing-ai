@@ -5,12 +5,12 @@
 
 import type { BusinessDiscovery } from "@/types/business-discovery";
 
-/** Points per dimension */
-const MAX_DIMENSION_SCORE = 20;
+/** Points per dimension (6 dimensions × 17 = 102, capped at 100) */
+const MAX_DIMENSION_SCORE = 17;
 
 /**
- * Calculate marketing maturity score across 5 dimensions (0-20 each).
- * Total range: 0-100.
+ * Calculate marketing maturity score across 6 dimensions (0-17 each).
+ * Total range: 0-100 (capped).
  */
 export function calculateMaturityScore(discovery: BusinessDiscovery): number {
   const channels = calculateChannelScore(discovery);
@@ -18,8 +18,9 @@ export function calculateMaturityScore(discovery: BusinessDiscovery): number {
   const tools = calculateToolScore(discovery);
   const budget = calculateBudgetScore(discovery);
   const strategy = calculateStrategyScore(discovery);
+  const financial = calculateFinancialScore(discovery);
 
-  return channels + team + tools + budget + strategy;
+  return Math.min(100, channels + team + tools + budget + strategy + financial);
 }
 
 /** Channels dimension: diversity and performance of active channels */
@@ -65,5 +66,17 @@ function calculateStrategyScore(discovery: BusinessDiscovery): number {
   const hasMetric = discovery.businessContext.primaryGoal.metric !== null;
   const hasTimeline = discovery.businessContext.primaryGoal.timeline.length > 0;
   const hasEvents = discovery.businessContext.upcomingEvents.length > 0;
-  return (hasMetric ? 8 : 0) + (hasTimeline ? 6 : 0) + (hasEvents ? 4 : 2);
+  return Math.min(MAX_DIMENSION_SCORE, (hasMetric ? 7 : 0) + (hasTimeline ? 5 : 0) + (hasEvents ? 5 : 2));
+}
+
+/** Financial dimension: knowledge of unit economics (CAC, LTV, payback, pipeline) */
+function calculateFinancialScore(discovery: BusinessDiscovery): number {
+  const ue = discovery.unitEconomics;
+  const knowledgeBase = ue.knowledgeLevel === "advanced" ? 5 : ue.knowledgeLevel === "basic" ? 2 : 0;
+  const hasCAC = ue.cac.value !== null ? 3 : 0;
+  const hasLTV = ue.ltv.value !== null ? 3 : 0;
+  const hasPayback = ue.cacPayback.known ? 2 : 0;
+  const hasRatio = ue.ltvCacRatio !== null ? 2 : 0;
+  const hasPipeline = ue.qualifiedRevenuePipeline.tracked ? 2 : 0;
+  return Math.min(MAX_DIMENSION_SCORE, knowledgeBase + hasCAC + hasLTV + hasPayback + hasRatio + hasPipeline);
 }

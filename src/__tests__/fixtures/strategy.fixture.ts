@@ -107,6 +107,13 @@ export function makeStrategy(
         uniqueDifferentiator: "IA + expertise marketing combinées",
         competitiveAngle: "Prix + simplicité",
         businessStage: "growth",
+        revenueTargets: {
+          targetCac: "< 150€",
+          targetLtvCacRatio: "> 3x",
+          targetCacPayback: "< 12 mois",
+          targetPipeline: "500K€/trimestre",
+          revenueModel: "Le marketing génère des MQL convertis par l'équipe commerciale",
+        },
       },
       feedbackLoop: {
         hypotheses: ["Le contenu LinkedIn génère des leads qualifiés"],
@@ -186,6 +193,8 @@ export function makeStrategy(
             monthlyBudget: "500€",
             percentage: 100,
             justification: "Canal principal d'acquisition B2B",
+            expectedCac: "120€",
+            expectedRoas: "3.5x",
           },
         ],
         kpis: [

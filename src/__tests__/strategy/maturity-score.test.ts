@@ -11,46 +11,61 @@ function calculateMaturityScore(discovery: BusinessDiscovery): {
   toolScore: number;
   budgetScore: number;
   strategyScore: number;
+  financialScore: number;
   total: number;
 } {
-  // 1. Channels (0-20)
+  const MAX = 17;
+
+  // 1. Channels (0-17)
   const activeChannels = discovery.currentMarketing.channels.length;
   const goodChannels = discovery.currentMarketing.channels.filter(
     (c) => c.perceivedResults === "good"
   ).length;
-  const channelScore = Math.min(20, activeChannels * 4 + goodChannels * 4);
+  const channelScore = Math.min(MAX, activeChannels * 4 + goodChannels * 4);
 
-  // 2. Team (0-20)
+  // 2. Team (0-17)
   const teamSize = discovery.currentMarketing.team.size;
   const dedicated = discovery.currentMarketing.team.dedicatedToMarketing;
   const skillCount = discovery.currentMarketing.team.skills.length;
   const gapCount = discovery.currentMarketing.team.gaps.length;
   const teamScore = Math.min(
-    20,
+    MAX,
     (dedicated ? 8 : 3) + Math.min(teamSize * 2, 6) + Math.max(0, (skillCount - gapCount) * 2)
   );
 
-  // 3. Tools (0-20)
+  // 3. Tools (0-17)
   const tools = discovery.currentMarketing.tools;
   const wellConfigured = tools.filter((t) => t.maturity === "well_configured").length;
   const underused = tools.filter((t) => t.maturity === "underused").length;
-  const toolScore = Math.min(20, wellConfigured * 6 + underused * 2 + tools.length);
+  const toolScore = Math.min(MAX, wellConfigured * 6 + underused * 2 + tools.length);
 
-  // 4. Budget (0-20)
+  // 4. Budget (0-17)
   const flexibility = discovery.currentMarketing.budget.flexibility;
   const hasRange = discovery.currentMarketing.budget.range.length > 0;
   const hasAllocation = discovery.currentMarketing.budget.allocation.length > 0;
-  const budgetScore =
+  const budgetScore = Math.min(
+    MAX,
     (flexibility === "adjustable" ? 12 : flexibility === "fixed" ? 6 : 2) +
     (hasRange ? 4 : 0) +
-    (hasAllocation ? 4 : 0);
+    (hasAllocation ? 4 : 0)
+  );
 
-  // 5. Strategy (0-20)
+  // 5. Strategy (0-17)
   const hasMetric = discovery.businessContext.primaryGoal.metric !== null;
   const hasTimeline = discovery.businessContext.primaryGoal.timeline.length > 0;
   const hasEvents = discovery.businessContext.upcomingEvents.length > 0;
-  const strategyScore =
-    (hasMetric ? 8 : 0) + (hasTimeline ? 6 : 0) + (hasEvents ? 4 : 2);
+  const strategyScore = Math.min(MAX,
+    (hasMetric ? 7 : 0) + (hasTimeline ? 5 : 0) + (hasEvents ? 5 : 2));
+
+  // 6. Financial (0-17)
+  const ue = discovery.unitEconomics;
+  const knowledgeBase = ue.knowledgeLevel === "advanced" ? 5 : ue.knowledgeLevel === "basic" ? 2 : 0;
+  const hasCAC = ue.cac.value !== null ? 3 : 0;
+  const hasLTV = ue.ltv.value !== null ? 3 : 0;
+  const hasPayback = ue.cacPayback.known ? 2 : 0;
+  const hasRatio = ue.ltvCacRatio !== null ? 2 : 0;
+  const hasPipeline = ue.qualifiedRevenuePipeline.tracked ? 2 : 0;
+  const financialScore = Math.min(MAX, knowledgeBase + hasCAC + hasLTV + hasPayback + hasRatio + hasPipeline);
 
   return {
     channelScore,
@@ -58,7 +73,8 @@ function calculateMaturityScore(discovery: BusinessDiscovery): {
     toolScore,
     budgetScore,
     strategyScore,
-    total: channelScore + teamScore + toolScore + budgetScore + strategyScore,
+    financialScore,
+    total: Math.min(100, channelScore + teamScore + toolScore + budgetScore + strategyScore + financialScore),
   };
 }
 
@@ -104,6 +120,15 @@ function makeMinimalDiscovery(
       upcomingEvents: [],
       urgency: "medium",
     },
+    unitEconomics: {
+      cac: { value: null, method: null, trend: "unknown" },
+      ltv: { value: null, averageLifespan: null, method: null },
+      cacPayback: { months: null, known: false },
+      acv: { value: null, contractType: "unknown" },
+      ltvCacRatio: null,
+      qualifiedRevenuePipeline: { value: null, tracked: false },
+      knowledgeLevel: "none",
+    },
     narrativeSummary: "Test",
     strategicHypotheses: [],
     ...overrides,
@@ -145,7 +170,7 @@ describe("Maturity Score Calculation", () => {
       expect(channelScore).toBe(8); // 1*4 (active) + 1*4 (good) = 8
     });
 
-    it("should cap at 20", () => {
+    it("should cap at 17", () => {
       const discovery = makeMinimalDiscovery({
         currentMarketing: {
           ...makeMinimalDiscovery().currentMarketing,
@@ -155,7 +180,7 @@ describe("Maturity Score Calculation", () => {
         },
       });
       const { channelScore } = calculateMaturityScore(discovery);
-      expect(channelScore).toBe(20);
+      expect(channelScore).toBe(17);
     });
   });
 
@@ -166,7 +191,7 @@ describe("Maturity Score Calculation", () => {
       expect(budgetScore).toBe(2); // undefined=2, no range=0, no allocation=0
     });
 
-    it("should return 20 for adjustable + range + allocation", () => {
+    it("should return 17 (capped) for adjustable + range + allocation", () => {
       const discovery = makeMinimalDiscovery({
         currentMarketing: {
           ...makeMinimalDiscovery().currentMarketing,
@@ -174,7 +199,7 @@ describe("Maturity Score Calculation", () => {
         },
       });
       const { budgetScore } = calculateMaturityScore(discovery);
-      expect(budgetScore).toBe(20); // 12 + 4 + 4
+      expect(budgetScore).toBe(17); // min(17, 12 + 4 + 4)
     });
 
     it("should return 14 for fixed + range + allocation", () => {
@@ -196,7 +221,7 @@ describe("Maturity Score Calculation", () => {
       expect(strategyScore).toBe(2); // no metric=0, no timeline=0, no events=2
     });
 
-    it("should return 18 for metric + timeline + events", () => {
+    it("should return 17 (capped) for metric + timeline + events", () => {
       const discovery = makeMinimalDiscovery({
         businessContext: {
           ...makeMinimalDiscovery().businessContext,
@@ -205,7 +230,7 @@ describe("Maturity Score Calculation", () => {
         },
       });
       const { strategyScore } = calculateMaturityScore(discovery);
-      expect(strategyScore).toBe(18); // 8 + 6 + 4
+      expect(strategyScore).toBe(17); // min(17, 7 + 5 + 5)
     });
   });
 
@@ -213,8 +238,31 @@ describe("Maturity Score Calculation", () => {
     it("should return low score for minimal discovery", () => {
       const discovery = makeMinimalDiscovery();
       const { total } = calculateMaturityScore(discovery);
-      // channels=0, team=3 (not dedicated, 0 size), tools=0, budget=2, strategy=2
+      // channels=0, team=3, tools=0, budget=2, strategy=2, financial=0
       expect(total).toBe(7);
+    });
+
+    it("should include financial dimension in total", () => {
+      const discovery = makeMinimalDiscovery({
+        unitEconomics: {
+          cac: { value: 150, method: "blended", trend: "stable" },
+          ltv: { value: 3000, averageLifespan: "24 mois", method: "cohort" },
+          cacPayback: { months: 6, known: true },
+          acv: { value: 500, contractType: "subscription" },
+          ltvCacRatio: 20,
+          qualifiedRevenuePipeline: { value: 100000, tracked: true },
+          knowledgeLevel: "advanced",
+        },
+      });
+      const { financialScore } = calculateMaturityScore(discovery);
+      // advanced=5 + CAC=3 + LTV=3 + payback=2 + ratio=2 + pipeline=2 = 17 (capped)
+      expect(financialScore).toBe(17);
+    });
+
+    it("should return 0 financial for no unit economics knowledge", () => {
+      const discovery = makeMinimalDiscovery();
+      const { financialScore } = calculateMaturityScore(discovery);
+      expect(financialScore).toBe(0);
     });
 
     it("should never exceed 100", () => {
@@ -239,6 +287,15 @@ describe("Maturity Score Calculation", () => {
           constraints: [],
           upcomingEvents: [{ event: "IPO", date: "2026-Q4", impact: "Major" }],
           urgency: "high",
+        },
+        unitEconomics: {
+          cac: { value: 100, method: "blended", trend: "decreasing" },
+          ltv: { value: 5000, averageLifespan: "36 mois", method: "cohort" },
+          cacPayback: { months: 3, known: true },
+          acv: { value: 1200, contractType: "subscription" },
+          ltvCacRatio: 50,
+          qualifiedRevenuePipeline: { value: 500000, tracked: true },
+          knowledgeLevel: "advanced",
         },
       });
       const { total } = calculateMaturityScore(discovery);

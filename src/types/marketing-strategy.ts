@@ -49,6 +49,14 @@ export interface TargetMarket {
 
 // --- Subsystem 2 : Business Strategy ---
 
+export interface RevenueTargets {
+  targetCac: string | null; // CAC cible (ex: "< 150€")
+  targetLtvCacRatio: string | null; // Ratio LTV/CAC cible (ex: "> 3x")
+  targetCacPayback: string | null; // CAC payback cible (ex: "< 12 mois")
+  targetPipeline: string | null; // Pipeline qualifié cible (ex: "500K€/trimestre")
+  revenueModel: string; // Comment le marketing contribue au revenu
+}
+
 export interface BusinessStrategy {
   vision: string; // Vision de marque à moyen terme
   valueProposition: string; // Synthèse de la proposition de valeur
@@ -60,6 +68,7 @@ export interface BusinessStrategy {
   uniqueDifferentiator: string; // Le vrai différenciateur
   competitiveAngle: string; // Angle concurrentiel choisi
   businessStage: string; // Stade actuel (launch, growth, etc.)
+  revenueTargets: RevenueTargets; // Objectifs financiers marketing (revenue-first)
 }
 
 // --- Subsystem 3 : Feedback Loop ---
@@ -204,6 +213,8 @@ export interface BudgetAllocation {
   monthlyBudget: string;
   percentage: number; // % du budget total
   justification: string;
+  expectedCac: string | null; // CAC attendu sur ce canal (ex: "120€")
+  expectedRoas: string | null; // ROAS attendu (ex: "3.5x")
 }
 
 // --- Subsystem 5 : Marketing Plan ---

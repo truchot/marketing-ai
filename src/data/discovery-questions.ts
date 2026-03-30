@@ -8,6 +8,7 @@ interface QuestionSet {
   block2: string[]; // Audiences & Segments
   block3: string[]; // Paysage marketing actuel
   block4: string[]; // Objectifs & Contexte business
+  block5: string[]; // Unit Economics (revenue-first marketing)
 }
 
 export const discoveryQuestionBank: Record<string, QuestionSet> = {
@@ -50,6 +51,14 @@ export const discoveryQuestionBank: Record<string, QuestionSet> = {
       "Y a-t-il des dépendances techniques ou produit qui ralentissent le marketing ?",
       "Quelle métrique suivez-vous de plus près (CAC, LTV, churn, activation) ?",
     ],
+    block5: [
+      "Connaissez-vous votre coût d'acquisition client (CAC) ? Si oui, comment le calculez-vous ?",
+      "Quel est le lifetime value (LTV) moyen d'un client ? Combien de temps reste-t-il en moyenne ?",
+      "Combien de mois faut-il pour rentabiliser l'acquisition d'un nouveau client (CAC payback) ?",
+      "Quel est la valeur moyenne d'un premier contrat ou d'une première commande (ACV/iACV) ?",
+      "Suivez-vous votre ratio LTV/CAC ? Si oui, quel est-il aujourd'hui ?",
+      "Avez-vous un pipeline de revenu qualifié que vous suivez régulièrement ?",
+    ],
   },
 
   // ============================================================
@@ -89,6 +98,14 @@ export const discoveryQuestionBank: Record<string, QuestionSet> = {
       "Quelles sont vos contraintes principales (stock, logistique, budget marketing) ?",
       "Quelle métrique suivez-vous de plus près (ROAS, CAC, LTV, taux de conversion) ?",
     ],
+    block5: [
+      "Connaissez-vous votre coût d'acquisition client (CAC) tous canaux confondus ?",
+      "Quel est le lifetime value d'un client (LTV) ? Combien de commandes en moyenne ?",
+      "Combien de temps faut-il pour rentabiliser un nouveau client acquis (CAC payback) ?",
+      "Quel est votre panier moyen première commande vs commandes suivantes ?",
+      "Suivez-vous votre ratio LTV/CAC ? Quel est-il aujourd'hui ?",
+      "Avez-vous une visibilité sur le revenu qualifié dans votre pipeline (email, retargeting) ?",
+    ],
   },
 
   // ============================================================
@@ -126,6 +143,14 @@ export const discoveryQuestionBank: Record<string, QuestionSet> = {
       "Y a-t-il des échéances importantes (conférences, lancements, recrutements) ?",
       "Quel KPI suivez-vous de près (pipeline, taux de conversion, valeur client) ?",
     ],
+    block5: [
+      "Connaissez-vous votre coût d'acquisition d'un nouveau client (CAC) ?",
+      "Quelle est la valeur vie d'un client type (LTV) ? Durée moyenne d'une relation client ?",
+      "En combien de temps rentabilisez-vous l'acquisition d'un client (CAC payback) ?",
+      "Quel est le montant moyen d'un premier contrat (ACV) ?",
+      "Suivez-vous le ratio LTV/CAC pour mesurer la rentabilité de votre acquisition ?",
+      "Avez-vous un pipeline de revenu qualifié que vous suivez (CRM, deals en cours) ?",
+    ],
   },
 
   // ============================================================
@@ -161,6 +186,14 @@ export const discoveryQuestionBank: Record<string, QuestionSet> = {
       "Quelles métriques de croissance suivez-vous (signups, activation, rétention) ?",
       "Quelles sont vos plus grandes contraintes (temps, budget, compétences) ?",
       "Quel résultat concret devez-vous atteindre dans les 3 prochains mois ?",
+    ],
+    block5: [
+      "Savez-vous combien vous coûte l'acquisition d'un utilisateur/client (CAC) ?",
+      "Avez-vous une idée de la valeur vie de vos utilisateurs (LTV) ?",
+      "Combien de temps pour qu'un client rembourse son coût d'acquisition (CAC payback) ?",
+      "Quel est le montant moyen d'une première transaction ou souscription ?",
+      "Suivez-vous des métriques financières type ratio LTV/CAC ?",
+      "Avez-vous un pipeline de revenus identifié et suivi ?",
     ],
   },
 
@@ -198,6 +231,14 @@ export const discoveryQuestionBank: Record<string, QuestionSet> = {
       "Quelle métrique ou résultat suivez-vous de près ?",
       "Qu'est-ce qui changerait vraiment la donne pour votre business ?",
     ],
+    block5: [
+      "Connaissez-vous votre coût d'acquisition client (CAC) ? Comment le calculez-vous ?",
+      "Quelle est la valeur vie moyenne d'un client (LTV) ?",
+      "En combien de temps rentabilisez-vous l'acquisition d'un client (CAC payback) ?",
+      "Quel est le montant moyen d'une première vente ou d'un premier contrat ?",
+      "Suivez-vous le ratio LTV/CAC pour évaluer la rentabilité de votre marketing ?",
+      "Avez-vous une visibilité sur votre pipeline de revenu qualifié ?",
+    ],
   },
 };
 
@@ -206,7 +247,7 @@ export const discoveryQuestionBank: Record<string, QuestionSet> = {
  */
 export function getQuestionsForBlock(
   sector: keyof typeof discoveryQuestionBank,
-  blockNumber: 1 | 2 | 3 | 4
+  blockNumber: 1 | 2 | 3 | 4 | 5
 ): string[] {
   const blockKey = `block${blockNumber}` as keyof QuestionSet;
   const sectorQuestions = discoveryQuestionBank[sector] || discoveryQuestionBank.other;
