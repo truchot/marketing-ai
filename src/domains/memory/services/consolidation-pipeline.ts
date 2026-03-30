@@ -2,15 +2,27 @@ import type { IWorkingMemoryRepository } from "../ports/working-memory-repositor
 import type { IEpisodicMemoryRepository } from "../ports/episodic-memory-repository";
 import type { ISemanticMemoryRepository } from "../ports/semantic-memory-repository";
 
-const PATTERN_PROMOTION_THRESHOLD = 3;
-const EPISODIC_RETENTION_DAYS = 30;
+const DEFAULT_PATTERN_PROMOTION_THRESHOLD = 3;
+const DEFAULT_EPISODIC_RETENTION_DAYS = 30;
+
+export interface ConsolidationConfig {
+  patternPromotionThreshold?: number;
+  episodicRetentionDays?: number;
+}
 
 export class ConsolidationPipeline {
+  private readonly patternPromotionThreshold: number;
+  private readonly episodicRetentionDays: number;
+
   constructor(
     private workingMemory: IWorkingMemoryRepository,
     private episodicMemory: IEpisodicMemoryRepository,
-    private semanticMemory: ISemanticMemoryRepository
-  ) {}
+    private semanticMemory: ISemanticMemoryRepository,
+    config?: ConsolidationConfig
+  ) {
+    this.patternPromotionThreshold = config?.patternPromotionThreshold ?? DEFAULT_PATTERN_PROMOTION_THRESHOLD;
+    this.episodicRetentionDays = config?.episodicRetentionDays ?? DEFAULT_EPISODIC_RETENTION_DAYS;
+  }
 
   runConsolidation(): void {
     this.consolidateWorkingToEpisodic();
@@ -42,7 +54,7 @@ export class ConsolidationPipeline {
 
   private consolidateEpisodicToSemantic(): void {
     for (const pattern of this.episodicMemory.getEmergentPatterns()) {
-      if (pattern.occurrences >= PATTERN_PROMOTION_THRESHOLD) {
+      if (pattern.occurrences >= this.patternPromotionThreshold) {
         const validatedPatterns = this.semanticMemory.getValidatedPatterns();
         const alreadyValidated = validatedPatterns.some(
           (vp) => vp.type === pattern.type
@@ -69,7 +81,7 @@ export class ConsolidationPipeline {
       );
     }
     for (const [key, count] of feedbackBySentiment) {
-      if (count >= PATTERN_PROMOTION_THRESHOLD) {
+      if (count >= this.patternPromotionThreshold) {
         const [sentiment, content] = key.split(":");
         const preferences = this.semanticMemory.getPreferences();
         const alreadyPreference = preferences.some(
@@ -88,6 +100,6 @@ export class ConsolidationPipeline {
   }
 
   private pruneOldEpisodes(): void {
-    this.episodicMemory.prune(EPISODIC_RETENTION_DAYS);
+    this.episodicMemory.prune(this.episodicRetentionDays);
   }
 }

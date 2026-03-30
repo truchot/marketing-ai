@@ -8,6 +8,9 @@ export {
   BrandTone,
   TargetAudience,
   EpisodeType,
+  FeedbackSentiment,
+  Priority,
+  HypothesisStatus,
 } from "./value-objects";
 
 export {

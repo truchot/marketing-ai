@@ -1,6 +1,6 @@
 import type { IEpisodicMemoryRepository } from "../ports";
 import type { FeedbackSentiment } from "@/types/memory";
-import { executeUseCase } from "@/domains/shared";
+import { domainEventBus, FEEDBACK_RECORDED, executeUseCase } from "@/domains/shared";
 
 interface RecordFeedbackInput {
   source: string;
@@ -14,12 +14,23 @@ export class RecordFeedbackUseCase {
 
   execute(input: RecordFeedbackInput) {
     return executeUseCase(() => {
-      return this.episodicRepo.recordFeedback(
+      const feedback = this.episodicRepo.recordFeedback(
         input.source,
         input.sentiment,
         input.content,
         input.taskId
       );
+
+      domainEventBus.publish({
+        type: FEEDBACK_RECORDED,
+        occurredAt: new Date().toISOString(),
+        payload: {
+          feedbackId: feedback.id,
+          sentiment: input.sentiment,
+        },
+      });
+
+      return feedback;
     });
   }
 }

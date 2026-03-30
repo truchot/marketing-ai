@@ -7,3 +7,6 @@ export { Sector } from "./sector";
 export { BrandTone } from "./brand-tone";
 export { TargetAudience } from "./target-audience";
 export { EpisodeType } from "./episode-type";
+export { FeedbackSentiment } from "./feedback-sentiment";
+export { Priority } from "./priority";
+export { HypothesisStatus } from "./hypothesis-status";

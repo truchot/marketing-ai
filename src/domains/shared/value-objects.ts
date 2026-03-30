@@ -8,3 +8,6 @@ export { Sector } from "./value-objects/sector";
 export { BrandTone } from "./value-objects/brand-tone";
 export { TargetAudience } from "./value-objects/target-audience";
 export { EpisodeType } from "./value-objects/episode-type";
+export { FeedbackSentiment } from "./value-objects/feedback-sentiment";
+export { Priority } from "./value-objects/priority";
+export { HypothesisStatus } from "./value-objects/hypothesis-status";
