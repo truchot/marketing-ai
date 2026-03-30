@@ -67,9 +67,11 @@ export interface OKRRemovedPayload {
   removedCampaignIds: string[];
 }
 
+export type CompanyProfileField = "name" | "description" | "sector" | "target" | "brandTone";
+
 export interface CompanyProfileUpdatedPayload {
   profileId: string;
-  field: string;
+  field: CompanyProfileField;
   oldValue: string;
   newValue: string;
 }
@@ -128,10 +130,17 @@ type EventHandler = (event: DomainEvent) => void;
 export class DomainEventBus {
   private handlers: Map<string, EventHandler[]> = new Map();
 
-  subscribe(eventType: DomainEvent["type"], handler: EventHandler): void {
+  subscribe(eventType: DomainEvent["type"], handler: EventHandler): () => void {
     const existing = this.handlers.get(eventType) ?? [];
     existing.push(handler);
     this.handlers.set(eventType, existing);
+
+    return () => {
+      const handlers = this.handlers.get(eventType);
+      if (!handlers) return;
+      const index = handlers.indexOf(handler);
+      if (index !== -1) handlers.splice(index, 1);
+    };
   }
 
   publish(event: DomainEvent): void {

@@ -21,9 +21,9 @@ export function registerEventHandlers(deps: {
   domainEventBus.subscribe(STRATEGY_GENERATED, (event) => {
     if (event.type !== STRATEGY_GENERATED) return;
 
-    const strategy = deps.strategyRepo.getLatest();
-    if (!strategy) return;
+    const aggregate = deps.strategyRepo.getLatest();
+    if (!aggregate) return;
 
-    memorizationService.memorize(strategy);
+    memorizationService.memorize(aggregate.toStrategy());
   });
 }

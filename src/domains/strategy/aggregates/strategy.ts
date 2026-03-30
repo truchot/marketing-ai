@@ -115,6 +115,22 @@ export class StrategyAggregate extends AggregateRoot {
     return this._tactical.marketingSystem;
   }
 
+  /**
+   * Reconstitute a persisted strategy without re-validating invariants
+   * or raising domain events. Used by repositories when loading from storage.
+   */
+  static fromPersisted(id: string, strategy: MarketingStrategy): StrategyAggregate {
+    return new StrategyAggregate(
+      id,
+      strategy.metadata,
+      strategy.strategic,
+      strategy.tactical,
+      strategy.operational,
+      strategy.constraints,
+      strategy.narrativeSummary
+    );
+  }
+
   static create(strategy: MarketingStrategy): StrategyAggregate {
     // --- Strategic layer invariants ---
     if (strategy.strategic.okrs.length === 0) {

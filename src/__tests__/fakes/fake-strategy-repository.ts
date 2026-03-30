@@ -1,5 +1,6 @@
 import type { IStrategyRepository } from "@/domains/strategy/ports";
 import type { MarketingStrategy } from "@/types/marketing-strategy";
+import { StrategyAggregate } from "@/domains/strategy/aggregates";
 
 /**
  * Standalone in-memory strategy repository for tests.
@@ -14,13 +15,15 @@ export class FakeStrategyRepository implements IStrategyRepository {
     this.latestId = id;
   }
 
-  get(strategyId: string): MarketingStrategy | null {
-    return this.store.get(strategyId) ?? null;
+  get(strategyId: string): StrategyAggregate | null {
+    const strategy = this.store.get(strategyId);
+    if (!strategy) return null;
+    return StrategyAggregate.fromPersisted(strategyId, strategy);
   }
 
-  getLatest(): MarketingStrategy | null {
+  getLatest(): StrategyAggregate | null {
     if (!this.latestId) return null;
-    return this.store.get(this.latestId) ?? null;
+    return this.get(this.latestId);
   }
 
   getAll(): MarketingStrategy[] {
