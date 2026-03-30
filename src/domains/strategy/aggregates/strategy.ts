@@ -2,6 +2,20 @@
 // Strategy Aggregate
 // Represents a validated marketing strategy with 3 layers:
 //   Strategic (4 subsystems) → Tactical → Operational
+//
+// Invariants:
+//   1. OKR count: 1-3
+//   2. Target market: ≥1 segment, ICP with ≥1 pain point
+//   3. Business strategy: non-empty value proposition
+//   4. Marketing foundation: non-empty primary message
+//   5. Feedback loop: ≥1 hypothesis
+//   6. Time horizon: non-empty
+//   7. Roadmap validation: not "rethink"
+//   8. Marketing plan: ≥1 campaign, ≥1 roadmap phase
+//   9. Marketing system: ≥1 process
+//  10. Operational: ≥1 task
+//  11. Cross-layer: every campaign.okrId references an existing OKR
+//  12. Cross-layer: every task.campaignId references an existing campaign
 // ============================================================
 
 import { AggregateRoot } from "@/domains/shared";
@@ -20,7 +34,7 @@ import type {
   MarketingSystem,
   RoadmapValidation,
 } from "@/types/marketing-strategy";
-import { STRATEGY_GENERATED } from "@/domains/shared/domain-events";
+import { STRATEGY_GENERATED, OKR_REMOVED } from "@/domains/shared/domain-events";
 import { IdGenerator } from "@/lib/id-generator";
 
 export class StrategyAggregate extends AggregateRoot {
@@ -103,59 +117,41 @@ export class StrategyAggregate extends AggregateRoot {
 
   static create(strategy: MarketingStrategy): StrategyAggregate {
     // --- Strategic layer invariants ---
-
-    // OKRs
     if (strategy.strategic.okrs.length === 0) {
       throw new Error("A strategy must have at least one OKR");
     }
     if (strategy.strategic.okrs.length > 3) {
       throw new Error("A strategy must have at most 3 OKRs");
     }
-
-    // Target Market
     if (strategy.strategic.targetMarket.segments.length === 0) {
       throw new Error("Target market must have at least one segment");
     }
     if (strategy.strategic.targetMarket.icp.painPoints.length === 0) {
       throw new Error("ICP must have at least one pain point");
     }
-
-    // Business Strategy
     if (!strategy.strategic.businessStrategy.valueProposition.trim()) {
       throw new Error("Business strategy must have a value proposition");
     }
-
-    // Marketing Foundation
     if (!strategy.strategic.marketingFoundation.messaging.primaryMessage.trim()) {
       throw new Error("Marketing foundation must have a primary message");
     }
-
-    // Feedback Loop
     if (strategy.strategic.feedbackLoop.hypotheses.length === 0) {
       throw new Error("Feedback loop must have at least one hypothesis");
     }
-
-    // Time Horizon
     if (!strategy.strategic.timeHorizon.trim()) {
       throw new Error("Strategic layer must have a time horizon");
     }
-
-    // Roadmap Validation gate
     if (strategy.strategic.roadmapValidation.recommendation === "rethink") {
       throw new Error("Cannot create strategy — roadmap validation recommends rethinking");
     }
 
     // --- Tactical layer invariants ---
-
-    // Marketing Plan
     if (strategy.tactical.marketingPlan.campaigns.length === 0) {
       throw new Error("Marketing plan must have at least one campaign");
     }
     if (strategy.tactical.marketingPlan.roadmap.length === 0) {
       throw new Error("Marketing plan must have at least one roadmap phase");
     }
-
-    // Marketing System
     if (strategy.tactical.marketingSystem.processes.length === 0) {
       throw new Error("Marketing system must have at least one process");
     }
@@ -163,6 +159,25 @@ export class StrategyAggregate extends AggregateRoot {
     // --- Operational layer invariants ---
     if (strategy.operational.tasks.length === 0) {
       throw new Error("A strategy must have at least one operational task");
+    }
+
+    // --- Cross-layer coherence ---
+    const okrIds = new Set(strategy.strategic.okrs.map((o) => o.id));
+    for (const campaign of strategy.tactical.marketingPlan.campaigns) {
+      if (!okrIds.has(campaign.okrId)) {
+        throw new Error(
+          `Campaign "${campaign.name}" references non-existent OKR "${campaign.okrId}"`
+        );
+      }
+    }
+
+    const campaignIds = new Set(strategy.tactical.marketingPlan.campaigns.map((c) => c.id));
+    for (const task of strategy.operational.tasks) {
+      if (!campaignIds.has(task.campaignId)) {
+        throw new Error(
+          `Task "${task.title}" references non-existent campaign "${task.campaignId}"`
+        );
+      }
     }
 
     const id = IdGenerator.generate("strategy");
@@ -205,7 +220,18 @@ export class StrategyAggregate extends AggregateRoot {
   }
 
   removeOKR(okrId: string): void {
-    this._strategic.okrs = this._strategic.okrs.filter((o) => o.id !== okrId);
+    const remaining = this._strategic.okrs.filter((o) => o.id !== okrId);
+
+    if (remaining.length === this._strategic.okrs.length) {
+      return; // OKR not found, no-op
+    }
+
+    if (remaining.length === 0) {
+      throw new Error("Cannot remove last OKR — strategy must have at least one");
+    }
+
+    this._strategic.okrs = remaining;
+
     // Cascade: remove campaigns linked to this OKR
     const removedCampaignIds = this._tactical.marketingPlan.campaigns
       .filter((c) => c.okrId === okrId)
@@ -223,9 +249,15 @@ export class StrategyAggregate extends AggregateRoot {
     this._operational.tasks = this._operational.tasks.filter(
       (t) => !removedCampaignIds.includes(t.campaignId)
     );
-    if (this._strategic.okrs.length === 0) {
-      throw new Error("Cannot remove last OKR — strategy must have at least one");
-    }
+
+    this.addDomainEvent({
+      type: OKR_REMOVED,
+      occurredAt: new Date().toISOString(),
+      payload: {
+        okrId,
+        removedCampaignIds,
+      },
+    });
   }
 
   toStrategy(): MarketingStrategy {

@@ -98,7 +98,7 @@ describe("CompanyProfileAggregate", () => {
           target: "",
           brandTone: "Professional",
         })
-      ).toThrow("Company target audience cannot be empty");
+      ).toThrow("Target audience cannot be empty");
     });
 
     it("should reject empty brand tone", () => {
@@ -269,7 +269,7 @@ describe("CompanyProfileAggregate", () => {
       });
 
       expect(() => profile.updateTarget("")).toThrow(
-        "Company target audience cannot be empty"
+        "Target audience cannot be empty"
       );
     });
   });

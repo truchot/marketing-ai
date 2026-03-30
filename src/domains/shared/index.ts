@@ -23,6 +23,9 @@ export {
   ONBOARDING_COMPLETED,
   MESSAGE_SENT,
   STRATEGY_GENERATED,
+  OKR_REMOVED,
+  COMPANY_PROFILE_UPDATED,
+  DISCOVERY_LINKED,
 } from "./domain-events";
 
 export { AggregateRoot } from "./aggregate-root";

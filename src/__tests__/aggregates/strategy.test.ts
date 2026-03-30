@@ -99,6 +99,11 @@ describe("StrategyAggregate", () => {
     it("should accept strategy with exactly 1 OKR", () => {
       const strategy = makeStrategy();
       strategy.strategic.okrs = [makeOKR("okr-1", "primary")];
+      // Cross-layer coherence: keep only campaigns referencing okr-1
+      strategy.tactical.marketingPlan.campaigns = strategy.tactical.marketingPlan.campaigns.filter(c => c.okrId === "okr-1");
+      // Keep only tasks referencing remaining campaigns
+      const campaignIds = new Set(strategy.tactical.marketingPlan.campaigns.map(c => c.id));
+      strategy.operational.tasks = strategy.operational.tasks.filter(t => campaignIds.has(t.campaignId));
 
       const aggregate = StrategyAggregate.create(strategy);
       expect(aggregate.okrs).toHaveLength(1);
@@ -254,6 +259,11 @@ describe("StrategyAggregate", () => {
     it("should throw when removing the last OKR", () => {
       const strategy = makeStrategy();
       strategy.strategic.okrs = [makeOKR("okr-1", "primary")];
+      // Cross-layer coherence: keep only campaigns referencing okr-1
+      strategy.tactical.marketingPlan.campaigns = strategy.tactical.marketingPlan.campaigns.filter(c => c.okrId === "okr-1");
+      // Keep only tasks referencing remaining campaigns
+      const campaignIds = new Set(strategy.tactical.marketingPlan.campaigns.map(c => c.id));
+      strategy.operational.tasks = strategy.operational.tasks.filter(t => campaignIds.has(t.campaignId));
 
       const aggregate = StrategyAggregate.create(strategy);
 
