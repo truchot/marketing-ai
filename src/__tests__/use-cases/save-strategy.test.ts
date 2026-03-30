@@ -63,6 +63,8 @@ function makeStrategy(
             method: "Analytics",
             successCriteria: ">10 leads/mois",
             timeline: "3 mois",
+            status: "untested",
+            linkedKpiIds: [],
           },
         ],
         reviewCadence: "bi-mensuel",
@@ -83,6 +85,18 @@ function makeStrategy(
           ],
           proofPoints: ["50+ clients accompagnés"],
         },
+      },
+      timeHorizon: "12 mois",
+      roadmapValidation: {
+        strategySummary: {
+          whoWeHelp: "PME SaaS B2B en France",
+          whatProblem: "Manque de visibilité",
+          howWeDiffer: "IA + expertise",
+          whatWeSay: "Structurez votre marketing en 30 jours",
+        },
+        readinessScore: 80,
+        gaps: [],
+        recommendation: "proceed",
       },
       okrs: [
         {
@@ -116,6 +130,7 @@ function makeStrategy(
             name: "Campagne SEO",
             objective: "Augmenter le trafic organique",
             targetSegment: "PME SaaS",
+            funnelStage: "awareness",
             channels: ["Blog", "LinkedIn"],
             contentThemes: ["SEO technique"],
             keyMessages: ["Visibilité organique"],
@@ -127,6 +142,7 @@ function makeStrategy(
           {
             channel: "Blog",
             role: "acquisition",
+            funnelStages: ["awareness"],
             targetSegments: ["PME SaaS"],
             frequency: "2 articles/semaine",
             contentTypes: ["article"],
@@ -170,6 +186,7 @@ function makeStrategy(
             milestones: ["Audit SEO terminé"],
           },
         ],
+        reviewCycle: "4 semaines",
       },
       marketingSystem: {
         backlog: [

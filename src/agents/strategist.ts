@@ -50,6 +50,8 @@ export const marketingStrategySchema: Record<string, unknown> = {
         "feedbackLoop",
         "marketingFoundation",
         "okrs",
+        "timeHorizon",
+        "roadmapValidation",
       ],
       properties: {
         diagnostic: {
@@ -165,6 +167,8 @@ export const marketingStrategySchema: Record<string, unknown> = {
                   "method",
                   "successCriteria",
                   "timeline",
+                  "status",
+                  "linkedKpiIds",
                 ],
                 properties: {
                   hypothesis: { type: "string" },
@@ -172,6 +176,11 @@ export const marketingStrategySchema: Record<string, unknown> = {
                   method: { type: "string" },
                   successCriteria: { type: "string" },
                   timeline: { type: "string" },
+                  status: {
+                    type: "string",
+                    enum: ["untested", "validated", "invalidated", "needs_more_data"],
+                  },
+                  linkedKpiIds: { type: "array", items: { type: "string" } },
                 },
               },
             },
@@ -289,6 +298,33 @@ export const marketingStrategySchema: Record<string, unknown> = {
             },
           },
         },
+
+        // --- Time Horizon (cross-cutting) ---
+        timeHorizon: { type: "string" },
+
+        // --- Roadmap Validation (gate Strategy → Tactics) ---
+        roadmapValidation: {
+          type: "object",
+          required: ["strategySummary", "readinessScore", "gaps", "recommendation"],
+          properties: {
+            strategySummary: {
+              type: "object",
+              required: ["whoWeHelp", "whatProblem", "howWeDiffer", "whatWeSay"],
+              properties: {
+                whoWeHelp: { type: "string" },
+                whatProblem: { type: "string" },
+                howWeDiffer: { type: "string" },
+                whatWeSay: { type: "string" },
+              },
+            },
+            readinessScore: { type: "number", minimum: 0, maximum: 100 },
+            gaps: { type: "array", items: { type: "string" } },
+            recommendation: {
+              type: "string",
+              enum: ["proceed", "refine", "rethink"],
+            },
+          },
+        },
       },
     },
 
@@ -300,19 +336,23 @@ export const marketingStrategySchema: Record<string, unknown> = {
         // --- Subsystem 5: Marketing Plan ---
         marketingPlan: {
           type: "object",
-          required: ["campaigns", "channelStrategy", "contentPlan", "budgetAllocation", "kpis", "roadmap"],
+          required: ["campaigns", "channelStrategy", "contentPlan", "budgetAllocation", "kpis", "roadmap", "reviewCycle"],
           properties: {
             campaigns: {
               type: "array",
               items: {
                 type: "object",
-                required: ["id", "okrId", "name", "objective", "targetSegment", "channels", "contentThemes", "keyMessages", "duration", "successMetric"],
+                required: ["id", "okrId", "name", "objective", "targetSegment", "funnelStage", "channels", "contentThemes", "keyMessages", "duration", "successMetric"],
                 properties: {
                   id: { type: "string" },
                   okrId: { type: "string" },
                   name: { type: "string" },
                   objective: { type: "string" },
                   targetSegment: { type: "string" },
+                  funnelStage: {
+                    type: "string",
+                    enum: ["awareness", "consideration", "conversion", "retention"],
+                  },
                   channels: { type: "array", items: { type: "string" } },
                   contentThemes: { type: "array", items: { type: "string" } },
                   keyMessages: { type: "array", items: { type: "string" } },
@@ -325,10 +365,17 @@ export const marketingStrategySchema: Record<string, unknown> = {
               type: "array",
               items: {
                 type: "object",
-                required: ["channel", "role", "targetSegments", "frequency", "contentTypes", "estimatedBudget"],
+                required: ["channel", "role", "funnelStages", "targetSegments", "frequency", "contentTypes", "estimatedBudget"],
                 properties: {
                   channel: { type: "string" },
                   role: { type: "string", enum: ["acquisition", "nurturing", "retention", "brand"] },
+                  funnelStages: {
+                    type: "array",
+                    items: {
+                      type: "string",
+                      enum: ["awareness", "consideration", "conversion", "retention"],
+                    },
+                  },
                   targetSegments: { type: "array", items: { type: "string" } },
                   frequency: { type: "string" },
                   contentTypes: { type: "array", items: { type: "string" } },
@@ -393,6 +440,7 @@ export const marketingStrategySchema: Record<string, unknown> = {
                 },
               },
             },
+            reviewCycle: { type: "string" },
           },
         },
         // --- Subsystem 6: Marketing System ---
@@ -597,6 +645,8 @@ export function isMarketingStrategy(
     "businessStrategy" in strategic &&
     "feedbackLoop" in strategic &&
     "marketingFoundation" in strategic &&
+    "timeHorizon" in strategic &&
+    "roadmapValidation" in strategic &&
     typeof tactical === "object" &&
     tactical !== null &&
     "marketingPlan" in tactical &&

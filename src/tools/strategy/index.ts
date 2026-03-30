@@ -17,6 +17,7 @@ import type {
   BusinessStrategy,
   FeedbackLoop,
   MarketingFoundation,
+  RoadmapValidation,
   MarketingPlan,
   MarketingSystem,
   Campaign,
@@ -398,7 +399,9 @@ Réponds en JSON strict :
       "metric": "...",
       "method": "...",
       "successCriteria": "...",
-      "timeline": "..."
+      "timeline": "...",
+      "status": "untested",
+      "linkedKpiIds": []
     }
   ],
   "reviewCadence": "...",
@@ -505,7 +508,83 @@ Réponds en JSON strict :
 }
 
 // ============================================================
-// Tool 7: proposeMarketingPlan (TACTIQUE — Subsystem 5, uses Sonnet)
+// Tool 7: validateRoadmap (GATE Strategy → Tactics, uses Haiku)
+// ============================================================
+
+interface ValidateRoadmapInput {
+  targetMarket: TargetMarket;
+  businessStrategy: BusinessStrategy;
+  marketingFoundation: MarketingFoundation;
+  feedbackLoop: FeedbackLoop;
+  okrs: OKR[];
+}
+
+export async function validateRoadmap(
+  input: ValidateRoadmapInput
+): Promise<RoadmapValidation> {
+  const { targetMarket, businessStrategy, marketingFoundation, feedbackLoop, okrs } = input;
+
+  const prompt = `Tu es un directeur marketing senior. Évalue si cette stratégie marketing est suffisamment solide pour passer à la phase tactique.
+
+## Les 4 réponses stratégiques
+
+1. QUI on aide : ${targetMarket.marketDefinition}
+   - Segments : ${targetMarket.segments.map((s) => `${s.segment} (${s.priority})`).join(", ")}
+   - ICP : ${targetMarket.icp.description}
+
+2. QUEL PROBLÈME on résout : ${businessStrategy.transformation.before} → ${businessStrategy.transformation.after}
+   - Proposition de valeur : ${businessStrategy.valueProposition}
+
+3. COMMENT on se différencie : ${businessStrategy.uniqueDifferentiator}
+   - Angle concurrentiel : ${businessStrategy.competitiveAngle}
+
+4. CE QU'ON DIT : ${marketingFoundation.messaging.primaryMessage}
+   - Positionnement : ${marketingFoundation.positioning.uniqueValue}
+
+## OKRs (${okrs.length})
+${okrs.map((o) => `- [${o.priority}] ${o.objective}`).join("\n")}
+
+## Hypothèses à valider (${feedbackLoop.hypotheses.length})
+${feedbackLoop.hypotheses.map((h) => `- ${h}`).join("\n")}
+
+## Évaluation demandée
+Évalue chaque question stratégique (clarté, cohérence, faisabilité). Donne un score global de readiness (0-100).
+
+Règles :
+- Score < 50 → "rethink" (la stratégie a des trous fondamentaux)
+- Score 50-75 → "refine" (quelques ajustements nécessaires)
+- Score > 75 → "proceed" (prêt pour les tactiques)
+- Identifie les gaps spécifiques s'il y en a
+
+Réponds en JSON strict :
+{
+  "strategySummary": {
+    "whoWeHelp": "...",
+    "whatProblem": "...",
+    "howWeDiffer": "...",
+    "whatWeSay": "..."
+  },
+  "readinessScore": 85,
+  "gaps": [],
+  "recommendation": "proceed"
+}`;
+
+  const responseText = await callClaudeHaiku(prompt, 1024);
+  const result = extractJsonFromResponse<RoadmapValidation>(responseText);
+
+  recordEpisodeUseCase.execute({
+    type: "task_result",
+    description: `Roadmap Validation — score ${result.readinessScore}/100, recommendation: ${result.recommendation}`,
+    data: { roadmapValidation: result },
+    tags: ["strategy", "roadmap-validation", "gate"],
+    importance: "high",
+  });
+
+  return result;
+}
+
+// ============================================================
+// Tool 8: proposeMarketingPlan (TACTIQUE — Subsystem 5, uses Sonnet)
 // ============================================================
 
 interface ProposeMarketingPlanInput {
@@ -552,20 +631,23 @@ ${okrSummary}
 
 ## Règles
 - 1-2 campagnes par OKR, chacune avec un objectif clair et un segment cible
+- Chaque campagne doit cibler une étape du funnel (awareness, consideration, conversion, retention)
+- Chaque canal doit spécifier les étapes du funnel qu'il couvre
 - Choisis les canaux en fonction de là où se trouvent réellement les audiences
 - Le plan de contenu doit être réaliste pour la taille de l'équipe
 - L'allocation budget doit totaliser ~100% sur l'ensemble des campagnes (pas par OKR)
 - Ne recommande PAS un canal abandonné sauf si tu justifies clairement
 - Chaque KPI tactique doit être lié à une campagne
 - Le roadmap doit avoir 2-3 phases avec des jalons clairs
+- Définis un cycle de revue tactique (4-16 semaines) pour ajuster en fonction des performances
 
 Réponds en JSON strict :
 {
   "campaigns": [
-    { "id": "campaign-1", "okrId": "okr-1", "name": "...", "objective": "...", "targetSegment": "...", "channels": ["..."], "contentThemes": ["..."], "keyMessages": ["..."], "duration": "...", "successMetric": "..." }
+    { "id": "campaign-1", "okrId": "okr-1", "name": "...", "objective": "...", "targetSegment": "...", "funnelStage": "awareness", "channels": ["..."], "contentThemes": ["..."], "keyMessages": ["..."], "duration": "...", "successMetric": "..." }
   ],
   "channelStrategy": [
-    { "channel": "...", "role": "acquisition", "targetSegments": ["..."], "frequency": "...", "contentTypes": ["..."], "estimatedBudget": "..." }
+    { "channel": "...", "role": "acquisition", "funnelStages": ["awareness", "consideration"], "targetSegments": ["..."], "frequency": "...", "contentTypes": ["..."], "estimatedBudget": "..." }
   ],
   "contentPlan": [
     { "pillar": "...", "themes": ["..."], "formats": ["..."], "cadence": "...", "targetSegment": "..." }
@@ -578,7 +660,8 @@ Réponds en JSON strict :
   ],
   "roadmap": [
     { "phase": "Phase 1 - ...", "startWeek": "S1", "endWeek": "S6", "focus": "...", "campaigns": ["campaign-1"], "milestones": ["..."] }
-  ]
+  ],
+  "reviewCycle": "6 semaines"
 }`;
 
   const responseText = await callClaudeSonnet(prompt);
@@ -599,11 +682,12 @@ Réponds en JSON strict :
     budgetAllocation: result.budgetAllocation || [],
     kpis: result.kpis || [],
     roadmap: result.roadmap || [],
+    reviewCycle: result.reviewCycle || "6 semaines",
   };
 }
 
 // ============================================================
-// Tool 8: proposeMarketingSystem (TACTIQUE — Subsystem 6, uses Sonnet)
+// Tool 9: proposeMarketingSystem (TACTIQUE — Subsystem 6, uses Sonnet)
 // ============================================================
 
 interface ProposeMarketingSystemInput {

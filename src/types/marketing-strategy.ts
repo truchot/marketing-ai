@@ -64,12 +64,16 @@ export interface BusinessStrategy {
 
 // --- Subsystem 3 : Feedback Loop ---
 
+export type HypothesisStatus = "untested" | "validated" | "invalidated" | "needs_more_data";
+
 export interface ValidationTest {
   hypothesis: string;
   metric: string; // KPI pour valider
   method: string; // A/B test, analytics, survey...
   successCriteria: string; // Seuil de validation
   timeline: string; // Horizon temporel
+  status: HypothesisStatus; // État actuel de la validation
+  linkedKpiIds: string[]; // IDs des TacticalKPIs qui alimentent ce test
 }
 
 export interface FeedbackLoop {
@@ -127,6 +131,20 @@ export interface OKR {
   };
 }
 
+// --- Roadmap Validation (gate Strategy → Tactics) ---
+
+export interface RoadmapValidation {
+  strategySummary: {
+    whoWeHelp: string; // Résumé de TargetMarket
+    whatProblem: string; // Résumé du problème/transformation
+    howWeDiffer: string; // Résumé du différenciateur
+    whatWeSay: string; // Résumé du messaging
+  };
+  readinessScore: number; // 0-100 — prêt à passer aux tactiques ?
+  gaps: string[]; // Lacunes identifiées (vide = prêt)
+  recommendation: "proceed" | "refine" | "rethink";
+}
+
 // --- Strategic Layer ---
 
 export interface StrategicLayer {
@@ -136,6 +154,8 @@ export interface StrategicLayer {
   feedbackLoop: FeedbackLoop;
   marketingFoundation: MarketingFoundation;
   okrs: OKR[];
+  timeHorizon: string; // Ex: "12 mois", "18 mois" — horizon stratégique (6-36 mois)
+  roadmapValidation: RoadmapValidation; // Gate avant de passer aux tactiques
 }
 
 // ========== NIVEAU 2 : TACTIQUE ==========
@@ -145,12 +165,15 @@ export interface StrategicLayer {
 
 // --- Interfaces partagées (utilisées dans Marketing Plan) ---
 
+export type FunnelStage = "awareness" | "consideration" | "conversion" | "retention";
+
 export interface Campaign {
   id: string;
   okrId: string; // Lié à quel OKR stratégique
   name: string;
   objective: string; // Objectif spécifique de la campagne
   targetSegment: string; // Segment visé
+  funnelStage: FunnelStage; // Étape du funnel ciblée
   channels: string[]; // Canaux utilisés pour cette campagne
   contentThemes: string[]; // Thèmes de contenu
   keyMessages: string[]; // Messages clés
@@ -161,6 +184,7 @@ export interface Campaign {
 export interface ChannelStrategy {
   channel: string; // Nom du canal
   role: "acquisition" | "nurturing" | "retention" | "brand"; // Rôle stratégique
+  funnelStages: FunnelStage[]; // Étapes du funnel couvertes par ce canal
   targetSegments: string[]; // Segments ciblés via ce canal
   frequency: string; // Fréquence de publication/activité
   contentTypes: string[]; // Types de contenu (article, vidéo, post...)
@@ -209,6 +233,7 @@ export interface MarketingPlan {
   budgetAllocation: BudgetAllocation[];
   kpis: TacticalKPI[];
   roadmap: RoadmapPhase[];
+  reviewCycle: string; // Ex: "4 semaines", "6 semaines" — cadence de revue tactique (4-16 semaines)
 }
 
 // --- Subsystem 6 : Marketing System ---

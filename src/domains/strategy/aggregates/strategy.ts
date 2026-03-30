@@ -18,6 +18,7 @@ import type {
   MarketingFoundation,
   MarketingPlan,
   MarketingSystem,
+  RoadmapValidation,
 } from "@/types/marketing-strategy";
 import { STRATEGY_GENERATED } from "@/domains/shared/domain-events";
 import { IdGenerator } from "@/lib/id-generator";
@@ -88,6 +89,10 @@ export class StrategyAggregate extends AggregateRoot {
     return this._strategic.marketingFoundation;
   }
 
+  get roadmapValidation(): RoadmapValidation {
+    return this._strategic.roadmapValidation;
+  }
+
   get marketingPlan(): MarketingPlan {
     return this._tactical.marketingPlan;
   }
@@ -128,6 +133,16 @@ export class StrategyAggregate extends AggregateRoot {
     // Feedback Loop
     if (strategy.strategic.feedbackLoop.hypotheses.length === 0) {
       throw new Error("Feedback loop must have at least one hypothesis");
+    }
+
+    // Time Horizon
+    if (!strategy.strategic.timeHorizon.trim()) {
+      throw new Error("Strategic layer must have a time horizon");
+    }
+
+    // Roadmap Validation gate
+    if (strategy.strategic.roadmapValidation.recommendation === "rethink") {
+      throw new Error("Cannot create strategy — roadmap validation recommends rethinking");
     }
 
     // --- Tactical layer invariants ---
@@ -240,6 +255,8 @@ export class StrategyAggregate extends AggregateRoot {
           },
         },
         okrs: [...this._strategic.okrs],
+        timeHorizon: this._strategic.timeHorizon,
+        roadmapValidation: { ...this._strategic.roadmapValidation },
       },
       tactical: {
         marketingPlan: {
@@ -249,6 +266,7 @@ export class StrategyAggregate extends AggregateRoot {
           budgetAllocation: [...this._tactical.marketingPlan.budgetAllocation],
           kpis: [...this._tactical.marketingPlan.kpis],
           roadmap: [...this._tactical.marketingPlan.roadmap],
+          reviewCycle: this._tactical.marketingPlan.reviewCycle,
         },
         marketingSystem: {
           backlog: [...this._tactical.marketingSystem.backlog],

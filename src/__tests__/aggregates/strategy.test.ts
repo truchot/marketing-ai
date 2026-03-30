@@ -32,6 +32,7 @@ function makeCampaign(id: string, okrId: string) {
     name: `Campaign ${id}`,
     objective: "Test campaign objective",
     targetSegment: "PME SaaS",
+    funnelStage: "awareness" as const,
     channels: ["LinkedIn", "Blog"],
     contentThemes: ["expertise technique"],
     keyMessages: ["Message clé"],
@@ -118,6 +119,8 @@ function makeStrategy(
             method: "Analytics LinkedIn + CRM",
             successCriteria: ">10 leads/mois",
             timeline: "3 mois",
+            status: "untested",
+            linkedKpiIds: [],
           },
         ],
         reviewCadence: "bi-mensuel",
@@ -140,6 +143,18 @@ function makeStrategy(
         },
       },
       okrs: [okr1, okr2],
+      timeHorizon: "12 mois",
+      roadmapValidation: {
+        strategySummary: {
+          whoWeHelp: "PME SaaS B2B en France",
+          whatProblem: "Manque de visibilité et stratégie marketing",
+          howWeDiffer: "IA + expertise marketing combinées",
+          whatWeSay: "Structurez votre marketing en 30 jours",
+        },
+        readinessScore: 85,
+        gaps: [],
+        recommendation: "proceed",
+      },
     },
     tactical: {
       marketingPlan: {
@@ -151,6 +166,7 @@ function makeStrategy(
           {
             channel: "LinkedIn",
             role: "acquisition",
+            funnelStages: ["awareness", "consideration"],
             targetSegments: ["PME SaaS"],
             frequency: "3 posts/semaine",
             contentTypes: ["article", "post"],
@@ -194,6 +210,7 @@ function makeStrategy(
             milestones: ["Premiers contenus publiés"],
           },
         ],
+        reviewCycle: "6 semaines",
       },
       marketingSystem: {
         backlog: [
@@ -417,6 +434,33 @@ describe("StrategyAggregate", () => {
       expect(() => StrategyAggregate.create(strategy)).toThrow(
         "Feedback loop must have at least one hypothesis"
       );
+    });
+
+    it("should reject strategy with empty time horizon", () => {
+      const strategy = makeStrategy();
+      strategy.strategic.timeHorizon = "  ";
+
+      expect(() => StrategyAggregate.create(strategy)).toThrow(
+        "Strategic layer must have a time horizon"
+      );
+    });
+
+    it("should reject strategy when roadmap validation recommends rethink", () => {
+      const strategy = makeStrategy();
+      strategy.strategic.roadmapValidation.recommendation = "rethink";
+
+      expect(() => StrategyAggregate.create(strategy)).toThrow(
+        "roadmap validation recommends rethinking"
+      );
+    });
+
+    it("should accept strategy when roadmap validation recommends refine", () => {
+      const strategy = makeStrategy();
+      strategy.strategic.roadmapValidation.recommendation = "refine";
+      strategy.strategic.roadmapValidation.gaps = ["Missing competitive analysis"];
+
+      const aggregate = StrategyAggregate.create(strategy);
+      expect(aggregate.roadmapValidation.recommendation).toBe("refine");
     });
 
     it("should reject strategy with zero campaigns", () => {

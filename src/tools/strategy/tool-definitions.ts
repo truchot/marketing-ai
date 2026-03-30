@@ -12,6 +12,7 @@ import {
   defineMarketingFoundation,
   defineFeedbackLoop,
   proposeOKRs,
+  validateRoadmap,
   proposeMarketingPlan,
   proposeMarketingSystem,
   proposeTasks,
@@ -25,6 +26,7 @@ import type {
   BusinessStrategy,
   MarketingFoundation,
   FeedbackLoop,
+  RoadmapValidation,
   MarketingPlan,
   MarketingSystem,
   OKR,
@@ -49,6 +51,7 @@ export interface StrategyRequestState {
   marketingFoundation: MarketingFoundation | null;
   feedbackLoop: FeedbackLoop | null;
   validatedOKRs: OKR[];
+  roadmapValidation: RoadmapValidation | null;
   validatedMarketingPlan: MarketingPlan | null;
   validatedMarketingSystem: MarketingSystem | null;
   strategyComplete: boolean;
@@ -64,6 +67,7 @@ export function createStrategyRequestState(): StrategyRequestState {
     marketingFoundation: null,
     feedbackLoop: null,
     validatedOKRs: [],
+    roadmapValidation: null,
     validatedMarketingPlan: null,
     validatedMarketingSystem: null,
     strategyComplete: false,
@@ -385,7 +389,75 @@ APRÈS L'APPEL :
       ),
 
       // ========================================================
-      // Tool 7: proposeMarketingPlan (TACTIQUE — Subsystem 5)
+      // Tool 7: validateRoadmap (GATE Strategy → Tactics)
+      // ========================================================
+      tool(
+        "validateRoadmap",
+        `Évalue la cohérence de la couche stratégique avant de passer aux tactiques. Produit un résumé des 4 questions clés (qui, quel problème, comment on se différencie, que dit-on), un score de readiness, les lacunes identifiées et une recommandation (proceed / refine / rethink).
+
+QUAND L'UTILISER :
+- Après validation de tous les OKRs par le client
+- AVANT de passer aux tactiques (proposeMarketingPlan)
+
+PRÉCONDITION :
+- Les 4 sous-systèmes stratégiques doivent être validés
+- Au moins 1 OKR validé
+
+EFFET :
+- Produit un RoadmapValidation avec strategySummary, readinessScore, gaps, recommendation
+- Si recommendation = "proceed" → on peut passer aux tactiques
+- Si recommendation = "refine" → présenter les gaps au client, ajuster
+- Si recommendation = "rethink" → retour aux sous-systèmes stratégiques
+
+APRÈS L'APPEL :
+- Présente le résultat au client
+- Si "proceed" : enchaîner avec proposeMarketingPlan
+- Si "refine" : discuter les lacunes et ajuster les sous-systèmes concernés`,
+        {},
+        async () => {
+          if (!state.targetMarket || !state.businessStrategy || !state.marketingFoundation || !state.feedbackLoop) {
+            return {
+              content: [
+                {
+                  type: "text" as const,
+                  text: JSON.stringify({
+                    error: "Les 4 sous-systèmes stratégiques doivent être validés avant la validation roadmap.",
+                  }),
+                },
+              ],
+            };
+          }
+          if (state.validatedOKRs.length === 0) {
+            return {
+              content: [
+                {
+                  type: "text" as const,
+                  text: JSON.stringify({ error: "Aucun OKR validé. Appelle proposeOKR d'abord." }),
+                },
+              ],
+            };
+          }
+          const result = await validateRoadmap({
+            targetMarket: state.targetMarket,
+            businessStrategy: state.businessStrategy,
+            marketingFoundation: state.marketingFoundation,
+            feedbackLoop: state.feedbackLoop,
+            okrs: state.validatedOKRs,
+          });
+          state.roadmapValidation = result;
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: JSON.stringify(result, null, 2),
+              },
+            ],
+          };
+        }
+      ),
+
+      // ========================================================
+      // Tool 8: proposeMarketingPlan (TACTIQUE — Subsystem 5)
       // ========================================================
       tool(
         "proposeMarketingPlan",
@@ -398,6 +470,7 @@ QUAND L'UTILISER :
 PRÉCONDITION :
 - Tous les OKRs doivent être validés
 - Les 4 sous-systèmes stratégiques doivent être validés
+- Le roadmap validation doit recommander "proceed"
 
 EFFET :
 - Génère 1-2 campagnes par OKR avec canaux, messages clés, thèmes de contenu
@@ -453,7 +526,7 @@ APRÈS L'APPEL :
       ),
 
       // ========================================================
-      // Tool 8: proposeMarketingSystem (TACTIQUE — Subsystem 6)
+      // Tool 9: proposeMarketingSystem (TACTIQUE — Subsystem 6)
       // ========================================================
       tool(
         "proposeMarketingSystem",
@@ -517,7 +590,7 @@ APRÈS L'APPEL :
       ),
 
       // ========================================================
-      // Tool 9: proposeTasks (OPÉRATIONNEL)
+      // Tool 10: proposeTasks (OPÉRATIONNEL)
       // ========================================================
       tool(
         "proposeTasks",
@@ -584,7 +657,7 @@ EFFET :
       ),
 
       // ========================================================
-      // Tool 10: adjustOKR (STRATÉGIQUE — feedback loop)
+      // Tool 11: adjustOKR (STRATÉGIQUE — feedback loop)
       // ========================================================
       tool(
         "adjustOKR",
@@ -641,7 +714,7 @@ QUAND L'UTILISER :
       ),
 
       // ========================================================
-      // Tool 11: saveStrategy
+      // Tool 12: saveStrategy
       // ========================================================
       tool(
         "saveStrategy",
@@ -673,7 +746,7 @@ QUAND L'UTILISER :
       ),
 
       // ========================================================
-      // Tool 12: present_choices
+      // Tool 13: present_choices
       // ========================================================
       tool(
         "present_choices",

@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
             mcpServers: {
               "strategy-tools": strategyMcpServer,
             },
-            maxTurns: 14, // diagnostic + 4 subsystems + OKR + campaigns + tasks + save
+            maxTurns: 16, // diagnostic + 4 subsystems + OKR + roadmap validation + marketing plan + marketing system + tasks + save
           },
         });
 
