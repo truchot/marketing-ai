@@ -22,11 +22,67 @@ function makeStrategy(
         threats: ["Strong competition"],
         summary: "Test summary",
       },
-      positioning: {
-        targetMarket: "PME SaaS B2B",
-        uniqueValue: "Automatisation marketing accessible",
+      targetMarket: {
+        marketDefinition: "PME SaaS B2B en France",
+        segments: [
+          {
+            segment: "PME SaaS",
+            priority: "primary",
+            mainPain: "Manque de visibilité",
+            targetMessage: "Développez votre visibilité en 30 jours",
+          },
+        ],
+        icp: {
+          description: "Fondateur de PME SaaS B2B",
+          painPoints: ["Manque de visibilité"],
+          triggerMoments: ["Levée de fonds"],
+          buyingContext: "Recherche d'expertise externe",
+          preferredChannels: ["LinkedIn"],
+          commonObjections: ["Trop cher"],
+          decisionCriteria: ["ROI prouvé"],
+        },
+      },
+      businessStrategy: {
+        vision: "Devenir la référence marketing IA",
+        valueProposition: "Automatisation marketing accessible",
+        transformation: {
+          before: "Marketing ad-hoc",
+          after: "Stratégie structurée",
+          timeToValue: "30 jours",
+        },
+        uniqueDifferentiator: "IA + expertise",
         competitiveAngle: "Prix + simplicité",
-        brandPersonality: "Expert accessible",
+        businessStage: "growth",
+      },
+      feedbackLoop: {
+        hypotheses: ["Le contenu LinkedIn génère des leads"],
+        validationTests: [
+          {
+            hypothesis: "Le contenu LinkedIn génère des leads",
+            metric: "Leads/mois",
+            method: "Analytics",
+            successCriteria: ">10 leads/mois",
+            timeline: "3 mois",
+          },
+        ],
+        reviewCadence: "bi-mensuel",
+        pivotTriggers: ["<5 leads/mois après 3 mois"],
+      },
+      marketingFoundation: {
+        offer: "Audit marketing + stratégie",
+        positioning: {
+          targetMarket: "PME SaaS B2B",
+          uniqueValue: "Automatisation marketing accessible",
+          competitiveAngle: "Prix + simplicité",
+          brandPersonality: "Expert accessible",
+        },
+        messaging: {
+          primaryMessage: "Structurez votre marketing en 30 jours",
+          segmentMessages: [
+            { segment: "PME SaaS", message: "Développez votre visibilité", tone: "professionnel" },
+          ],
+          proofPoints: ["50+ clients accompagnés"],
+        },
       },
       okrs: [
         {
@@ -48,14 +104,6 @@ function makeStrategy(
             fromBlock: "business_context",
             evidence: "Client mentioned low visibility",
           },
-        },
-      ],
-      prioritySegments: [
-        {
-          segment: "PME SaaS",
-          priority: "primary",
-          mainPain: "Manque de visibilité",
-          targetMessage: "Développez votre visibilité en 30 jours",
         },
       ],
     },

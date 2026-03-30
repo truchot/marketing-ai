@@ -7,6 +7,10 @@ import { createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk";
 import { z } from "zod";
 import {
   generateDiagnostic,
+  analyzeTargetMarket,
+  defineBusinessStrategy,
+  defineMarketingFoundation,
+  defineFeedbackLoop,
   proposeOKRs,
   proposeCampaigns,
   proposeTasks,
@@ -16,6 +20,10 @@ import {
 import type { BusinessDiscovery } from "@/types/business-discovery";
 import type {
   MarketingDiagnostic,
+  TargetMarket,
+  BusinessStrategy,
+  MarketingFoundation,
+  FeedbackLoop,
   OKR,
   Campaign,
 } from "@/types/marketing-strategy";
@@ -33,6 +41,10 @@ interface ChoiceOption {
 export interface StrategyRequestState {
   discovery: BusinessDiscovery | null;
   diagnostic: MarketingDiagnostic | null;
+  targetMarket: TargetMarket | null;
+  businessStrategy: BusinessStrategy | null;
+  marketingFoundation: MarketingFoundation | null;
+  feedbackLoop: FeedbackLoop | null;
   validatedOKRs: OKR[];
   validatedCampaigns: Campaign[];
   strategyComplete: boolean;
@@ -43,6 +55,10 @@ export function createStrategyRequestState(): StrategyRequestState {
   return {
     discovery: null,
     diagnostic: null,
+    targetMarket: null,
+    businessStrategy: null,
+    marketingFoundation: null,
+    feedbackLoop: null,
     validatedOKRs: [],
     validatedCampaigns: [],
     strategyComplete: false,
@@ -59,7 +75,7 @@ export function createStrategyMcpServer(state: StrategyRequestState) {
     name: "strategy-tools",
     tools: [
       // ========================================================
-      // Tool 1: generateDiagnostic (STRATÉGIQUE)
+      // Tool 1: generateDiagnostic (STRATÉGIQUE — cross-cutting)
       // ========================================================
       tool(
         "generateDiagnostic",
@@ -70,13 +86,12 @@ QUAND L'UTILISER :
 - UNE SEULE FOIS par session
 
 EFFET :
-- Calcule un score de maturité (0-100) sur 5 dimensions : canaux, équipe, outils, budget, stratégie
+- Calcule un score de maturité (0-100) sur 5 dimensions
 - Génère un SWOT via Claude Haiku
-- Stocke le diagnostic en mémoire épisodique
 
 APRÈS L'APPEL :
-- Présente le diagnostic au client de manière synthétique
-- Demande validation avant de passer aux OKR`,
+- Présente le diagnostic au client
+- Demande validation avant de passer au marché cible`,
         {
           discovery: z
             .record(z.string(), z.unknown())
@@ -99,20 +114,232 @@ APRÈS L'APPEL :
       ),
 
       // ========================================================
-      // Tool 2: proposeOKR (STRATÉGIQUE)
+      // Tool 2: analyzeTargetMarket (STRATÉGIQUE — Subsystem 1)
       // ========================================================
       tool(
-        "proposeOKR",
-        `Génère 2-3 OKR marketing basés sur le diagnostic et le discovery.
+        "analyzeTargetMarket",
+        `Analyse le marché cible, priorise les segments et construit le profil client idéal (ICP).
 
 QUAND L'UTILISER :
 - Après validation du diagnostic par le client
-- UNE SEULE FOIS (génère tous les OKR en un appel)
+- UNE SEULE FOIS
+
+PRÉCONDITION :
+- Le diagnostic doit être généré
 
 EFFET :
-- Génère 2-3 OKR avec Key Results mesurables
+- Identifie et priorise les segments de marché
+- Construit un ICP détaillé (pain points, triggers, canaux, objections)
+
+APRÈS L'APPEL :
+- Présente le marché cible et l'ICP au client
+- Demande validation avant de passer à la stratégie business`,
+        {},
+        async () => {
+          if (!state.discovery || !state.diagnostic) {
+            return {
+              content: [
+                {
+                  type: "text" as const,
+                  text: JSON.stringify({
+                    error: "Diagnostic manquant. Appelle generateDiagnostic d'abord.",
+                  }),
+                },
+              ],
+            };
+          }
+          const result = await analyzeTargetMarket({
+            discovery: state.discovery,
+            diagnostic: state.diagnostic,
+          });
+          state.targetMarket = result;
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: JSON.stringify(result, null, 2),
+              },
+            ],
+          };
+        }
+      ),
+
+      // ========================================================
+      // Tool 3: defineBusinessStrategy (STRATÉGIQUE — Subsystem 2)
+      // ========================================================
+      tool(
+        "defineBusinessStrategy",
+        `Définit la stratégie business : vision, proposition de valeur, différenciateur, angle concurrentiel.
+
+QUAND L'UTILISER :
+- Après validation du marché cible par le client
+- UNE SEULE FOIS
+
+PRÉCONDITION :
+- Le marché cible doit être validé
+
+EFFET :
+- Formule la vision de marque
+- Synthétise la proposition de valeur
+- Identifie le différenciateur et l'angle concurrentiel
+
+APRÈS L'APPEL :
+- Présente la stratégie business au client
+- Demande validation avant de passer à la fondation marketing`,
+        {},
+        async () => {
+          if (!state.discovery || !state.diagnostic || !state.targetMarket) {
+            return {
+              content: [
+                {
+                  type: "text" as const,
+                  text: JSON.stringify({
+                    error: "Marché cible manquant. Appelle analyzeTargetMarket d'abord.",
+                  }),
+                },
+              ],
+            };
+          }
+          const result = await defineBusinessStrategy({
+            discovery: state.discovery,
+            diagnostic: state.diagnostic,
+            targetMarket: state.targetMarket,
+          });
+          state.businessStrategy = result;
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: JSON.stringify(result, null, 2),
+              },
+            ],
+          };
+        }
+      ),
+
+      // ========================================================
+      // Tool 4: defineMarketingFoundation (STRATÉGIQUE — Subsystem 4)
+      // ========================================================
+      tool(
+        "defineMarketingFoundation",
+        `Définit la fondation marketing : offre, positionnement et messaging par segment.
+
+QUAND L'UTILISER :
+- Après validation de la stratégie business par le client
+- UNE SEULE FOIS
+
+PRÉCONDITION :
+- La stratégie business doit être validée
+
+EFFET :
+- Formule l'offre du point de vue client
+- Définit le positionnement (marché, valeur, angle, personnalité)
+- Crée le messaging principal et par segment
+
+APRÈS L'APPEL :
+- Présente la fondation marketing au client
+- Demande validation avant de passer au feedback loop`,
+        {},
+        async () => {
+          if (!state.discovery || !state.targetMarket || !state.businessStrategy) {
+            return {
+              content: [
+                {
+                  type: "text" as const,
+                  text: JSON.stringify({
+                    error: "Stratégie business manquante. Appelle defineBusinessStrategy d'abord.",
+                  }),
+                },
+              ],
+            };
+          }
+          const result = await defineMarketingFoundation({
+            discovery: state.discovery,
+            targetMarket: state.targetMarket,
+            businessStrategy: state.businessStrategy,
+          });
+          state.marketingFoundation = result;
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: JSON.stringify(result, null, 2),
+              },
+            ],
+          };
+        }
+      ),
+
+      // ========================================================
+      // Tool 5: defineFeedbackLoop (STRATÉGIQUE — Subsystem 3)
+      // ========================================================
+      tool(
+        "defineFeedbackLoop",
+        `Définit la boucle de feedback : hypothèses à valider, tests, cadence de review, conditions de pivot.
+
+QUAND L'UTILISER :
+- Après validation de la fondation marketing par le client
+- UNE SEULE FOIS
+
+PRÉCONDITION :
+- La fondation marketing doit être validée
+
+EFFET :
+- Reprend et enrichit les hypothèses stratégiques du discovery
+- Crée des mécanismes de validation concrets
+- Définit la cadence de review et les conditions de pivot
+
+APRÈS L'APPEL :
+- Présente la boucle de feedback au client
+- Demande validation avant de passer aux OKR`,
+        {},
+        async () => {
+          if (!state.discovery || !state.businessStrategy || !state.marketingFoundation) {
+            return {
+              content: [
+                {
+                  type: "text" as const,
+                  text: JSON.stringify({
+                    error: "Fondation marketing manquante. Appelle defineMarketingFoundation d'abord.",
+                  }),
+                },
+              ],
+            };
+          }
+          const result = await defineFeedbackLoop({
+            discovery: state.discovery,
+            businessStrategy: state.businessStrategy,
+            marketingFoundation: state.marketingFoundation,
+          });
+          state.feedbackLoop = result;
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: JSON.stringify(result, null, 2),
+              },
+            ],
+          };
+        }
+      ),
+
+      // ========================================================
+      // Tool 6: proposeOKR (STRATÉGIQUE — cross-cutting)
+      // ========================================================
+      tool(
+        "proposeOKR",
+        `Génère 2-3 OKR marketing basés sur le diagnostic ET les 4 sous-systèmes stratégiques validés.
+
+QUAND L'UTILISER :
+- Après validation des 4 sous-systèmes stratégiques
+- UNE SEULE FOIS (génère tous les OKR en un appel)
+
+PRÉCONDITION :
+- Les 4 sous-systèmes doivent être validés (target market, business strategy, marketing foundation, feedback loop)
+
+EFFET :
+- Génère 2-3 OKR informés par toute la couche stratégique
 - Chaque OKR est lié à un bloc du discovery
-- Stocke en mémoire épisodique
 
 APRÈS L'APPEL :
 - Présente les OKR un par un au client
@@ -135,6 +362,10 @@ APRÈS L'APPEL :
             discovery: state.discovery,
             diagnostic: state.diagnostic,
             existingOKRs: state.validatedOKRs,
+            targetMarket: state.targetMarket ?? undefined,
+            businessStrategy: state.businessStrategy ?? undefined,
+            marketingFoundation: state.marketingFoundation ?? undefined,
+            feedbackLoop: state.feedbackLoop ?? undefined,
           });
           state.validatedOKRs = okrs;
           return {
@@ -149,7 +380,7 @@ APRÈS L'APPEL :
       ),
 
       // ========================================================
-      // Tool 3: proposeCampaigns (TACTIQUE)
+      // Tool 7: proposeCampaigns (TACTIQUE)
       // ========================================================
       tool(
         "proposeCampaigns",
@@ -161,12 +392,11 @@ QUAND L'UTILISER :
 
 EFFET :
 - Génère 1-2 campagnes par OKR avec canaux, messages clés, thèmes de contenu
-- Définit la stratégie de canal (rôle, fréquence, budget)
-- Propose un plan de contenu par pilier
+- Définit la stratégie de canal et le plan de contenu
 
 APRÈS L'APPEL :
 - Présente les campagnes au client
-- Explique le choix des canaux et la logique du plan`,
+- Explique le choix des canaux`,
         {
           okrId: z.string().describe("ID de l'OKR pour lequel générer les campagnes"),
         },
@@ -211,11 +441,11 @@ APRÈS L'APPEL :
       ),
 
       // ========================================================
-      // Tool 4: proposeTasks (OPÉRATIONNEL)
+      // Tool 8: proposeTasks (OPÉRATIONNEL)
       // ========================================================
       tool(
         "proposeTasks",
-        `Génère les tâches opérationnelles concrètes pour une campagne validée, avec calendrier et KPIs hebdo.
+        `Génère les tâches opérationnelles pour une campagne validée, avec calendrier et KPIs hebdo.
 
 QUAND L'UTILISER :
 - Après validation d'une campagne par le client
@@ -224,11 +454,7 @@ QUAND L'UTILISER :
 EFFET :
 - Génère 3-5 tâches par campagne avec owner, deadline, heures estimées
 - Crée un calendrier éditorial sur 4-6 semaines
-- Définit les KPIs de suivi hebdomadaire
-
-APRÈS L'APPEL :
-- Présente les tâches au client
-- Montre le calendrier éditorial`,
+- Définit les KPIs de suivi hebdomadaire`,
         {
           campaignId: z.string().describe("ID de la campagne pour laquelle générer les tâches"),
         },
@@ -272,7 +498,7 @@ APRÈS L'APPEL :
       ),
 
       // ========================================================
-      // Tool 5: adjustOKR (STRATÉGIQUE — feedback loop)
+      // Tool 9: adjustOKR (STRATÉGIQUE — feedback loop)
       // ========================================================
       tool(
         "adjustOKR",
@@ -280,11 +506,7 @@ APRÈS L'APPEL :
 
 QUAND L'UTILISER :
 - Quand le client demande une modification sur un OKR proposé
-- Peut être appelé plusieurs fois
-
-EFFET :
-- Modifie l'OKR en tenant compte du feedback
-- Met à jour l'état interne`,
+- Peut être appelé plusieurs fois`,
         {
           okrId: z.string().describe("ID de l'OKR à ajuster"),
           adjustment: z
@@ -318,7 +540,6 @@ EFFET :
             adjustment: args.adjustment,
             discovery: state.discovery,
           });
-          // Replace in state
           state.validatedOKRs = state.validatedOKRs.map((o) =>
             o.id === args.okrId ? adjusted : o
           );
@@ -334,24 +555,19 @@ EFFET :
       ),
 
       // ========================================================
-      // Tool 6: saveStrategy
+      // Tool 10: saveStrategy
       // ========================================================
       tool(
         "saveStrategy",
-        `Persiste la stratégie complète (3 niveaux : stratégique + tactique + opérationnel) en mémoire.
+        `Persiste la stratégie complète (3 niveaux avec 4 sous-systèmes stratégiques) en mémoire.
 
 QUAND L'UTILISER :
-- À la fin de la session, quand les 3 niveaux sont validés
-- UNE SEULE FOIS
-
-EFFET :
-- Crée un épisode de haute importance dans la mémoire épisodique
-- Stocke les faits stratégiques clés en mémoire sémantique
-- Marque la session comme complète`,
+- À la fin de la session, quand tout est validé
+- UNE SEULE FOIS`,
         {
           strategy: z
             .record(z.string(), z.unknown())
-            .describe("L'objet MarketingStrategy complet avec les 3 couches"),
+            .describe("L'objet MarketingStrategy complet"),
         },
         async (args) => {
           const strategy = args.strategy as unknown as import("@/types/marketing-strategy").MarketingStrategy;
@@ -371,24 +587,19 @@ EFFET :
       ),
 
       // ========================================================
-      // Tool 7: present_choices (réutilisation du pattern discovery)
+      // Tool 11: present_choices
       // ========================================================
       tool(
         "present_choices",
-        "Utilise cet outil quand tu poses une question à choix fermés. Même fonctionnement que dans la phase discovery. Écris un court texte d'introduction AVANT d'appeler l'outil, et n'inclus PAS les options dans ton texte.",
+        "Utilise cet outil quand tu poses une question à choix fermés. Écris un court texte d'introduction AVANT d'appeler l'outil, et n'inclus PAS les options dans ton texte.",
         {
           question: z.string().describe("La question posée à l'utilisateur"),
           choices: z
             .array(
               z.object({
-                value: z
-                  .string()
-                  .describe("Identifiant technique du choix"),
+                value: z.string().describe("Identifiant technique du choix"),
                 label: z.string().describe("Libellé affiché"),
-                description: z
-                  .string()
-                  .optional()
-                  .describe("Description courte optionnelle"),
+                description: z.string().optional().describe("Description courte optionnelle"),
               })
             )
             .describe("Les options proposées"),

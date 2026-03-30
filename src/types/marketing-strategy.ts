@@ -3,11 +3,15 @@
 // ============================================
 // Structuré en 3 niveaux marketing :
 //   1. Stratégique (le "pourquoi" et le "quoi")
+//      → 4 sous-systèmes : Target Market, Business Strategy,
+//        Feedback Loop, Marketing Foundation
 //   2. Tactique (le "comment")
 //   3. Opérationnel (le "qui fait quoi quand")
 // ============================================
 
 // ========== NIVEAU 1 : STRATÉGIQUE ==========
+
+// --- Diagnostic (cross-cutting) ---
 
 export interface MarketingDiagnostic {
   maturityScore: number; // 0-100
@@ -18,12 +22,89 @@ export interface MarketingDiagnostic {
   summary: string; // 3-5 lignes de synthèse
 }
 
+// --- Subsystem 1 : Target Market ---
+
+export interface PrioritySegment {
+  segment: string;
+  priority: "primary" | "secondary";
+  mainPain: string; // Douleur principale de ce segment
+  targetMessage: string; // Message clé pour ce segment
+}
+
+export interface IdealCustomerProfile {
+  description: string; // Portrait du client idéal
+  painPoints: string[]; // Douleurs principales
+  triggerMoments: string[]; // Situations qui déclenchent la recherche
+  buyingContext: string; // Contexte de décision d'achat
+  preferredChannels: string[]; // Où les trouver
+  commonObjections: string[]; // Objections fréquentes
+  decisionCriteria: string[]; // Critères de choix
+}
+
+export interface TargetMarket {
+  marketDefinition: string; // Description du marché visé
+  segments: PrioritySegment[];
+  icp: IdealCustomerProfile;
+}
+
+// --- Subsystem 2 : Business Strategy ---
+
+export interface BusinessStrategy {
+  vision: string; // Vision de marque à moyen terme
+  valueProposition: string; // Synthèse de la proposition de valeur
+  transformation: {
+    before: string; // État avant
+    after: string; // État après
+    timeToValue: string; // Temps pour voir les résultats
+  };
+  uniqueDifferentiator: string; // Le vrai différenciateur
+  competitiveAngle: string; // Angle concurrentiel choisi
+  businessStage: string; // Stade actuel (launch, growth, etc.)
+}
+
+// --- Subsystem 3 : Feedback Loop ---
+
+export interface ValidationTest {
+  hypothesis: string;
+  metric: string; // KPI pour valider
+  method: string; // A/B test, analytics, survey...
+  successCriteria: string; // Seuil de validation
+  timeline: string; // Horizon temporel
+}
+
+export interface FeedbackLoop {
+  hypotheses: string[]; // Hypothèses stratégiques à valider
+  validationTests: ValidationTest[];
+  reviewCadence: string; // "hebdomadaire", "bi-mensuel"...
+  pivotTriggers: string[]; // Conditions qui déclenchent un ajustement
+}
+
+// --- Subsystem 4 : Marketing Foundation ---
+
 export interface Positioning {
   targetMarket: string; // Marché visé
   uniqueValue: string; // Proposition de valeur différenciante
   competitiveAngle: string; // Angle concurrentiel choisi
   brandPersonality: string; // Ton et posture de marque
 }
+
+export interface SegmentMessage {
+  segment: string;
+  message: string;
+  tone: string;
+}
+
+export interface MarketingFoundation {
+  offer: string; // Description de l'offre / packaging
+  positioning: Positioning;
+  messaging: {
+    primaryMessage: string; // Message principal cross-canal
+    segmentMessages: SegmentMessage[]; // Messages par segment
+    proofPoints: string[]; // Preuves et témoignages
+  };
+}
+
+// --- OKRs (cross-cutting) ---
 
 export interface KeyResult {
   id: string;
@@ -46,18 +127,15 @@ export interface OKR {
   };
 }
 
-export interface PrioritySegment {
-  segment: string;
-  priority: "primary" | "secondary";
-  mainPain: string; // Douleur principale de ce segment
-  targetMessage: string; // Message clé pour ce segment
-}
+// --- Strategic Layer ---
 
 export interface StrategicLayer {
   diagnostic: MarketingDiagnostic;
-  positioning: Positioning;
+  targetMarket: TargetMarket;
+  businessStrategy: BusinessStrategy;
+  feedbackLoop: FeedbackLoop;
+  marketingFoundation: MarketingFoundation;
   okrs: OKR[];
-  prioritySegments: PrioritySegment[];
 }
 
 // ========== NIVEAU 2 : TACTIQUE ==========
@@ -173,9 +251,3 @@ export interface MarketingStrategy {
 
   narrativeSummary: string; // Brief stratégique en 10-15 lignes
 }
-
-// ========== Legacy aliases (backward compat) ==========
-
-export type ActionType = "quick_win" | "strategic" | "foundation";
-export type EffortLevel = "low" | "medium" | "high";
-export type ImpactLevel = "low" | "medium" | "high";

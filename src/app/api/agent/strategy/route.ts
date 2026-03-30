@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
             mcpServers: {
               "strategy-tools": strategyMcpServer,
             },
-            maxTurns: 8, // More turns needed: diagnostic + OKR + actions + save
+            maxTurns: 14, // diagnostic + 4 subsystems + OKR + campaigns + tasks + save
           },
         });
 

@@ -1,7 +1,7 @@
 // ============================================================
 // Strategy Tools Implementation
 // Takes BusinessDiscovery as input and produces a 3-layer strategy:
-//   Strategic (diagnostic, OKRs) → Tactical (campaigns) → Operational (tasks)
+//   Strategic (4 subsystems + OKRs) → Tactical (campaigns) → Operational (tasks)
 // ============================================================
 
 import {
@@ -13,6 +13,10 @@ import type { BusinessDiscovery } from "@/types/business-discovery";
 import type {
   MarketingDiagnostic,
   OKR,
+  TargetMarket,
+  BusinessStrategy,
+  FeedbackLoop,
+  MarketingFoundation,
   Campaign,
   ChannelStrategy,
   ContentPlan,
@@ -146,23 +150,306 @@ Maximum 3 éléments par catégorie. Sois concis et actionnable.`;
 }
 
 // ============================================================
-// Tool 2: proposeOKR (STRATÉGIQUE — uses Sonnet)
+// Tool 2: analyzeTargetMarket (STRATÉGIQUE — Subsystem 1)
+// ============================================================
+
+interface AnalyzeTargetMarketInput {
+  discovery: BusinessDiscovery;
+  diagnostic: MarketingDiagnostic;
+}
+
+export async function analyzeTargetMarket(
+  input: AnalyzeTargetMarketInput
+): Promise<TargetMarket> {
+  const { discovery, diagnostic } = input;
+
+  const prompt = `Tu es un stratège marketing senior. Analyse le marché cible et construis un profil client idéal (ICP) à partir de ces données de découverte.
+
+## Données discovery
+- Entreprise : ${discovery.metadata.companyName} (${discovery.metadata.sector}, stade: ${discovery.businessContext.stage})
+- Problème : ${discovery.problem.statement} (douleur : ${discovery.problem.painLevel})
+- Audiences identifiées :
+${discovery.audiences.map((a) => `  - ${a.segment} (${a.priority}) : douleur="${a.painIntensity}", trigger="${a.triggerMoment}", contexte achat="${a.buyingContext}", canaux=[${a.channels.join(", ")}], objections=[${a.objections.map((o) => o.objection).join(", ")}]${a.decisionProcess ? `, décideurs=[${a.decisionProcess.decisionMakers.join(", ")}], cycle=${a.decisionProcess.averageCycleLength}` : ""}`).join("\n")}
+- Diagnostic : score ${diagnostic.maturityScore}/100, forces=[${diagnostic.strengths.join(", ")}]
+
+## Règles
+- Identifie le marché cible global
+- Priorise les segments (primary/secondary)
+- Le ICP doit être basé sur l'audience prioritaire
+- Inclus au moins 2-3 pain points concrets
+- Les trigger moments doivent être des situations réelles, pas des généralités
+
+Réponds en JSON strict :
+{
+  "marketDefinition": "...",
+  "segments": [
+    { "segment": "...", "priority": "primary", "mainPain": "...", "targetMessage": "..." }
+  ],
+  "icp": {
+    "description": "...",
+    "painPoints": ["..."],
+    "triggerMoments": ["..."],
+    "buyingContext": "...",
+    "preferredChannels": ["..."],
+    "commonObjections": ["..."],
+    "decisionCriteria": ["..."]
+  }
+}`;
+
+  const responseText = await callClaudeSonnet(prompt);
+  const result = extractJsonFromResponse<TargetMarket>(responseText);
+
+  recordEpisodeUseCase.execute({
+    type: "task_result",
+    description: `Marché cible analysé pour ${discovery.metadata.companyName} — ${result.segments?.length || 0} segment(s)`,
+    data: { targetMarket: result },
+    tags: ["strategy", "target-market", "icp"],
+    importance: "high",
+  });
+
+  return result;
+}
+
+// ============================================================
+// Tool 3: defineBusinessStrategy (STRATÉGIQUE — Subsystem 2)
+// ============================================================
+
+interface DefineBusinessStrategyInput {
+  discovery: BusinessDiscovery;
+  diagnostic: MarketingDiagnostic;
+  targetMarket: TargetMarket;
+}
+
+export async function defineBusinessStrategy(
+  input: DefineBusinessStrategyInput
+): Promise<BusinessStrategy> {
+  const { discovery, diagnostic, targetMarket } = input;
+
+  const prompt = `Tu es un stratège marketing senior. Définis la stratégie business : vision, proposition de valeur, différenciateur et angle concurrentiel.
+
+## Données discovery
+- Entreprise : ${discovery.metadata.companyName} (${discovery.metadata.sector})
+- Stade : ${discovery.businessContext.stage} — ${discovery.businessContext.stageDetails}
+- Problème : ${discovery.problem.statement} (${discovery.problem.painLevel})
+- Transformation : avant="${discovery.valueProposition.transformation.before}" → après="${discovery.valueProposition.transformation.after}" (en ${discovery.valueProposition.transformation.timeToValue})
+- Différenciateur : ${discovery.valueProposition.uniqueDifferentiator}
+- Alternatives actuelles : ${discovery.problem.currentAlternatives.map((a) => `${a.alternative} (limites: ${a.limitations})`).join("; ")}
+- Preuves : ${discovery.valueProposition.proofPoints.map((p) => `${p.type}: ${p.description} (${p.verified ? "vérifié" : "claim"})`).join("; ")}
+- Objectif principal : ${discovery.businessContext.primaryGoal.description}
+
+## Marché cible validé
+- Marché : ${targetMarket.marketDefinition}
+- ICP : ${targetMarket.icp.description}
+- Segment primaire : ${targetMarket.segments.find((s) => s.priority === "primary")?.segment || "non défini"}
+
+## Diagnostic
+- Score : ${diagnostic.maturityScore}/100
+- Forces : ${diagnostic.strengths.join(", ")}
+- Opportunités : ${diagnostic.opportunities.join(", ")}
+
+## Règles
+- La vision doit être inspirante et à horizon 12-18 mois
+- La proposition de valeur doit être en une phrase claire
+- L'angle concurrentiel doit être défendable
+- Le stade business doit influencer la stratégie
+
+Réponds en JSON strict :
+{
+  "vision": "...",
+  "valueProposition": "...",
+  "transformation": { "before": "...", "after": "...", "timeToValue": "..." },
+  "uniqueDifferentiator": "...",
+  "competitiveAngle": "...",
+  "businessStage": "${discovery.businessContext.stage}"
+}`;
+
+  const responseText = await callClaudeSonnet(prompt);
+  const result = extractJsonFromResponse<BusinessStrategy>(responseText);
+
+  recordEpisodeUseCase.execute({
+    type: "task_result",
+    description: `Stratégie business définie pour ${discovery.metadata.companyName}`,
+    data: { businessStrategy: result },
+    tags: ["strategy", "business-strategy", "value-proposition"],
+    importance: "high",
+  });
+
+  return result;
+}
+
+// ============================================================
+// Tool 4: defineMarketingFoundation (STRATÉGIQUE — Subsystem 4)
+// ============================================================
+
+interface DefineMarketingFoundationInput {
+  discovery: BusinessDiscovery;
+  targetMarket: TargetMarket;
+  businessStrategy: BusinessStrategy;
+}
+
+export async function defineMarketingFoundation(
+  input: DefineMarketingFoundationInput
+): Promise<MarketingFoundation> {
+  const { discovery, targetMarket, businessStrategy } = input;
+
+  const prompt = `Tu es un stratège marketing senior. Définis la fondation marketing : offre, positionnement et messaging par segment.
+
+## Stratégie business validée
+- Vision : ${businessStrategy.vision}
+- Proposition de valeur : ${businessStrategy.valueProposition}
+- Différenciateur : ${businessStrategy.uniqueDifferentiator}
+- Angle concurrentiel : ${businessStrategy.competitiveAngle}
+
+## Marché cible validé
+- Marché : ${targetMarket.marketDefinition}
+- Segments : ${targetMarket.segments.map((s) => `${s.segment} (${s.priority}): "${s.mainPain}"`).join("; ")}
+- ICP : ${targetMarket.icp.description}
+- Objections : ${targetMarket.icp.commonObjections.join(", ")}
+
+## Données discovery
+- Langage des audiences : ${discovery.audiences.map((a) => `${a.segment}: [${a.language.join(", ")}]`).join("; ")}
+- Preuves : ${discovery.valueProposition.proofPoints.map((p) => `${p.type}: ${p.description}`).join("; ")}
+- Meilleur canal actuel : ${discovery.currentMarketing.bestPerforming || "inconnu"}
+
+## Règles
+- L'offre doit être formulée du point de vue client
+- Le positionnement doit être clair et différenciant
+- Le message principal doit être en une phrase
+- Chaque segment doit avoir un message adapté avec un ton spécifique
+- Les proof points doivent être des faits vérifiables
+
+Réponds en JSON strict :
+{
+  "offer": "...",
+  "positioning": {
+    "targetMarket": "...",
+    "uniqueValue": "...",
+    "competitiveAngle": "...",
+    "brandPersonality": "..."
+  },
+  "messaging": {
+    "primaryMessage": "...",
+    "segmentMessages": [
+      { "segment": "...", "message": "...", "tone": "..." }
+    ],
+    "proofPoints": ["..."]
+  }
+}`;
+
+  const responseText = await callClaudeSonnet(prompt);
+  const result = extractJsonFromResponse<MarketingFoundation>(responseText);
+
+  recordEpisodeUseCase.execute({
+    type: "task_result",
+    description: `Fondation marketing définie pour ${discovery.metadata.companyName}`,
+    data: { marketingFoundation: result },
+    tags: ["strategy", "marketing-foundation", "messaging"],
+    importance: "high",
+  });
+
+  return result;
+}
+
+// ============================================================
+// Tool 5: defineFeedbackLoop (STRATÉGIQUE — Subsystem 3, Haiku)
+// ============================================================
+
+interface DefineFeedbackLoopInput {
+  discovery: BusinessDiscovery;
+  businessStrategy: BusinessStrategy;
+  marketingFoundation: MarketingFoundation;
+}
+
+export async function defineFeedbackLoop(
+  input: DefineFeedbackLoopInput
+): Promise<FeedbackLoop> {
+  const { discovery, businessStrategy, marketingFoundation } = input;
+
+  const prompt = `Tu es un stratège marketing. Définis la boucle de feedback : hypothèses à valider, mécanismes de test, cadence de review et conditions de pivot.
+
+## Hypothèses stratégiques du discovery
+${discovery.strategicHypotheses.map((h, i) => `${i + 1}. ${h}`).join("\n")}
+
+## Stratégie business
+- Vision : ${businessStrategy.vision}
+- Proposition de valeur : ${businessStrategy.valueProposition}
+- Stade : ${businessStrategy.businessStage}
+
+## Fondation marketing
+- Message principal : ${marketingFoundation.messaging.primaryMessage}
+- Positionnement : ${marketingFoundation.positioning.uniqueValue}
+
+## Contexte
+- Urgence : ${discovery.businessContext.urgency}
+- Contraintes : ${discovery.businessContext.constraints.map((c) => `${c.type}: ${c.description} (${c.severity})`).join("; ")}
+- Outils analytics disponibles : ${discovery.currentMarketing.tools.filter((t) => t.category === "analytics").map((t) => t.name).join(", ") || "aucun identifié"}
+
+## Règles
+- Reprends et enrichis les hypothèses du discovery
+- Chaque hypothèse doit avoir un test de validation concret
+- La cadence de review doit être adaptée à l'urgence
+- Les conditions de pivot doivent être des seuils mesurables
+
+Réponds en JSON strict :
+{
+  "hypotheses": ["..."],
+  "validationTests": [
+    {
+      "hypothesis": "...",
+      "metric": "...",
+      "method": "...",
+      "successCriteria": "...",
+      "timeline": "..."
+    }
+  ],
+  "reviewCadence": "...",
+  "pivotTriggers": ["..."]
+}`;
+
+  const responseText = await callClaudeHaiku(prompt, 1024);
+  const result = extractJsonFromResponse<FeedbackLoop>(responseText);
+
+  recordEpisodeUseCase.execute({
+    type: "task_result",
+    description: `Boucle de feedback définie — ${result.hypotheses?.length || 0} hypothèse(s)`,
+    data: { feedbackLoop: result },
+    tags: ["strategy", "feedback-loop", "hypotheses"],
+    importance: "medium",
+  });
+
+  return result;
+}
+
+// ============================================================
+// Tool 6: proposeOKR (STRATÉGIQUE — uses Sonnet)
 // ============================================================
 
 interface ProposeOKRInput {
   discovery: BusinessDiscovery;
   diagnostic: MarketingDiagnostic;
   existingOKRs: OKR[];
+  targetMarket?: TargetMarket;
+  businessStrategy?: BusinessStrategy;
+  marketingFoundation?: MarketingFoundation;
+  feedbackLoop?: FeedbackLoop;
 }
 
 export async function proposeOKRs(
   input: ProposeOKRInput
 ): Promise<OKR[]> {
-  const { discovery, diagnostic, existingOKRs } = input;
+  const { discovery, diagnostic, existingOKRs, targetMarket, businessStrategy, marketingFoundation, feedbackLoop } = input;
 
   const existingObjectives = existingOKRs.map((o) => o.objective).join(", ") || "aucun";
 
-  const prompt = `Tu es un stratège marketing senior. Génère 2-3 OKR marketing basés sur ce diagnostic.
+  // Build subsystem context if available
+  const subsystemContext = [
+    targetMarket ? `\n## Marché cible validé\n- Marché : ${targetMarket.marketDefinition}\n- ICP : ${targetMarket.icp.description}\n- Segments : ${targetMarket.segments.map((s) => `${s.segment} (${s.priority})`).join(", ")}` : "",
+    businessStrategy ? `\n## Stratégie business validée\n- Vision : ${businessStrategy.vision}\n- Proposition de valeur : ${businessStrategy.valueProposition}\n- Différenciateur : ${businessStrategy.uniqueDifferentiator}\n- Angle : ${businessStrategy.competitiveAngle}` : "",
+    marketingFoundation ? `\n## Fondation marketing validée\n- Message principal : ${marketingFoundation.messaging.primaryMessage}\n- Positionnement : ${marketingFoundation.positioning.uniqueValue}` : "",
+    feedbackLoop ? `\n## Hypothèses à valider\n${feedbackLoop.hypotheses.map((h) => `- ${h}`).join("\n")}` : "",
+  ].filter(Boolean).join("\n");
+
+  const prompt = `Tu es un stratège marketing senior. Génère 2-3 OKR marketing basés sur le diagnostic et les sous-systèmes stratégiques validés.
 
 ## Contexte
 - Entreprise : ${discovery.metadata.companyName} (${discovery.metadata.sector}, stade: ${discovery.businessContext.stage})
@@ -171,13 +458,12 @@ export async function proposeOKRs(
 - Forces : ${diagnostic.strengths.join(", ")}
 - Faiblesses : ${diagnostic.weaknesses.join(", ")}
 - Opportunités : ${diagnostic.opportunities.join(", ")}
-- Audience primaire : ${discovery.audiences.find((a) => a.priority === "primary")?.segment || "non définie"}
 - Budget : ${discovery.currentMarketing.budget.range} (${discovery.currentMarketing.budget.flexibility})
 - Équipe : ${discovery.currentMarketing.team.size} pers. (dédiée: ${discovery.currentMarketing.team.dedicatedToMarketing})
 - Urgence : ${discovery.businessContext.urgency}
 - Contraintes : ${discovery.businessContext.constraints.map((c) => `${c.type}: ${c.description}`).join("; ")}
 - OKR déjà proposés : ${existingObjectives}
-- Hypothèses stratégiques (du discovery) : ${discovery.strategicHypotheses.join("; ")}
+${subsystemContext}
 
 ## Règles
 - Maximum 3 OKR, minimum 2
@@ -452,6 +738,25 @@ export async function saveStrategy(
   }
 
   const strategyId = result.value;
+
+  // Store subsystem facts in semantic memory
+  addClientFactUseCase.execute({
+    category: "strategy",
+    fact: `Marché cible: ${strategy.strategic.targetMarket.marketDefinition}`,
+    source: "strategy_agent",
+  });
+
+  addClientFactUseCase.execute({
+    category: "strategy",
+    fact: `Proposition de valeur: ${strategy.strategic.businessStrategy.valueProposition}`,
+    source: "strategy_agent",
+  });
+
+  addClientFactUseCase.execute({
+    category: "strategy",
+    fact: `Message principal: ${strategy.strategic.marketingFoundation.messaging.primaryMessage}`,
+    source: "strategy_agent",
+  });
 
   // Store key strategic facts in semantic memory for cross-phase retrieval
   for (const okr of strategy.strategic.okrs) {

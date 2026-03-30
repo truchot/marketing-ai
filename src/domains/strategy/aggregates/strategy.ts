@@ -1,7 +1,7 @@
 // ============================================================
 // Strategy Aggregate
 // Represents a validated marketing strategy with 3 layers:
-//   Strategic → Tactical → Operational
+//   Strategic (4 subsystems) → Tactical → Operational
 // ============================================================
 
 import { AggregateRoot } from "@/domains/shared";
@@ -12,6 +12,10 @@ import type {
   OperationalLayer,
   ConstraintsFit,
   OKR,
+  TargetMarket,
+  BusinessStrategy,
+  FeedbackLoop,
+  MarketingFoundation,
 } from "@/types/marketing-strategy";
 import { STRATEGY_GENERATED } from "@/domains/shared/domain-events";
 import { IdGenerator } from "@/lib/id-generator";
@@ -57,7 +61,7 @@ export class StrategyAggregate extends AggregateRoot {
     return this._narrativeSummary;
   }
 
-  // Convenience accessors for the strategic layer
+  // Convenience accessors
   get diagnostic() {
     return this._strategic.diagnostic;
   }
@@ -66,8 +70,26 @@ export class StrategyAggregate extends AggregateRoot {
     return this._strategic.okrs;
   }
 
+  get targetMarket(): TargetMarket {
+    return this._strategic.targetMarket;
+  }
+
+  get businessStrategy(): BusinessStrategy {
+    return this._strategic.businessStrategy;
+  }
+
+  get feedbackLoop(): FeedbackLoop {
+    return this._strategic.feedbackLoop;
+  }
+
+  get marketingFoundation(): MarketingFoundation {
+    return this._strategic.marketingFoundation;
+  }
+
   static create(strategy: MarketingStrategy): StrategyAggregate {
-    // Validate strategic layer invariants
+    // --- Strategic layer invariants ---
+
+    // OKRs
     if (strategy.strategic.okrs.length === 0) {
       throw new Error("A strategy must have at least one OKR");
     }
@@ -75,12 +97,35 @@ export class StrategyAggregate extends AggregateRoot {
       throw new Error("A strategy must have at most 3 OKRs");
     }
 
-    // Validate tactical layer invariants
+    // Target Market
+    if (strategy.strategic.targetMarket.segments.length === 0) {
+      throw new Error("Target market must have at least one segment");
+    }
+    if (strategy.strategic.targetMarket.icp.painPoints.length === 0) {
+      throw new Error("ICP must have at least one pain point");
+    }
+
+    // Business Strategy
+    if (!strategy.strategic.businessStrategy.valueProposition.trim()) {
+      throw new Error("Business strategy must have a value proposition");
+    }
+
+    // Marketing Foundation
+    if (!strategy.strategic.marketingFoundation.messaging.primaryMessage.trim()) {
+      throw new Error("Marketing foundation must have a primary message");
+    }
+
+    // Feedback Loop
+    if (strategy.strategic.feedbackLoop.hypotheses.length === 0) {
+      throw new Error("Feedback loop must have at least one hypothesis");
+    }
+
+    // --- Tactical layer invariants ---
     if (strategy.tactical.campaigns.length === 0) {
       throw new Error("A strategy must have at least one campaign");
     }
 
-    // Validate operational layer invariants
+    // --- Operational layer invariants ---
     if (strategy.operational.tasks.length === 0) {
       throw new Error("A strategy must have at least one operational task");
     }
@@ -104,6 +149,8 @@ export class StrategyAggregate extends AggregateRoot {
         strategyId: id,
         companyName: aggregate.companyName,
         okrCount: aggregate.okrs.length,
+        segmentCount: aggregate.targetMarket.segments.length,
+        hypothesisCount: aggregate.feedbackLoop.hypotheses.length,
         campaignCount: aggregate.tactical.campaigns.length,
         taskCount: aggregate.operational.tasks.length,
         maturityScore: aggregate.diagnostic.maturityScore,
@@ -123,12 +170,12 @@ export class StrategyAggregate extends AggregateRoot {
 
   removeOKR(okrId: string): void {
     this._strategic.okrs = this._strategic.okrs.filter((o) => o.id !== okrId);
-    // Also remove campaigns linked to this OKR
+    // Cascade: remove campaigns linked to this OKR
     const removedCampaignIds = this._tactical.campaigns
       .filter((c) => c.okrId === okrId)
       .map((c) => c.id);
     this._tactical.campaigns = this._tactical.campaigns.filter((c) => c.okrId !== okrId);
-    // Also remove tasks linked to removed campaigns
+    // Cascade: remove tasks linked to removed campaigns
     this._operational.tasks = this._operational.tasks.filter(
       (t) => !removedCampaignIds.includes(t.campaignId)
     );
@@ -142,9 +189,28 @@ export class StrategyAggregate extends AggregateRoot {
       metadata: { ...this._metadata },
       strategic: {
         diagnostic: this._strategic.diagnostic,
-        positioning: { ...this._strategic.positioning },
+        targetMarket: {
+          marketDefinition: this._strategic.targetMarket.marketDefinition,
+          segments: [...this._strategic.targetMarket.segments],
+          icp: { ...this._strategic.targetMarket.icp },
+        },
+        businessStrategy: { ...this._strategic.businessStrategy },
+        feedbackLoop: {
+          hypotheses: [...this._strategic.feedbackLoop.hypotheses],
+          validationTests: [...this._strategic.feedbackLoop.validationTests],
+          reviewCadence: this._strategic.feedbackLoop.reviewCadence,
+          pivotTriggers: [...this._strategic.feedbackLoop.pivotTriggers],
+        },
+        marketingFoundation: {
+          offer: this._strategic.marketingFoundation.offer,
+          positioning: { ...this._strategic.marketingFoundation.positioning },
+          messaging: {
+            primaryMessage: this._strategic.marketingFoundation.messaging.primaryMessage,
+            segmentMessages: [...this._strategic.marketingFoundation.messaging.segmentMessages],
+            proofPoints: [...this._strategic.marketingFoundation.messaging.proofPoints],
+          },
+        },
         okrs: [...this._strategic.okrs],
-        prioritySegments: [...this._strategic.prioritySegments],
       },
       tactical: {
         campaigns: [...this._tactical.campaigns],

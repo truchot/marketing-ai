@@ -43,7 +43,14 @@ export const marketingStrategySchema: Record<string, unknown> = {
     // ========== STRATEGIC LAYER ==========
     strategic: {
       type: "object",
-      required: ["diagnostic", "positioning", "okrs", "prioritySegments"],
+      required: [
+        "diagnostic",
+        "targetMarket",
+        "businessStrategy",
+        "feedbackLoop",
+        "marketingFoundation",
+        "okrs",
+      ],
       properties: {
         diagnostic: {
           type: "object",
@@ -64,16 +71,160 @@ export const marketingStrategySchema: Record<string, unknown> = {
             summary: { type: "string" },
           },
         },
-        positioning: {
+
+        // --- Subsystem 1: Target Market ---
+        targetMarket: {
           type: "object",
-          required: ["targetMarket", "uniqueValue", "competitiveAngle", "brandPersonality"],
+          required: ["marketDefinition", "segments", "icp"],
           properties: {
-            targetMarket: { type: "string" },
-            uniqueValue: { type: "string" },
-            competitiveAngle: { type: "string" },
-            brandPersonality: { type: "string" },
+            marketDefinition: { type: "string" },
+            segments: {
+              type: "array",
+              items: {
+                type: "object",
+                required: ["segment", "priority", "mainPain", "targetMessage"],
+                properties: {
+                  segment: { type: "string" },
+                  priority: { type: "string", enum: ["primary", "secondary"] },
+                  mainPain: { type: "string" },
+                  targetMessage: { type: "string" },
+                },
+              },
+            },
+            icp: {
+              type: "object",
+              required: [
+                "description",
+                "painPoints",
+                "triggerMoments",
+                "buyingContext",
+                "preferredChannels",
+                "commonObjections",
+                "decisionCriteria",
+              ],
+              properties: {
+                description: { type: "string" },
+                painPoints: { type: "array", items: { type: "string" } },
+                triggerMoments: { type: "array", items: { type: "string" } },
+                buyingContext: { type: "string" },
+                preferredChannels: { type: "array", items: { type: "string" } },
+                commonObjections: { type: "array", items: { type: "string" } },
+                decisionCriteria: { type: "array", items: { type: "string" } },
+              },
+            },
           },
         },
+
+        // --- Subsystem 2: Business Strategy ---
+        businessStrategy: {
+          type: "object",
+          required: [
+            "vision",
+            "valueProposition",
+            "transformation",
+            "uniqueDifferentiator",
+            "competitiveAngle",
+            "businessStage",
+          ],
+          properties: {
+            vision: { type: "string" },
+            valueProposition: { type: "string" },
+            transformation: {
+              type: "object",
+              required: ["before", "after", "timeToValue"],
+              properties: {
+                before: { type: "string" },
+                after: { type: "string" },
+                timeToValue: { type: "string" },
+              },
+            },
+            uniqueDifferentiator: { type: "string" },
+            competitiveAngle: { type: "string" },
+            businessStage: { type: "string" },
+          },
+        },
+
+        // --- Subsystem 3: Feedback Loop ---
+        feedbackLoop: {
+          type: "object",
+          required: [
+            "hypotheses",
+            "validationTests",
+            "reviewCadence",
+            "pivotTriggers",
+          ],
+          properties: {
+            hypotheses: { type: "array", items: { type: "string" } },
+            validationTests: {
+              type: "array",
+              items: {
+                type: "object",
+                required: [
+                  "hypothesis",
+                  "metric",
+                  "method",
+                  "successCriteria",
+                  "timeline",
+                ],
+                properties: {
+                  hypothesis: { type: "string" },
+                  metric: { type: "string" },
+                  method: { type: "string" },
+                  successCriteria: { type: "string" },
+                  timeline: { type: "string" },
+                },
+              },
+            },
+            reviewCadence: { type: "string" },
+            pivotTriggers: { type: "array", items: { type: "string" } },
+          },
+        },
+
+        // --- Subsystem 4: Marketing Foundation ---
+        marketingFoundation: {
+          type: "object",
+          required: ["offer", "positioning", "messaging"],
+          properties: {
+            offer: { type: "string" },
+            positioning: {
+              type: "object",
+              required: [
+                "targetMarket",
+                "uniqueValue",
+                "competitiveAngle",
+                "brandPersonality",
+              ],
+              properties: {
+                targetMarket: { type: "string" },
+                uniqueValue: { type: "string" },
+                competitiveAngle: { type: "string" },
+                brandPersonality: { type: "string" },
+              },
+            },
+            messaging: {
+              type: "object",
+              required: ["primaryMessage", "segmentMessages", "proofPoints"],
+              properties: {
+                primaryMessage: { type: "string" },
+                segmentMessages: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    required: ["segment", "message", "tone"],
+                    properties: {
+                      segment: { type: "string" },
+                      message: { type: "string" },
+                      tone: { type: "string" },
+                    },
+                  },
+                },
+                proofPoints: { type: "array", items: { type: "string" } },
+              },
+            },
+          },
+        },
+
+        // --- OKRs (cross-cutting) ---
         okrs: {
           type: "array",
           items: {
@@ -135,19 +286,6 @@ export const marketingStrategySchema: Record<string, unknown> = {
                   evidence: { type: "string" },
                 },
               },
-            },
-          },
-        },
-        prioritySegments: {
-          type: "array",
-          items: {
-            type: "object",
-            required: ["segment", "priority", "mainPain", "targetMessage"],
-            properties: {
-              segment: { type: "string" },
-              priority: { type: "string", enum: ["primary", "secondary"] },
-              mainPain: { type: "string" },
-              targetMessage: { type: "string" },
             },
           },
         },
@@ -336,13 +474,24 @@ export const marketingStrategySchema: Record<string, unknown> = {
 export function isMarketingStrategy(
   data: unknown
 ): data is MarketingStrategy {
+  if (
+    typeof data !== "object" ||
+    data === null ||
+    !("metadata" in data) ||
+    !("strategic" in data) ||
+    !("tactical" in data) ||
+    !("operational" in data) ||
+    !("narrativeSummary" in data)
+  ) {
+    return false;
+  }
+  const strategic = (data as Record<string, unknown>).strategic;
   return (
-    typeof data === "object" &&
-    data !== null &&
-    "metadata" in data &&
-    "strategic" in data &&
-    "tactical" in data &&
-    "operational" in data &&
-    "narrativeSummary" in data
+    typeof strategic === "object" &&
+    strategic !== null &&
+    "targetMarket" in strategic &&
+    "businessStrategy" in strategic &&
+    "feedbackLoop" in strategic &&
+    "marketingFoundation" in strategic
   );
 }

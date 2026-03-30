@@ -77,21 +77,69 @@ function makeStrategy(
         threats: ["Strong competition"],
         summary: "Test summary",
       },
-      positioning: {
-        targetMarket: "PME SaaS B2B",
-        uniqueValue: "Automatisation marketing accessible",
+      targetMarket: {
+        marketDefinition: "PME SaaS B2B en France",
+        segments: [
+          {
+            segment: "PME SaaS",
+            priority: "primary",
+            mainPain: "Manque de visibilité",
+            targetMessage: "Développez votre visibilité en 30 jours",
+          },
+        ],
+        icp: {
+          description: "Fondateur de PME SaaS B2B, 10-50 employés",
+          painPoints: ["Manque de visibilité", "Pas de stratégie marketing"],
+          triggerMoments: ["Levée de fonds", "Stagnation croissance"],
+          buyingContext: "Recherche d'expertise externe",
+          preferredChannels: ["LinkedIn", "Blog"],
+          commonObjections: ["Trop cher", "Pas le temps"],
+          decisionCriteria: ["ROI prouvé", "Expertise sectorielle"],
+        },
+      },
+      businessStrategy: {
+        vision: "Devenir la référence marketing IA pour les PME SaaS",
+        valueProposition: "Automatisation marketing accessible pour PME SaaS",
+        transformation: {
+          before: "Marketing ad-hoc sans stratégie",
+          after: "Stratégie marketing structurée et mesurable",
+          timeToValue: "30 jours",
+        },
+        uniqueDifferentiator: "IA + expertise marketing combinées",
         competitiveAngle: "Prix + simplicité",
-        brandPersonality: "Expert accessible",
+        businessStage: "growth",
+      },
+      feedbackLoop: {
+        hypotheses: ["Le contenu LinkedIn génère des leads qualifiés"],
+        validationTests: [
+          {
+            hypothesis: "Le contenu LinkedIn génère des leads qualifiés",
+            metric: "Leads LinkedIn / mois",
+            method: "Analytics LinkedIn + CRM",
+            successCriteria: ">10 leads/mois",
+            timeline: "3 mois",
+          },
+        ],
+        reviewCadence: "bi-mensuel",
+        pivotTriggers: ["<5 leads/mois après 3 mois"],
+      },
+      marketingFoundation: {
+        offer: "Audit marketing + stratégie personnalisée",
+        positioning: {
+          targetMarket: "PME SaaS B2B",
+          uniqueValue: "Automatisation marketing accessible",
+          competitiveAngle: "Prix + simplicité",
+          brandPersonality: "Expert accessible",
+        },
+        messaging: {
+          primaryMessage: "Structurez votre marketing en 30 jours",
+          segmentMessages: [
+            { segment: "PME SaaS", message: "Développez votre visibilité", tone: "professionnel" },
+          ],
+          proofPoints: ["50+ clients accompagnés"],
+        },
       },
       okrs: [okr1, okr2],
-      prioritySegments: [
-        {
-          segment: "PME SaaS",
-          priority: "primary",
-          mainPain: "Manque de visibilité",
-          targetMessage: "Développez votre visibilité en 30 jours",
-        },
-      ],
     },
     tactical: {
       campaigns: [
@@ -162,6 +210,10 @@ describe("StrategyAggregate", () => {
       expect(aggregate.id).toMatch(/^strategy-/);
       expect(aggregate.companyName).toBe("TestCo");
       expect(aggregate.diagnostic.maturityScore).toBe(55);
+      expect(aggregate.targetMarket.segments).toHaveLength(1);
+      expect(aggregate.businessStrategy.valueProposition).toBe("Automatisation marketing accessible pour PME SaaS");
+      expect(aggregate.feedbackLoop.hypotheses).toHaveLength(1);
+      expect(aggregate.marketingFoundation.messaging.primaryMessage).toBe("Structurez votre marketing en 30 jours");
       expect(aggregate.okrs).toHaveLength(2);
       expect(aggregate.tactical.campaigns).toHaveLength(2);
       expect(aggregate.operational.tasks).toHaveLength(2);
@@ -197,6 +249,8 @@ describe("StrategyAggregate", () => {
         strategyId: aggregate.id,
         companyName: "TestCo",
         okrCount: 2,
+        segmentCount: 1,
+        hypothesisCount: 1,
         campaignCount: 2,
         taskCount: 2,
         maturityScore: 55,
@@ -244,6 +298,51 @@ describe("StrategyAggregate", () => {
 
       const aggregate = StrategyAggregate.create(strategy);
       expect(aggregate.okrs).toHaveLength(1);
+    });
+
+    it("should reject strategy with zero target market segments", () => {
+      const strategy = makeStrategy();
+      strategy.strategic.targetMarket.segments = [];
+
+      expect(() => StrategyAggregate.create(strategy)).toThrow(
+        "Target market must have at least one segment"
+      );
+    });
+
+    it("should reject strategy with zero ICP pain points", () => {
+      const strategy = makeStrategy();
+      strategy.strategic.targetMarket.icp.painPoints = [];
+
+      expect(() => StrategyAggregate.create(strategy)).toThrow(
+        "ICP must have at least one pain point"
+      );
+    });
+
+    it("should reject strategy with empty value proposition", () => {
+      const strategy = makeStrategy();
+      strategy.strategic.businessStrategy.valueProposition = "  ";
+
+      expect(() => StrategyAggregate.create(strategy)).toThrow(
+        "Business strategy must have a value proposition"
+      );
+    });
+
+    it("should reject strategy with empty primary message", () => {
+      const strategy = makeStrategy();
+      strategy.strategic.marketingFoundation.messaging.primaryMessage = "";
+
+      expect(() => StrategyAggregate.create(strategy)).toThrow(
+        "Marketing foundation must have a primary message"
+      );
+    });
+
+    it("should reject strategy with zero feedback loop hypotheses", () => {
+      const strategy = makeStrategy();
+      strategy.strategic.feedbackLoop.hypotheses = [];
+
+      expect(() => StrategyAggregate.create(strategy)).toThrow(
+        "Feedback loop must have at least one hypothesis"
+      );
     });
 
     it("should reject strategy with zero campaigns", () => {
@@ -331,9 +430,11 @@ describe("StrategyAggregate", () => {
 
       expect(output.metadata.companyName).toBe("TestCo");
       expect(output.strategic.diagnostic).toEqual(input.strategic.diagnostic);
-      expect(output.strategic.positioning).toEqual(input.strategic.positioning);
+      expect(output.strategic.targetMarket).toEqual(input.strategic.targetMarket);
+      expect(output.strategic.businessStrategy).toEqual(input.strategic.businessStrategy);
+      expect(output.strategic.feedbackLoop.hypotheses).toEqual(input.strategic.feedbackLoop.hypotheses);
+      expect(output.strategic.marketingFoundation.offer).toEqual(input.strategic.marketingFoundation.offer);
       expect(output.strategic.okrs).toHaveLength(2);
-      expect(output.strategic.prioritySegments).toHaveLength(1);
       expect(output.tactical.campaigns).toHaveLength(2);
       expect(output.tactical.channelStrategy).toHaveLength(1);
       expect(output.tactical.contentPlan).toHaveLength(1);
