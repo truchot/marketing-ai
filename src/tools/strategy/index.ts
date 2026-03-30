@@ -1,6 +1,7 @@
 // ============================================================
 // Strategy Tools Implementation
-// Takes BusinessDiscovery as input and produces OKRs + Actions
+// Takes BusinessDiscovery as input and produces a 3-layer strategy:
+//   Strategic (diagnostic, OKRs) → Tactical (campaigns) → Operational (tasks)
 // ============================================================
 
 import {
@@ -12,7 +13,13 @@ import type { BusinessDiscovery } from "@/types/business-discovery";
 import type {
   MarketingDiagnostic,
   OKR,
-  Action,
+  Campaign,
+  ChannelStrategy,
+  ContentPlan,
+  BudgetAllocation,
+  OperationalTask,
+  CalendarEntry,
+  WeeklyKPI,
   MarketingStrategy,
 } from "@/types/marketing-strategy";
 import {
@@ -22,7 +29,7 @@ import {
 } from "@/tools/discovery/index";
 
 // ============================================================
-// Tool 1: generateDiagnostic
+// Tool 1: generateDiagnostic (STRATÉGIQUE)
 // ============================================================
 
 interface GenerateDiagnosticInput {
@@ -139,7 +146,7 @@ Maximum 3 éléments par catégorie. Sois concis et actionnable.`;
 }
 
 // ============================================================
-// Tool 2: proposeOKR (uses Sonnet for strategic reasoning)
+// Tool 2: proposeOKR (STRATÉGIQUE — uses Sonnet)
 // ============================================================
 
 interface ProposeOKRInput {
@@ -213,69 +220,215 @@ Réponds en JSON strict :
 }
 
 // ============================================================
-// Tool 3: proposeActions (uses Sonnet for strategic reasoning)
+// Tool 3: proposeCampaigns (TACTIQUE — uses Sonnet)
 // ============================================================
 
-interface ProposeActionsInput {
+interface ProposeCampaignsInput {
   discovery: BusinessDiscovery;
   okr: OKR;
 }
 
-export async function proposeActions(
-  input: ProposeActionsInput
-): Promise<Action[]> {
+interface ProposeCampaignsOutput {
+  campaigns: Campaign[];
+  channelStrategy: ChannelStrategy[];
+  contentPlan: ContentPlan[];
+  budgetAllocation: BudgetAllocation[];
+}
+
+export async function proposeCampaigns(
+  input: ProposeCampaignsInput
+): Promise<ProposeCampaignsOutput> {
   const { discovery, okr } = input;
 
-  const prompt = `Tu es un stratège marketing senior. Génère des actions concrètes pour cet OKR.
+  const prompt = `Tu es un stratège marketing senior. Génère un plan tactique pour cet OKR : campagnes, stratégie de canaux, plan de contenu et allocation budget.
 
 ## OKR
 - Objectif : ${okr.objective}
+- Rationnel : ${okr.rationale}
 - Key Results : ${okr.keyResults.map((kr) => `${kr.metric} → ${kr.target} (${kr.timeline})`).join("; ")}
 
 ## Contexte entreprise
 - ${discovery.metadata.companyName} (${discovery.metadata.sector}, stade: ${discovery.businessContext.stage})
+- Audiences : ${discovery.audiences.map((a) => `${a.segment} (${a.priority}) — canaux: ${a.channels.join(", ")}`).join("; ")}
 - Équipe : ${discovery.currentMarketing.team.size} pers., skills: ${discovery.currentMarketing.team.skills.join(", ")}, gaps: ${discovery.currentMarketing.team.gaps.join(", ")}
 - Budget : ${discovery.currentMarketing.budget.range} (${discovery.currentMarketing.budget.flexibility})
 - Outils actuels : ${discovery.currentMarketing.tools.map((t) => `${t.name} (${t.maturity})`).join(", ")}
-- Canaux actifs : ${discovery.currentMarketing.channels.map((c) => `${c.name} (${c.perceivedResults})`).join(", ")}
+- Canaux actifs : ${discovery.currentMarketing.channels.map((c) => `${c.name} (${c.type}, ${c.perceivedResults})`).join(", ")}
 - Canaux abandonnés : ${discovery.currentMarketing.abandonedChannels.map((c) => `${c.name}: ${c.reason}`).join("; ") || "aucun"}
 - Contraintes : ${discovery.businessContext.constraints.map((c) => `${c.type}: ${c.description} (${c.severity})`).join("; ")}
 
 ## Règles
-- 3-4 actions par OKR
-- Au moins 1 quick_win (low effort, high impact)
-- Chaque action liée à un Key Result spécifique
-- Actions réalistes pour la taille de l'équipe et le budget
+- 1-2 campagnes par OKR, chacune avec un objectif clair et un segment cible
+- Choisis les canaux en fonction de là où se trouvent réellement les audiences (pas où on voudrait qu'elles soient)
+- Le plan de contenu doit être réaliste pour la taille de l'équipe
+- L'allocation budget doit totaliser ~100%
 - Ne recommande PAS un canal abandonné sauf si tu justifies clairement
 
 Réponds en JSON strict :
-[
-  {
-    "id": "action-1",
-    "okrId": "${okr.id}",
-    "keyResultId": "${okr.keyResults[0]?.id || "kr-1"}",
-    "title": "...",
-    "description": "...",
-    "type": "quick_win",
-    "effort": "low",
-    "impact": "high",
-    "requiredSkills": ["..."],
-    "requiredTools": ["..."],
-    "dependencies": [],
-    "suggestedTimeline": "Semaine 1-2",
-    "channel": "...",
-    "audienceSegment": "..."
-  }
-]`;
+{
+  "campaigns": [
+    {
+      "id": "campaign-1",
+      "okrId": "${okr.id}",
+      "name": "...",
+      "objective": "...",
+      "targetSegment": "...",
+      "channels": ["..."],
+      "contentThemes": ["..."],
+      "keyMessages": ["..."],
+      "duration": "...",
+      "successMetric": "..."
+    }
+  ],
+  "channelStrategy": [
+    {
+      "channel": "...",
+      "role": "acquisition",
+      "targetSegments": ["..."],
+      "frequency": "...",
+      "contentTypes": ["..."],
+      "estimatedBudget": "..."
+    }
+  ],
+  "contentPlan": [
+    {
+      "pillar": "...",
+      "themes": ["..."],
+      "formats": ["..."],
+      "cadence": "...",
+      "targetSegment": "..."
+    }
+  ],
+  "budgetAllocation": [
+    {
+      "channel": "...",
+      "monthlyBudget": "...",
+      "percentage": 50,
+      "justification": "..."
+    }
+  ]
+}`;
 
   const responseText = await callClaudeSonnet(prompt);
-  const actions = extractJsonFromResponse<Action[]>(responseText);
+  const result = extractJsonFromResponse<ProposeCampaignsOutput>(responseText);
 
-  return Array.isArray(actions) ? actions : [actions];
+  // Store as episode
+  recordEpisodeUseCase.execute({
+    type: "task_result",
+    description: `Plan tactique proposé pour OKR "${okr.objective}" — ${result.campaigns?.length || 0} campagne(s)`,
+    data: { campaigns: result.campaigns, okrId: okr.id },
+    tags: ["strategy", "tactical", "campaigns"],
+    importance: "high",
+  });
+
+  return {
+    campaigns: result.campaigns || [],
+    channelStrategy: result.channelStrategy || [],
+    contentPlan: result.contentPlan || [],
+    budgetAllocation: result.budgetAllocation || [],
+  };
 }
 
 // ============================================================
-// Tool 4: saveStrategy — delegates to SaveStrategyUseCase
+// Tool 4: proposeTasks (OPÉRATIONNEL — uses Sonnet)
+// ============================================================
+
+interface ProposeTasksInput {
+  discovery: BusinessDiscovery;
+  campaign: Campaign;
+}
+
+interface ProposeTasksOutput {
+  tasks: OperationalTask[];
+  calendar: CalendarEntry[];
+  weeklyKPIs: WeeklyKPI[];
+}
+
+export async function proposeTasks(
+  input: ProposeTasksInput
+): Promise<ProposeTasksOutput> {
+  const { discovery, campaign } = input;
+
+  const prompt = `Tu es un chef de projet marketing. Génère le plan opérationnel pour cette campagne : tâches concrètes, calendrier éditorial et KPIs hebdo.
+
+## Campagne
+- Nom : ${campaign.name}
+- Objectif : ${campaign.objective}
+- Segment cible : ${campaign.targetSegment}
+- Canaux : ${campaign.channels.join(", ")}
+- Thèmes de contenu : ${campaign.contentThemes.join(", ")}
+- Messages clés : ${campaign.keyMessages.join(", ")}
+- Durée : ${campaign.duration}
+- Métrique de succès : ${campaign.successMetric}
+
+## Contexte entreprise
+- ${discovery.metadata.companyName} (${discovery.metadata.sector})
+- Équipe : ${discovery.currentMarketing.team.size} pers., dédiée: ${discovery.currentMarketing.team.dedicatedToMarketing}, skills: ${discovery.currentMarketing.team.skills.join(", ")}
+- Outils : ${discovery.currentMarketing.tools.map((t) => `${t.name} (${t.category})`).join(", ")}
+- Contraintes : ${discovery.businessContext.constraints.map((c) => `${c.type}: ${c.description} (${c.severity})`).join("; ")}
+
+## Règles
+- 3-5 tâches par campagne, chacune avec un owner (rôle), une deadline, et un livrable concret
+- Le calendrier éditorial couvre les 4-6 premières semaines
+- Les KPIs hebdo doivent être mesurables avec les outils existants
+- Les heures estimées doivent être réalistes pour une équipe de ${discovery.currentMarketing.team.size} pers.
+- Chaque tâche doit avoir un status initial "todo"
+
+Réponds en JSON strict :
+{
+  "tasks": [
+    {
+      "id": "task-1",
+      "campaignId": "${campaign.id}",
+      "title": "...",
+      "description": "...",
+      "owner": "...",
+      "deadline": "...",
+      "priority": "high",
+      "status": "todo",
+      "estimatedHours": 4,
+      "dependencies": [],
+      "deliverable": "..."
+    }
+  ],
+  "calendar": [
+    {
+      "week": "S1",
+      "tasks": [
+        { "taskId": "task-1", "channel": "...", "contentType": "...", "topic": "..." }
+      ]
+    }
+  ],
+  "weeklyKPIs": [
+    {
+      "metric": "...",
+      "targetPerWeek": "...",
+      "trackingTool": "..."
+    }
+  ]
+}`;
+
+  const responseText = await callClaudeSonnet(prompt);
+  const result = extractJsonFromResponse<ProposeTasksOutput>(responseText);
+
+  // Store as episode
+  recordEpisodeUseCase.execute({
+    type: "task_result",
+    description: `Plan opérationnel proposé pour campagne "${campaign.name}" — ${result.tasks?.length || 0} tâche(s)`,
+    data: { tasks: result.tasks, campaignId: campaign.id },
+    tags: ["strategy", "operational", "tasks"],
+    importance: "high",
+  });
+
+  return {
+    tasks: result.tasks || [],
+    calendar: result.calendar || [],
+    weeklyKPIs: result.weeklyKPIs || [],
+  };
+}
+
+// ============================================================
+// Tool 5: saveStrategy — delegates to SaveStrategyUseCase
 // ============================================================
 
 interface SaveStrategyOutput {
@@ -300,8 +453,8 @@ export async function saveStrategy(
 
   const strategyId = result.value;
 
-  // Also store key strategic facts in semantic memory for cross-phase retrieval
-  for (const okr of strategy.okrs) {
+  // Store key strategic facts in semantic memory for cross-phase retrieval
+  for (const okr of strategy.strategic.okrs) {
     addClientFactUseCase.execute({
       category: "strategy",
       fact: `OKR ${okr.priority}: ${okr.objective}`,
@@ -317,21 +470,33 @@ export async function saveStrategy(
     }
   }
 
+  // Store tactical facts
+  for (const campaign of strategy.tactical.campaigns) {
+    addClientFactUseCase.execute({
+      category: "strategy",
+      fact: `Campagne "${campaign.name}" — segment: ${campaign.targetSegment}, canaux: ${campaign.channels.join(", ")}`,
+      source: "strategy_agent",
+    });
+  }
+
   addClientFactUseCase.execute({
     category: "strategy",
-    fact: `Score maturité marketing: ${strategy.diagnostic.maturityScore}/100`,
+    fact: `Score maturité marketing: ${strategy.strategic.diagnostic.maturityScore}/100`,
     source: "strategy_agent",
   });
 
+  const taskCount = strategy.operational.tasks.length;
+  const campaignCount = strategy.tactical.campaigns.length;
+
   return {
     success: true,
-    message: `Stratégie sauvegardée : ${strategy.okrs.length} OKR, ${strategy.actions.length} actions.`,
+    message: `Stratégie sauvegardée : ${strategy.strategic.okrs.length} OKR, ${campaignCount} campagne(s), ${taskCount} tâche(s) opérationnelle(s).`,
     strategyId,
   };
 }
 
 // ============================================================
-// Tool 5: adjustOKR (uses Haiku — lightweight adjustment task)
+// Tool 6: adjustOKR (uses Haiku — lightweight adjustment task)
 // ============================================================
 
 interface AdjustOKRInput {

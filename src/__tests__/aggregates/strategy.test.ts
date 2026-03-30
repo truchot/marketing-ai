@@ -25,20 +25,34 @@ function makeOKR(id: string, priority: "primary" | "secondary" = "secondary") {
   };
 }
 
-function makeAction(id: string, okrId: string, keyResultId: string) {
+function makeCampaign(id: string, okrId: string) {
   return {
     id,
     okrId,
-    keyResultId,
-    title: `Action ${id}`,
-    description: "Test action description",
-    type: "quick_win" as const,
-    effort: "low" as const,
-    impact: "high" as const,
-    requiredSkills: ["marketing"],
-    requiredTools: [],
+    name: `Campaign ${id}`,
+    objective: "Test campaign objective",
+    targetSegment: "PME SaaS",
+    channels: ["LinkedIn", "Blog"],
+    contentThemes: ["expertise technique"],
+    keyMessages: ["Message clé"],
+    duration: "6 semaines",
+    successMetric: "Leads générés",
+  };
+}
+
+function makeTask(id: string, campaignId: string) {
+  return {
+    id,
+    campaignId,
+    title: `Task ${id}`,
+    description: "Test task description",
+    owner: "Marketing Manager",
+    deadline: "S2",
+    priority: "high" as const,
+    status: "todo" as const,
+    estimatedHours: 4,
     dependencies: [],
-    suggestedTimeline: "Semaine 1-2",
+    deliverable: "Document livré",
   };
 }
 
@@ -54,23 +68,80 @@ function makeStrategy(
       discoveryCompletionStatus: "complete",
       strategyVersion: 1,
     },
-    diagnostic: {
-      maturityScore: 55,
-      strengths: ["Good SEO"],
-      weaknesses: ["No paid ads"],
-      opportunities: ["Content marketing"],
-      threats: ["Strong competition"],
-      summary: "Test summary",
+    strategic: {
+      diagnostic: {
+        maturityScore: 55,
+        strengths: ["Good SEO"],
+        weaknesses: ["No paid ads"],
+        opportunities: ["Content marketing"],
+        threats: ["Strong competition"],
+        summary: "Test summary",
+      },
+      positioning: {
+        targetMarket: "PME SaaS B2B",
+        uniqueValue: "Automatisation marketing accessible",
+        competitiveAngle: "Prix + simplicité",
+        brandPersonality: "Expert accessible",
+      },
+      okrs: [okr1, okr2],
+      prioritySegments: [
+        {
+          segment: "PME SaaS",
+          priority: "primary",
+          mainPain: "Manque de visibilité",
+          targetMessage: "Développez votre visibilité en 30 jours",
+        },
+      ],
     },
-    okrs: [okr1, okr2],
-    actions: [
-      makeAction("action-1", "okr-1", "kr-okr-1-1"),
-      makeAction("action-2", "okr-2", "kr-okr-2-1"),
-    ],
-    executionRoadmap: {
-      phase1: { name: "Quick wins", duration: "0-30 jours", actionIds: ["action-1"] },
-      phase2: { name: "Fondations", duration: "30-90 jours", actionIds: ["action-2"] },
-      phase3: { name: "Stratégique", duration: "90+ jours", actionIds: [] },
+    tactical: {
+      campaigns: [
+        makeCampaign("campaign-1", "okr-1"),
+        makeCampaign("campaign-2", "okr-2"),
+      ],
+      channelStrategy: [
+        {
+          channel: "LinkedIn",
+          role: "acquisition",
+          targetSegments: ["PME SaaS"],
+          frequency: "3 posts/semaine",
+          contentTypes: ["article", "post"],
+          estimatedBudget: "500€/mois",
+        },
+      ],
+      contentPlan: [
+        {
+          pillar: "Expertise technique",
+          themes: ["SEO", "Content marketing"],
+          formats: ["article", "infographie"],
+          cadence: "2/semaine",
+          targetSegment: "PME SaaS",
+        },
+      ],
+      budgetAllocation: [
+        {
+          channel: "LinkedIn",
+          monthlyBudget: "500€",
+          percentage: 100,
+          justification: "Canal principal d'acquisition B2B",
+        },
+      ],
+    },
+    operational: {
+      tasks: [
+        makeTask("task-1", "campaign-1"),
+        makeTask("task-2", "campaign-2"),
+      ],
+      calendar: [
+        {
+          week: "S1",
+          tasks: [
+            { taskId: "task-1", channel: "LinkedIn", contentType: "article", topic: "SEO basics" },
+          ],
+        },
+      ],
+      weeklyKPIs: [
+        { metric: "Impressions LinkedIn", targetPerWeek: "5000", trackingTool: "LinkedIn Analytics" },
+      ],
     },
     constraints: {
       budgetFit: true,
@@ -84,7 +155,7 @@ function makeStrategy(
 
 describe("StrategyAggregate", () => {
   describe("create", () => {
-    it("should create a valid strategy with all required fields", () => {
+    it("should create a valid strategy with all 3 layers", () => {
       const strategy = makeStrategy();
       const aggregate = StrategyAggregate.create(strategy);
 
@@ -92,7 +163,8 @@ describe("StrategyAggregate", () => {
       expect(aggregate.companyName).toBe("TestCo");
       expect(aggregate.diagnostic.maturityScore).toBe(55);
       expect(aggregate.okrs).toHaveLength(2);
-      expect(aggregate.actions).toHaveLength(2);
+      expect(aggregate.tactical.campaigns).toHaveLength(2);
+      expect(aggregate.operational.tasks).toHaveLength(2);
       expect(aggregate.narrativeSummary).toBe("Test narrative summary for strategy.");
     });
 
@@ -125,13 +197,15 @@ describe("StrategyAggregate", () => {
         strategyId: aggregate.id,
         companyName: "TestCo",
         okrCount: 2,
-        actionCount: 2,
+        campaignCount: 2,
+        taskCount: 2,
         maturityScore: 55,
       });
     });
 
     it("should reject strategy with zero OKRs", () => {
-      const strategy = makeStrategy({ okrs: [] });
+      const strategy = makeStrategy();
+      strategy.strategic.okrs = [];
 
       expect(() => StrategyAggregate.create(strategy)).toThrow(
         "A strategy must have at least one OKR"
@@ -139,14 +213,13 @@ describe("StrategyAggregate", () => {
     });
 
     it("should reject strategy with more than 3 OKRs", () => {
-      const strategy = makeStrategy({
-        okrs: [
-          makeOKR("okr-1", "primary"),
-          makeOKR("okr-2"),
-          makeOKR("okr-3"),
-          makeOKR("okr-4"),
-        ],
-      });
+      const strategy = makeStrategy();
+      strategy.strategic.okrs = [
+        makeOKR("okr-1", "primary"),
+        makeOKR("okr-2"),
+        makeOKR("okr-3"),
+        makeOKR("okr-4"),
+      ];
 
       expect(() => StrategyAggregate.create(strategy)).toThrow(
         "A strategy must have at most 3 OKRs"
@@ -154,32 +227,40 @@ describe("StrategyAggregate", () => {
     });
 
     it("should accept strategy with exactly 3 OKRs", () => {
-      const strategy = makeStrategy({
-        okrs: [
-          makeOKR("okr-1", "primary"),
-          makeOKR("okr-2"),
-          makeOKR("okr-3"),
-        ],
-      });
+      const strategy = makeStrategy();
+      strategy.strategic.okrs = [
+        makeOKR("okr-1", "primary"),
+        makeOKR("okr-2"),
+        makeOKR("okr-3"),
+      ];
 
       const aggregate = StrategyAggregate.create(strategy);
       expect(aggregate.okrs).toHaveLength(3);
     });
 
     it("should accept strategy with exactly 1 OKR", () => {
-      const strategy = makeStrategy({
-        okrs: [makeOKR("okr-1", "primary")],
-      });
+      const strategy = makeStrategy();
+      strategy.strategic.okrs = [makeOKR("okr-1", "primary")];
 
       const aggregate = StrategyAggregate.create(strategy);
       expect(aggregate.okrs).toHaveLength(1);
     });
 
-    it("should reject strategy with zero actions", () => {
-      const strategy = makeStrategy({ actions: [] });
+    it("should reject strategy with zero campaigns", () => {
+      const strategy = makeStrategy();
+      strategy.tactical.campaigns = [];
 
       expect(() => StrategyAggregate.create(strategy)).toThrow(
-        "A strategy must have at least one action"
+        "A strategy must have at least one campaign"
+      );
+    });
+
+    it("should reject strategy with zero operational tasks", () => {
+      const strategy = makeStrategy();
+      strategy.operational.tasks = [];
+
+      expect(() => StrategyAggregate.create(strategy)).toThrow(
+        "A strategy must have at least one operational task"
       );
     });
   });
@@ -208,7 +289,7 @@ describe("StrategyAggregate", () => {
   });
 
   describe("removeOKR", () => {
-    it("should remove OKR and its associated actions", () => {
+    it("should remove OKR and its associated campaigns and tasks", () => {
       const strategy = makeStrategy();
       const aggregate = StrategyAggregate.create(strategy);
 
@@ -216,14 +297,16 @@ describe("StrategyAggregate", () => {
 
       expect(aggregate.okrs).toHaveLength(1);
       expect(aggregate.okrs[0].id).toBe("okr-2");
-      // Actions for okr-1 should be removed
-      expect(aggregate.actions.every((a) => a.okrId !== "okr-1")).toBe(true);
+      // Campaigns for okr-1 should be removed
+      expect(aggregate.tactical.campaigns.every((c) => c.okrId !== "okr-1")).toBe(true);
+      // Tasks linked to campaign-1 (which was linked to okr-1) should be removed
+      expect(aggregate.operational.tasks.every((t) => t.campaignId !== "campaign-1")).toBe(true);
     });
 
     it("should throw when removing the last OKR", () => {
-      const strategy = makeStrategy({
-        okrs: [makeOKR("okr-1", "primary")],
-      });
+      const strategy = makeStrategy();
+      strategy.strategic.okrs = [makeOKR("okr-1", "primary")];
+
       const aggregate = StrategyAggregate.create(strategy);
 
       expect(() => aggregate.removeOKR("okr-1")).toThrow(
@@ -231,28 +314,33 @@ describe("StrategyAggregate", () => {
       );
     });
 
-    it("should throw when OKR to remove does not exist", () => {
+    it("should leave OKRs unchanged when removing nonexistent OKR", () => {
       const strategy = makeStrategy();
       const aggregate = StrategyAggregate.create(strategy);
 
-      // removeOKR filters silently, but invariant check catches it only if it removes all
-      // With 2 OKRs, removing a nonexistent one leaves 2 — no error
       aggregate.removeOKR("nonexistent");
       expect(aggregate.okrs).toHaveLength(2);
     });
   });
 
   describe("toStrategy", () => {
-    it("should produce a complete MarketingStrategy object", () => {
+    it("should produce a complete MarketingStrategy object with 3 layers", () => {
       const input = makeStrategy();
       const aggregate = StrategyAggregate.create(input);
       const output = aggregate.toStrategy();
 
       expect(output.metadata.companyName).toBe("TestCo");
-      expect(output.diagnostic).toEqual(input.diagnostic);
-      expect(output.okrs).toHaveLength(2);
-      expect(output.actions).toHaveLength(2);
-      expect(output.executionRoadmap).toEqual(input.executionRoadmap);
+      expect(output.strategic.diagnostic).toEqual(input.strategic.diagnostic);
+      expect(output.strategic.positioning).toEqual(input.strategic.positioning);
+      expect(output.strategic.okrs).toHaveLength(2);
+      expect(output.strategic.prioritySegments).toHaveLength(1);
+      expect(output.tactical.campaigns).toHaveLength(2);
+      expect(output.tactical.channelStrategy).toHaveLength(1);
+      expect(output.tactical.contentPlan).toHaveLength(1);
+      expect(output.tactical.budgetAllocation).toHaveLength(1);
+      expect(output.operational.tasks).toHaveLength(2);
+      expect(output.operational.calendar).toHaveLength(1);
+      expect(output.operational.weeklyKPIs).toHaveLength(1);
       expect(output.constraints).toEqual(input.constraints);
       expect(output.narrativeSummary).toBe(input.narrativeSummary);
     });
@@ -264,10 +352,11 @@ describe("StrategyAggregate", () => {
       const output2 = aggregate.toStrategy();
 
       // Different array references
-      expect(output1.okrs).not.toBe(output2.okrs);
-      expect(output1.actions).not.toBe(output2.actions);
+      expect(output1.strategic.okrs).not.toBe(output2.strategic.okrs);
+      expect(output1.tactical.campaigns).not.toBe(output2.tactical.campaigns);
+      expect(output1.operational.tasks).not.toBe(output2.operational.tasks);
       // But equal content
-      expect(output1.okrs).toEqual(output2.okrs);
+      expect(output1.strategic.okrs).toEqual(output2.strategic.okrs);
     });
   });
 });

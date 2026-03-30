@@ -8,12 +8,17 @@ import { z } from "zod";
 import {
   generateDiagnostic,
   proposeOKRs,
-  proposeActions,
+  proposeCampaigns,
+  proposeTasks,
   saveStrategy,
   adjustOKR,
 } from "./index";
 import type { BusinessDiscovery } from "@/types/business-discovery";
-import type { MarketingDiagnostic, OKR } from "@/types/marketing-strategy";
+import type {
+  MarketingDiagnostic,
+  OKR,
+  Campaign,
+} from "@/types/marketing-strategy";
 
 // ============================================================
 // Per-request state for strategy session flow control
@@ -29,6 +34,7 @@ export interface StrategyRequestState {
   discovery: BusinessDiscovery | null;
   diagnostic: MarketingDiagnostic | null;
   validatedOKRs: OKR[];
+  validatedCampaigns: Campaign[];
   strategyComplete: boolean;
   pendingChoices: { question: string; choices: ChoiceOption[] } | null;
 }
@@ -38,6 +44,7 @@ export function createStrategyRequestState(): StrategyRequestState {
     discovery: null,
     diagnostic: null,
     validatedOKRs: [],
+    validatedCampaigns: [],
     strategyComplete: false,
     pendingChoices: null,
   };
@@ -52,7 +59,7 @@ export function createStrategyMcpServer(state: StrategyRequestState) {
     name: "strategy-tools",
     tools: [
       // ========================================================
-      // Tool 1: generateDiagnostic
+      // Tool 1: generateDiagnostic (STRATÉGIQUE)
       // ========================================================
       tool(
         "generateDiagnostic",
@@ -92,7 +99,7 @@ APRÈS L'APPEL :
       ),
 
       // ========================================================
-      // Tool 2: proposeOKR
+      // Tool 2: proposeOKR (STRATÉGIQUE)
       // ========================================================
       tool(
         "proposeOKR",
@@ -142,26 +149,26 @@ APRÈS L'APPEL :
       ),
 
       // ========================================================
-      // Tool 3: proposeActions
+      // Tool 3: proposeCampaigns (TACTIQUE)
       // ========================================================
       tool(
-        "proposeActions",
-        `Génère des actions concrètes pour un OKR validé.
+        "proposeCampaigns",
+        `Génère des campagnes tactiques pour un OKR validé, avec stratégie de canaux et plan de contenu.
 
 QUAND L'UTILISER :
 - Après validation d'un OKR par le client
 - Pour chaque OKR validé séparément
 
 EFFET :
-- Génère 3-4 actions classées par type (quick_win, foundation, strategic)
-- Chaque action est liée à un Key Result
-- Matrice effort/impact respectée
+- Génère 1-2 campagnes par OKR avec canaux, messages clés, thèmes de contenu
+- Définit la stratégie de canal (rôle, fréquence, budget)
+- Propose un plan de contenu par pilier
 
 APRÈS L'APPEL :
-- Présente les actions groupées par type
-- Quick wins en premier`,
+- Présente les campagnes au client
+- Explique le choix des canaux et la logique du plan`,
         {
-          okrId: z.string().describe("ID de l'OKR pour lequel générer les actions"),
+          okrId: z.string().describe("ID de l'OKR pour lequel générer les campagnes"),
         },
         async (args) => {
           if (!state.discovery) {
@@ -187,15 +194,16 @@ APRÈS L'APPEL :
               ],
             };
           }
-          const actions = await proposeActions({
+          const result = await proposeCampaigns({
             discovery: state.discovery,
             okr,
           });
+          state.validatedCampaigns.push(...result.campaigns);
           return {
             content: [
               {
                 type: "text" as const,
-                text: JSON.stringify(actions, null, 2),
+                text: JSON.stringify(result, null, 2),
               },
             ],
           };
@@ -203,7 +211,68 @@ APRÈS L'APPEL :
       ),
 
       // ========================================================
-      // Tool 4: adjustOKR
+      // Tool 4: proposeTasks (OPÉRATIONNEL)
+      // ========================================================
+      tool(
+        "proposeTasks",
+        `Génère les tâches opérationnelles concrètes pour une campagne validée, avec calendrier et KPIs hebdo.
+
+QUAND L'UTILISER :
+- Après validation d'une campagne par le client
+- Pour chaque campagne validée séparément
+
+EFFET :
+- Génère 3-5 tâches par campagne avec owner, deadline, heures estimées
+- Crée un calendrier éditorial sur 4-6 semaines
+- Définit les KPIs de suivi hebdomadaire
+
+APRÈS L'APPEL :
+- Présente les tâches au client
+- Montre le calendrier éditorial`,
+        {
+          campaignId: z.string().describe("ID de la campagne pour laquelle générer les tâches"),
+        },
+        async (args) => {
+          if (!state.discovery) {
+            return {
+              content: [
+                {
+                  type: "text" as const,
+                  text: JSON.stringify({ error: "Discovery manquant." }),
+                },
+              ],
+            };
+          }
+          const campaign = state.validatedCampaigns.find((c) => c.id === args.campaignId);
+          if (!campaign) {
+            return {
+              content: [
+                {
+                  type: "text" as const,
+                  text: JSON.stringify({
+                    error: `Campagne ${args.campaignId} non trouvée. Campagnes disponibles : ${state.validatedCampaigns.map((c) => c.id).join(", ")}`,
+                  }),
+                },
+              ],
+            };
+          }
+          const result = await proposeTasks({
+            discovery: state.discovery,
+            campaign,
+          });
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: JSON.stringify(result, null, 2),
+              },
+            ],
+          };
+        }
+      ),
+
+      // ========================================================
+      // Tool 5: adjustOKR (STRATÉGIQUE — feedback loop)
       // ========================================================
       tool(
         "adjustOKR",
@@ -265,14 +334,14 @@ EFFET :
       ),
 
       // ========================================================
-      // Tool 5: saveStrategy
+      // Tool 6: saveStrategy
       // ========================================================
       tool(
         "saveStrategy",
-        `Persiste la stratégie complète (diagnostic + OKR + actions + roadmap) en mémoire.
+        `Persiste la stratégie complète (3 niveaux : stratégique + tactique + opérationnel) en mémoire.
 
 QUAND L'UTILISER :
-- À la fin de la session, quand tous les OKR et actions sont validés
+- À la fin de la session, quand les 3 niveaux sont validés
 - UNE SEULE FOIS
 
 EFFET :
@@ -282,7 +351,7 @@ EFFET :
         {
           strategy: z
             .record(z.string(), z.unknown())
-            .describe("L'objet MarketingStrategy complet"),
+            .describe("L'objet MarketingStrategy complet avec les 3 couches"),
         },
         async (args) => {
           const strategy = args.strategy as unknown as import("@/types/marketing-strategy").MarketingStrategy;
@@ -302,7 +371,7 @@ EFFET :
       ),
 
       // ========================================================
-      // Tool 6: present_choices (réutilisation du pattern discovery)
+      // Tool 7: present_choices (réutilisation du pattern discovery)
       // ========================================================
       tool(
         "present_choices",
