@@ -56,8 +56,8 @@ export async function parseSSEStream(response: Response): Promise<SSEResult> {
               choices: data.choices ?? [],
             };
           }
-        } catch {
-          /* Ignore malformed SSE chunk */
+        } catch (error) {
+          console.warn("[SSE] Malformed chunk skipped:", dataStr.slice(0, 100), error);
         }
         currentEvent = "";
       }

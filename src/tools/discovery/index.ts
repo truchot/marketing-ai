@@ -305,7 +305,8 @@ ${cleanText}`;
           channels: parsed.channels || [],
           pricingSignals: parsed.pricingSignals || "Inconnu",
         });
-      } catch {
+      } catch (error) {
+        console.warn(`[Discovery] Competitor analysis failed for ${url}:`, error);
         competitors.push({
           name: new URL(url).hostname,
           url,
