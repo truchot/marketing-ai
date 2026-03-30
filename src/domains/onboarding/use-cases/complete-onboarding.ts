@@ -4,7 +4,7 @@ import type { IMemoryFacade } from "@/domains/onboarding/ports/memory-facade";
 import type { IConversationRepository } from "@/domains/conversation/ports";
 import type { CompanyProfile } from "@/types";
 import type { BusinessDiscovery } from "@/types/business-discovery";
-import { domainEventBus, ONBOARDING_COMPLETED, Result, ValidationError } from "@/domains/shared";
+import { domainEventBus, ONBOARDING_COMPLETED, executeUseCase } from "@/domains/shared";
 
 export class CompleteOnboardingUseCase {
   constructor(
@@ -17,19 +17,15 @@ export class CompleteOnboardingUseCase {
   execute(
     discovery: BusinessDiscovery,
     messages: { role: "user" | "assistant"; content: string }[]
-  ): Result<CompanyProfile> {
-    try {
+  ) {
+    return executeUseCase(() => {
       const discoveryId = this.storeDiscovery(discovery);
       const profile = this.createProfile(discovery, discoveryId);
       this.memoryFacade.storeDiscoveryFacts(discovery);
       this.saveConversationHistory(messages);
       this.publishCompletionEvent(profile, discovery, discoveryId);
-      return Result.ok(profile);
-    } catch (error) {
-      return Result.fail(new ValidationError(
-        error instanceof Error ? error.message : "Unknown onboarding error"
-      ));
-    }
+      return profile;
+    });
   }
 
   private storeDiscovery(discovery: BusinessDiscovery): string {

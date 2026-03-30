@@ -1,8 +1,7 @@
 import type { IConversationRepository } from "../ports";
 import type { IEpisodicMemoryRepository } from "@/domains/memory/ports";
 import type { IResponseGenerator } from "../ports/response-generator";
-import type { ConversationMessage } from "@/types";
-import { domainEventBus, MESSAGE_SENT, Result, ValidationError } from "@/domains/shared";
+import { domainEventBus, MESSAGE_SENT, executeUseCase } from "@/domains/shared";
 
 export class SendMessageUseCase {
   constructor(
@@ -11,11 +10,8 @@ export class SendMessageUseCase {
     private responseGenerator: IResponseGenerator
   ) {}
 
-  execute(content: string): Result<{
-    userMessage: ConversationMessage;
-    assistantMessage: ConversationMessage;
-  }> {
-    try {
+  execute(content: string) {
+    return executeUseCase(() => {
       const userMessage = this.conversationRepo.add("user", content);
 
       this.episodicRepo.recordEpisode(
@@ -40,11 +36,7 @@ export class SendMessageUseCase {
         },
       });
 
-      return Result.ok({ userMessage, assistantMessage });
-    } catch (error) {
-      return Result.fail(new ValidationError(
-        error instanceof Error ? error.message : "Unknown message error"
-      ));
-    }
+      return { userMessage, assistantMessage };
+    });
   }
 }

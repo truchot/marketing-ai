@@ -29,3 +29,4 @@ export { AggregateRoot } from "./aggregate-root";
 
 export { Result } from "./result";
 export { DomainError, ValidationError, NotFoundError, InvariantViolationError } from "./domain-error";
+export { executeUseCase } from "./execute-use-case";

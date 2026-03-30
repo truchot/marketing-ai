@@ -1,7 +1,7 @@
 import type { IEpisodicMemoryRepository } from "../ports";
-import type { Episode, EpisodeType } from "@/types/memory";
+import type { EpisodeType } from "@/types/memory";
 import { EpisodeAggregate } from "../aggregates";
-import { Result, ValidationError } from "@/domains/shared";
+import { executeUseCase } from "@/domains/shared";
 
 interface RecordEpisodeInput {
   type: EpisodeType;
@@ -14,32 +14,21 @@ interface RecordEpisodeInput {
 export class RecordEpisodeUseCase {
   constructor(private episodicRepo: IEpisodicMemoryRepository) {}
 
-  execute(input: RecordEpisodeInput): Result<Episode> {
-    try {
-      // Create rich aggregate - validates invariants and raises domain events
+  execute(input: RecordEpisodeInput) {
+    return executeUseCase(() => {
       const aggregate = EpisodeAggregate.create(
         input.type,
         input.description,
         input.data,
         { tags: input.tags, importance: input.importance }
       );
-
-      // Publish domain events
       aggregate.publishEvents();
-
-      // Persist via repository using DTO
-      const episode = this.episodicRepo.recordEpisode(
+      return this.episodicRepo.recordEpisode(
         aggregate.type,
         aggregate.description,
         aggregate.data,
         { tags: [...aggregate.tags], importance: aggregate.importanceLevel }
       );
-
-      return Result.ok(episode);
-    } catch (error) {
-      return Result.fail(new ValidationError(
-        error instanceof Error ? error.message : "Unknown validation error"
-      ));
-    }
+    });
   }
 }
