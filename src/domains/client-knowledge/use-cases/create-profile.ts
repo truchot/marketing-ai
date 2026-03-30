@@ -1,7 +1,7 @@
 import type { ICompanyProfileRepository } from "../ports";
 import type { CompanyProfile } from "@/types";
 import { CompanyProfileAggregate } from "../aggregates";
-import { domainEventBus, Result, ValidationError } from "@/domains/shared";
+import { Result, ValidationError } from "@/domains/shared";
 
 interface CreateProfileInput {
   name: string;
@@ -25,10 +25,8 @@ export class CreateProfileUseCase {
         brandTone: input.brandTone,
       });
 
-      // Publish domain events if any
-      const events = aggregate.getUncommittedEvents();
-      events.forEach(event => domainEventBus.publish(event));
-      aggregate.clearUncommittedEvents();
+      // Publish domain events
+      aggregate.publishEvents();
 
       // Persist via repository using DTO (without id, createdAt, updatedAt)
       const profile = this.profileRepo.save({

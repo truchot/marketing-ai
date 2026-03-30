@@ -3,6 +3,7 @@
 // ============================================================
 
 import type { DomainEvent } from "./domain-events";
+import { domainEventBus } from "./domain-events";
 
 /**
  * Base class for all Aggregates in the system.
@@ -26,6 +27,17 @@ export abstract class AggregateRoot {
    */
   getUncommittedEvents(): DomainEvent[] {
     return [...this.uncommittedEvents];
+  }
+
+  /**
+   * Publish all uncommitted events to the domain event bus and clear them.
+   * Convenience method to avoid repeating get+forEach+clear in every use case.
+   */
+  publishEvents(): void {
+    for (const event of this.uncommittedEvents) {
+      domainEventBus.publish(event);
+    }
+    this.uncommittedEvents = [];
   }
 
   /**

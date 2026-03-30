@@ -1,7 +1,7 @@
 import type { IEpisodicMemoryRepository } from "../ports";
 import type { Episode, EpisodeType } from "@/types/memory";
 import { EpisodeAggregate } from "../aggregates";
-import { domainEventBus, Result, ValidationError } from "@/domains/shared";
+import { Result, ValidationError } from "@/domains/shared";
 
 interface RecordEpisodeInput {
   type: EpisodeType;
@@ -25,9 +25,7 @@ export class RecordEpisodeUseCase {
       );
 
       // Publish domain events
-      const events = aggregate.getUncommittedEvents();
-      events.forEach(event => domainEventBus.publish(event));
-      aggregate.clearUncommittedEvents();
+      aggregate.publishEvents();
 
       // Persist via repository using DTO
       const episode = this.episodicRepo.recordEpisode(

@@ -1,7 +1,7 @@
 import type { IStrategyRepository } from "../ports";
 import type { MarketingStrategy } from "@/types/marketing-strategy";
 import { StrategyAggregate } from "../aggregates";
-import { domainEventBus, Result, ValidationError } from "@/domains/shared";
+import { Result, ValidationError } from "@/domains/shared";
 
 export class SaveStrategyUseCase {
   constructor(private strategyRepo: IStrategyRepository) {}
@@ -11,9 +11,7 @@ export class SaveStrategyUseCase {
       const aggregate = StrategyAggregate.create(strategy);
 
       // Publish domain events
-      const events = aggregate.getUncommittedEvents();
-      events.forEach((event) => domainEventBus.publish(event));
-      aggregate.clearUncommittedEvents();
+      aggregate.publishEvents();
 
       // Persist
       const id = this.strategyRepo.save(aggregate.toStrategy());
