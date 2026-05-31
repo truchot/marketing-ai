@@ -16,7 +16,7 @@ import {
 import { conversationRepository } from "@/data/conversation-repository";
 import { companyProfileRepository } from "@/data/company-profile-repository";
 import { businessDiscoveryRepository } from "@/data/business-discovery-repository";
-import { RandomResponseGenerator } from "@/data/response-generator";
+import { MastraResponseGenerator } from "@/mastra/adapters/mastra-response-generator";
 import { MemoryFacade } from "@/data/memory-facade";
 
 // --- Use case classes (domain layer) ---
@@ -57,7 +57,7 @@ export const addValidatedPatternUseCase = new AddValidatedPatternUseCase(
 export const addLearnedRuleUseCase = new AddLearnedRuleUseCase(semanticMemory);
 
 // Conversation
-const responseGenerator = new RandomResponseGenerator();
+const responseGenerator = new MastraResponseGenerator();
 export const sendMessageUseCase = new SendMessageUseCase(
   conversationRepository,
   episodicMemory,
