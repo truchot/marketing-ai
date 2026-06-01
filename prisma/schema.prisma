@@ -1,0 +1,356 @@
+// Prisma schema — Marketing AI
+// Persistance Postgres (docker-compose). Schéma relationnel normalisé.
+// Les timestamps/dates sont stockés en String ISO pour coller aux DTOs du domaine.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// Experimentation Context
+// ============================================================
+
+model Experiment {
+  id              String  @id
+  keyResultId     String
+  okrId           String
+  actionId        String?
+  title           String
+  channel         String
+  audienceSegment String?
+
+  // Hypothesis (1:1, aplati)
+  hypothesisBelief        String
+  hypothesisAudience      String
+  hypothesisOutcome       String
+  hypothesisSuccessMetric String
+  hypothesisThreshold     String
+
+  // ICE score (1-10)
+  iceImpact     Int
+  iceConfidence Int
+  iceEase       Int
+
+  weekOf String?
+  status String
+
+  // Result — phase Mesurer (optionnel)
+  resultMeasuredValue String?
+  resultMetThreshold  Boolean?
+  resultMeasuredAt    String?
+
+  learning    String?
+  companyName String
+  createdAt   String
+  updatedAt   String
+
+  dailyActions      DailyAction[]
+  confidenceSources ConfidenceSource[]
+
+  @@index([keyResultId])
+  @@index([weekOf])
+  @@map("experiments")
+}
+
+model DailyAction {
+  id            String  @id
+  experimentId  String
+  scheduledDate String
+  channel       String
+  title         String
+  status        String
+  carryOverFrom String?
+
+  // Asset produit (1:1, aplati)
+  assetFormat       String?
+  assetVariantLabel String?
+  assetContent      String?
+
+  experiment Experiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+
+  @@index([experimentId])
+  @@index([scheduledDate])
+  @@map("daily_actions")
+}
+
+model ConfidenceSource {
+  id           Int    @id @default(autoincrement())
+  experimentId String
+  type         String
+  evidence     String
+
+  experiment Experiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+
+  @@index([experimentId])
+  @@map("confidence_sources")
+}
+
+// ============================================================
+// Strategy Context
+// (domain ids like "okr-1" are not globally unique → internal
+//  autoincrement PKs + a `domainId` field carrying the DTO id)
+// ============================================================
+
+model Strategy {
+  id                        String   @id
+  seq                       Int      @default(autoincrement())
+  companyName               String
+  generatedAt               String
+  discoveryCompletionStatus String
+  strategyVersion           Int
+  narrativeSummary          String
+
+  // Diagnostic (value object, embedded)
+  diagnosticMaturityScore Int
+  diagnosticStrengths     String[]
+  diagnosticWeaknesses    String[]
+  diagnosticOpportunities String[]
+  diagnosticThreats       String[]
+  diagnosticSummary       String
+
+  // Constraints (value object, embedded)
+  constraintsBudgetFit   Boolean
+  constraintsTeamFit     Boolean
+  constraintsAdaptations String[]
+
+  // ExecutionRoadmap (fixed-shape value object → JSON)
+  roadmap Json
+
+  createdAt DateTime @default(now())
+
+  okrs    Okr[]
+  actions StrategyAction[]
+
+  @@map("strategies")
+}
+
+model Okr {
+  pk              Int    @id @default(autoincrement())
+  domainId        String
+  strategyId      String
+  objective       String
+  rationale       String
+  priority        String
+  linkedFromBlock String
+  linkedEvidence  String
+
+  strategy   Strategy    @relation(fields: [strategyId], references: [id], onDelete: Cascade)
+  keyResults KeyResult[]
+
+  @@index([strategyId])
+  @@map("okrs")
+}
+
+model KeyResult {
+  pk         Int     @id @default(autoincrement())
+  domainId   String
+  okrPk      Int
+  metric     String
+  current    String?
+  target     String
+  timeline   String
+  confidence String
+
+  okr Okr @relation(fields: [okrPk], references: [pk], onDelete: Cascade)
+
+  @@index([okrPk])
+  @@map("key_results")
+}
+
+model StrategyAction {
+  pk                Int      @id @default(autoincrement())
+  domainId          String
+  strategyId        String
+  okrId             String
+  keyResultId       String
+  title             String
+  description       String
+  type              String
+  effort            String
+  impact            String
+  requiredSkills    String[]
+  requiredTools     String[]
+  dependencies      String[]
+  suggestedTimeline String
+  channel           String?
+  audienceSegment   String?
+
+  strategy Strategy @relation(fields: [strategyId], references: [id], onDelete: Cascade)
+
+  @@index([strategyId])
+  @@map("actions")
+}
+
+// ============================================================
+// Conversation Context
+// ============================================================
+
+model ConversationMessage {
+  id        String @id
+  seq       Int    @default(autoincrement())
+  role      String
+  content   String
+  createdAt String
+
+  @@map("conversation_messages")
+}
+
+// ============================================================
+// Client Knowledge Context
+// ============================================================
+
+model CompanyProfile {
+  id          String  @id
+  seq         Int     @default(autoincrement())
+  name        String
+  sector      String
+  description String
+  target      String
+  brandTone   String
+  discoveryId String?
+  createdAt   String
+  updatedAt   String
+
+  @@map("company_profiles")
+}
+
+model BusinessDiscovery {
+  id          String @id
+  seq         Int    @default(autoincrement())
+  companyName String
+  // 8-block deeply-nested document → JSONB (hybrid normalization)
+  data        Json
+
+  @@map("business_discoveries")
+}
+
+// ============================================================
+// Memory Context — Episodic
+// ============================================================
+
+model Episode {
+  id          String   @id
+  seq         Int      @default(autoincrement())
+  type        String
+  description String
+  data        Json
+  tags        String[]
+  importance  String
+  timestamp   String
+
+  @@index([timestamp])
+  @@map("episodes")
+}
+
+model Feedback {
+  id        String  @id
+  seq       Int     @default(autoincrement())
+  source    String
+  sentiment String
+  content   String
+  taskId    String?
+  timestamp String
+
+  @@index([timestamp])
+  @@map("feedbacks")
+}
+
+model TaskResult {
+  id          String @id
+  seq         Int    @default(autoincrement())
+  taskId      String
+  description String
+  outcome     String
+  data        Json
+  timestamp   String
+
+  @@index([timestamp])
+  @@map("task_results")
+}
+
+model EmergentPattern {
+  id          String @id
+  type        String @unique // pattern key — detectPattern upserts on it
+  description String
+  occurrences Int
+  firstSeen   String
+  lastSeen    String
+
+  @@map("emergent_patterns")
+}
+
+// ============================================================
+// Memory Context — Semantic
+// ============================================================
+
+model ClientFact {
+  id       String @id
+  seq      Int    @default(autoincrement())
+  category String
+  fact     String
+  source   String
+  addedAt  String
+
+  @@index([category])
+  @@map("client_facts")
+}
+
+model Preference {
+  id         String @id
+  seq        Int    @default(autoincrement())
+  category   String
+  key        String
+  value      String
+  confidence String
+  addedAt    String
+
+  @@unique([category, key]) // addPreference upserts on (category, key)
+  @@map("preferences")
+}
+
+model ValidatedPattern {
+  id             String @id
+  seq            Int    @default(autoincrement())
+  type           String
+  description    String
+  trigger        String
+  outcome        String
+  recommendation String
+  validatedAt    String
+
+  @@map("validated_patterns")
+}
+
+model LearnedRule {
+  id          String @id
+  seq         Int    @default(autoincrement())
+  description String
+  domain      String
+  action      String
+  confidence  String
+  addedAt     String
+
+  @@index([domain])
+  @@map("learned_rules")
+}
+
+// ============================================================
+// Memory Context — Working (single active session)
+// ============================================================
+
+model WorkingSession {
+  id                  String  @id
+  task                String
+  objective           String
+  startedAt           String
+  intermediateResults Json
+  scratchpad          Json
+  attentionFocus      String?
+
+  @@map("working_sessions")
+}
