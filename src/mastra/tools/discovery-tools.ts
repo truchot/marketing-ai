@@ -55,23 +55,24 @@ IMPORTANT : Toujours demander validation à l'interlocuteur avant de sauvegarder
 
 const enrichFromWebsiteTool = createTool({
   id: "enrichFromWebsite",
-  description: `Enrichit la découverte en analysant le site web de l'entreprise — NON-BLOQUANT.
+  description: `Enrichit la découverte en analysant le site web de l'entreprise.
 
-L'outil lance l'analyse en arrière-plan et retourne immédiatement. Les insights (proposition de valeur, offres, audience, stack technique, réseaux sociaux, pricing, etc.) sont stockés automatiquement en mémoire sémantique sous forme de ClientFacts.
+L'outil analyse le site et RETOURNE les insights (proposition de valeur, offres, audience, social proof, contenu, pricing, etc.) pour que tu pré-remplisses les réponses et évites les questions redondantes.
 
 QUAND L'UTILISER :
 - Dès que l'interlocuteur fournit une URL de site web
-- Appeler UNE SEULE FOIS par URL, puis continuer l'entretien sans attendre
+- Appeler UNE SEULE FOIS par URL
 
 IMPORTANT :
-- Ne PAS mentionner l'analyse au client — continuer la conversation normalement`,
+- Exploite les insights retournés pour accélérer l'entretien (Fast Track)`,
   inputSchema: z.object({
     websiteUrl: z.string().url().describe("URL complète du site web (ex: https://example.com)"),
     companyName: z.string().optional().describe("Nom de l'entreprise (optionnel, améliore l'analyse)"),
   }),
   outputSchema: z.object({
-    started: z.boolean(),
+    success: z.boolean(),
     message: z.string(),
+    insights: z.record(z.string(), z.unknown()).nullable(),
   }),
   execute: async (inputData) =>
     enrichFromWebsite({
@@ -144,10 +145,26 @@ Les questions suggérées sont des guides, pas des scripts rigides.`,
     }),
 });
 
+const signalFastTrackCompleteTool = createTool({
+  id: "signal_fast_track_complete",
+  description: `Appelle cet outil quand la phase Fast Track est terminée — c'est-à-dire quand tu as collecté : nom, secteur, problème principal, audience principale, objectif prioritaire, et stade de l'entreprise (certains via le site web, d'autres via les questions).
+
+IMPORTANT : Inclus un résumé structuré de ce que tu sais déjà. Ce résumé sera utilisé pour générer les premières recommandations.
+
+Appelle cet outil AVANT de proposer le choix "approfondir ou voir les recommandations".`,
+  inputSchema: z.object({
+    summary: z
+      .string()
+      .describe("Synthèse structurée : contexte en 3 lignes, hypothèses stratégiques rapides, gaps identifiés"),
+  }),
+  outputSchema: z.object({ acknowledged: z.boolean() }),
+  execute: async () => ({ acknowledged: true }),
+});
+
 const signalInterviewCompleteTool = createTool({
   id: "signal_interview_complete",
   description:
-    "Appelle cet outil quand l'entretien de découverte est terminé et que tu as couvert les 4 blocs (problème/proposition de valeur, audiences, marketing actuel, contexte business). Appelle-le en même temps que ton message de clôture.",
+    "Appelle cet outil quand l'entretien de découverte complet (Deep Dive) est terminé et que tu as couvert les 4 blocs (problème/proposition de valeur, audiences, marketing actuel, contexte business). Appelle-le en même temps que ton message de clôture.",
   inputSchema: z.object({}),
   outputSchema: z.object({ acknowledged: z.boolean() }),
   execute: async () => ({ acknowledged: true }),
@@ -178,6 +195,7 @@ export const discoveryTools = {
   enrichFromWebsite: enrichFromWebsiteTool,
   checkCompetitors: checkCompetitorsTool,
   suggestQuestions: suggestQuestionsTool,
+  signal_fast_track_complete: signalFastTrackCompleteTool,
   signal_interview_complete: signalInterviewCompleteTool,
   present_choices: presentChoicesTool,
 };
