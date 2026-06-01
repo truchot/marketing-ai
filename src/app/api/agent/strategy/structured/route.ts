@@ -7,9 +7,9 @@ export const maxDuration = 300;
 
 const STRUCTURED_PREAMBLE = `## Mode: Structured Output
 
-Tu reçois la transcription complète d'une session stratégique ainsi que le BusinessDiscovery source.
-Analyse-les et produis l'objet MarketingStrategy complet au format JSON.
-Remplis TOUS les champs en te basant sur les informations de la session et du discovery.`;
+You receive the complete transcript of a strategy session along with the source BusinessDiscovery.
+Analyze them and produce the complete MarketingStrategy object in JSON format.
+Fill in ALL fields based on the information from the session and the discovery.`;
 
 // POST /api/agent/strategy/structured
 // Takes the full strategy session transcript + discovery JSON
