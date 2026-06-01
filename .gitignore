@@ -49,3 +49,5 @@ mastra.db*
 
 # claude
 .claude-worktrees/
+.claude/worktrees/
+.claude/settings.local.json
