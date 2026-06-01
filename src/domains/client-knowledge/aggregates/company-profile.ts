@@ -3,40 +3,44 @@
 // Rich domain model encapsulating Company Profile business logic
 // ============================================================
 
-import { AggregateRoot, MemoryId, Timestamp } from "@/domains/shared";
+import {
+  AggregateRoot,
+  MemoryId,
+  Timestamp,
+  TargetAudience,
+  COMPANY_PROFILE_UPDATED,
+  DISCOVERY_LINKED,
+} from "@/domains/shared";
 import type { CompanyProfile } from "@/types";
 
 /**
  * CompanyProfile Aggregate Root
  *
- * Represents a client's company profile with enforced business invariants:
+ * Invariants:
  * - Name must be at least 2 characters
- * - Sector cannot be empty
+ * - Sector must be a valid Sector value object
  * - Description must be at least 10 characters
+ * - Target must be a valid TargetAudience value object
+ * - BrandTone must be a valid BrandTone value object
  * - Discovery can only be linked once (immutable after set)
- * - Brand tone can be updated multiple times
  */
 export class CompanyProfileAggregate extends AggregateRoot {
-  // Private fields - encapsulation
   private readonly _id: MemoryId;
   private _name: string;
   private _sector: string;
   private _description: string;
-  private _target: string;
+  private _target: TargetAudience;
   private _brandTone: string;
   private _discoveryId: string | undefined;
   private readonly _createdAt: Timestamp;
   private _updatedAt: Timestamp;
 
-  /**
-   * Private constructor - use factory methods to create instances
-   */
   private constructor(
     id: MemoryId,
     name: string,
     sector: string,
     description: string,
-    target: string,
+    target: TargetAudience,
     brandTone: string,
     discoveryId: string | undefined,
     createdAt: Timestamp,
@@ -54,10 +58,6 @@ export class CompanyProfileAggregate extends AggregateRoot {
     this._updatedAt = updatedAt;
   }
 
-  /**
-   * Factory method to create a new CompanyProfile
-   * Validates business invariants
-   */
   static create(data: {
     name: string;
     sector: string;
@@ -65,37 +65,28 @@ export class CompanyProfileAggregate extends AggregateRoot {
     target: string;
     brandTone: string;
   }): CompanyProfileAggregate {
-    // Invariant: name must be at least 2 characters
     const trimmedName = data.name.trim();
     if (trimmedName.length < 2) {
       throw new Error("Company name must be at least 2 characters long");
     }
 
-    // Invariant: sector cannot be empty
     const trimmedSector = data.sector.trim();
     if (!trimmedSector) {
       throw new Error("Company sector cannot be empty");
     }
 
-    // Invariant: description must be at least 10 characters
     const trimmedDescription = data.description.trim();
     if (trimmedDescription.length < 10) {
       throw new Error("Company description must be at least 10 characters long");
     }
 
-    // Invariant: target cannot be empty
-    const trimmedTarget = data.target.trim();
-    if (!trimmedTarget) {
-      throw new Error("Company target audience cannot be empty");
-    }
+    const target = TargetAudience.create(data.target);
 
-    // Invariant: brand tone cannot be empty
     const trimmedBrandTone = data.brandTone.trim();
     if (!trimmedBrandTone) {
       throw new Error("Company brand tone cannot be empty");
     }
 
-    // Create value objects
     const id = MemoryId.create(
       `company-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
     );
@@ -106,7 +97,7 @@ export class CompanyProfileAggregate extends AggregateRoot {
       trimmedName,
       trimmedSector,
       trimmedDescription,
-      trimmedTarget,
+      target,
       trimmedBrandTone,
       undefined,
       now,
@@ -114,10 +105,6 @@ export class CompanyProfileAggregate extends AggregateRoot {
     );
   }
 
-  /**
-   * Reconstitute a CompanyProfile from persisted data
-   * Does not raise domain events (already happened in the past)
-   */
   static fromPersisted(dto: CompanyProfile): CompanyProfileAggregate {
     const id = MemoryId.create(dto.id);
     const createdAt = Timestamp.create(dto.createdAt);
@@ -128,7 +115,7 @@ export class CompanyProfileAggregate extends AggregateRoot {
       dto.name,
       dto.sector,
       dto.description,
-      dto.target,
+      TargetAudience.create(dto.target),
       dto.brandTone,
       dto.discoveryId,
       createdAt,
@@ -136,84 +123,116 @@ export class CompanyProfileAggregate extends AggregateRoot {
     );
   }
 
-  // --- Domain Methods (Business Logic) ---
+  // --- Domain Methods ---
 
-  /**
-   * Update the company description
-   * Invariant: description must be at least 10 characters
-   */
   updateDescription(newDescription: string): void {
     const trimmedDescription = newDescription.trim();
     if (trimmedDescription.length < 10) {
       throw new Error("Company description must be at least 10 characters long");
     }
 
+    const oldValue = this._description;
     this._description = trimmedDescription;
     this._updatedAt = Timestamp.now();
+
+    this.addDomainEvent({
+      type: COMPANY_PROFILE_UPDATED,
+      occurredAt: this._updatedAt.toString(),
+      payload: {
+        profileId: this._id.toString(),
+        field: "description",
+        oldValue,
+        newValue: trimmedDescription,
+      },
+    });
   }
 
-  /**
-   * Update the company name
-   * Invariant: name must be at least 2 characters
-   */
   updateName(newName: string): void {
     const trimmedName = newName.trim();
     if (trimmedName.length < 2) {
       throw new Error("Company name must be at least 2 characters long");
     }
 
+    const oldValue = this._name;
     this._name = trimmedName;
     this._updatedAt = Timestamp.now();
+
+    this.addDomainEvent({
+      type: COMPANY_PROFILE_UPDATED,
+      occurredAt: this._updatedAt.toString(),
+      payload: {
+        profileId: this._id.toString(),
+        field: "name",
+        oldValue,
+        newValue: trimmedName,
+      },
+    });
   }
 
-  /**
-   * Update the company sector
-   * Invariant: sector cannot be empty
-   */
   updateSector(newSector: string): void {
     const trimmedSector = newSector.trim();
     if (!trimmedSector) {
       throw new Error("Company sector cannot be empty");
     }
 
+    const oldValue = this._sector;
     this._sector = trimmedSector;
     this._updatedAt = Timestamp.now();
+
+    this.addDomainEvent({
+      type: COMPANY_PROFILE_UPDATED,
+      occurredAt: this._updatedAt.toString(),
+      payload: {
+        profileId: this._id.toString(),
+        field: "sector",
+        oldValue,
+        newValue: trimmedSector,
+      },
+    });
   }
 
-  /**
-   * Update the target audience
-   * Invariant: target cannot be empty
-   */
   updateTarget(newTarget: string): void {
-    const trimmedTarget = newTarget.trim();
-    if (!trimmedTarget) {
-      throw new Error("Company target audience cannot be empty");
-    }
+    const target = TargetAudience.create(newTarget);
 
-    this._target = trimmedTarget;
+    const oldValue = this._target.toString();
+    this._target = target;
     this._updatedAt = Timestamp.now();
+
+    this.addDomainEvent({
+      type: COMPANY_PROFILE_UPDATED,
+      occurredAt: this._updatedAt.toString(),
+      payload: {
+        profileId: this._id.toString(),
+        field: "target",
+        oldValue,
+        newValue: target.toString(),
+      },
+    });
   }
 
-  /**
-   * Update the brand tone
-   * Invariant: brand tone cannot be empty
-   */
   updateBrandTone(newBrandTone: string): void {
     const trimmedBrandTone = newBrandTone.trim();
     if (!trimmedBrandTone) {
       throw new Error("Company brand tone cannot be empty");
     }
 
+    const oldValue = this._brandTone;
     this._brandTone = trimmedBrandTone;
     this._updatedAt = Timestamp.now();
+
+    this.addDomainEvent({
+      type: COMPANY_PROFILE_UPDATED,
+      occurredAt: this._updatedAt.toString(),
+      payload: {
+        profileId: this._id.toString(),
+        field: "brandTone",
+        oldValue,
+        newValue: trimmedBrandTone,
+      },
+    });
   }
 
-  /**
-   * Link a discovery to this company profile
-   * Invariant: discovery can only be linked once (immutable after set)
-   */
   linkDiscovery(discoveryId: string): void {
-    // Invariant: discovery can only be linked once
     if (this._discoveryId !== undefined) {
       throw new Error(
         `Discovery already linked to this profile (${this._discoveryId}). Cannot link again.`
@@ -227,16 +246,22 @@ export class CompanyProfileAggregate extends AggregateRoot {
 
     this._discoveryId = trimmedDiscoveryId;
     this._updatedAt = Timestamp.now();
+
+    this.addDomainEvent({
+      type: DISCOVERY_LINKED,
+      occurredAt: this._updatedAt.toString(),
+      payload: {
+        profileId: this._id.toString(),
+        discoveryId: trimmedDiscoveryId,
+      },
+    });
   }
 
-  /**
-   * Check if a discovery has been linked
-   */
   hasDiscoveryLinked(): boolean {
     return this._discoveryId !== undefined;
   }
 
-  // --- Getters (Read-only access) ---
+  // --- Getters ---
 
   get id(): string {
     return this._id.toString();
@@ -255,7 +280,7 @@ export class CompanyProfileAggregate extends AggregateRoot {
   }
 
   get target(): string {
-    return this._target;
+    return this._target.toString();
   }
 
   get brandTone(): string {
@@ -276,17 +301,13 @@ export class CompanyProfileAggregate extends AggregateRoot {
 
   // --- DTO Conversion ---
 
-  /**
-   * Convert to DTO for persistence
-   * Maintains compatibility with existing CompanyProfile interface
-   */
   toDTO(): CompanyProfile {
     return {
       id: this._id.toString(),
       name: this._name,
       sector: this._sector,
       description: this._description,
-      target: this._target,
+      target: this._target.toString(),
       brandTone: this._brandTone,
       discoveryId: this._discoveryId,
       createdAt: this._createdAt.toString(),

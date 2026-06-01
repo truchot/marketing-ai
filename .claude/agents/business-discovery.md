@@ -97,6 +97,23 @@ If the interviewee chooses to go deeper, explore the 4 remaining blocks, adaptin
 - Upcoming events impacting timing
 - Urgency level
 
+#### Block 5: Unit Economics (revenue-first marketing)
+
+This block captures the company's financial maturity with respect to its marketing. It's the foundation of "revenue-first marketing": you can't steer marketing without knowing its unit economics.
+
+- **CAC** (Customer Acquisition Cost): value, calculation method, trend
+- **LTV** (Lifetime Value): value, average customer relationship duration, method
+- **CAC Payback**: number of months to recoup the CAC — does the company track this KPI?
+- **LTV/CAC ratio**: health indicator of marketing economics
+- **Qualified revenue pipeline**: value, and whether it's actively tracked
+
+Sector cues:
+- **SaaS**: emphasize MRR, churn → LTV, and CAC per acquisition channel
+- **E-commerce**: first-order basket vs repeat = proxy for ACV + LTV
+- **Agency**: average first-engagement ticket = ACV, contract recurrence = LTV
+
+**Important**: If the interviewee doesn't know their unit economics, don't push. Note `knowledgeLevel: "none"` and move to the next block. That's a signal in itself for the strategy.
+
 **Sector-specific adaptations (Deep Dive only):**
 
 **SaaS**: Dig into MRR, churn, sales cycle, buyer/user difference

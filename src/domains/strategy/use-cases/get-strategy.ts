@@ -1,16 +1,16 @@
 import type { IStrategyRepository } from "../ports";
-import type { MarketingStrategy } from "@/types/marketing-strategy";
+import type { StrategyAggregate } from "../aggregates";
 import { Result, NotFoundError } from "@/domains/shared";
 
 export class GetStrategyUseCase {
   constructor(private strategyRepo: IStrategyRepository) {}
 
-  execute(strategyId?: string): Result<MarketingStrategy> {
-    const strategy = strategyId
+  execute(strategyId?: string): Result<StrategyAggregate> {
+    const aggregate = strategyId
       ? this.strategyRepo.get(strategyId)
       : this.strategyRepo.getLatest();
 
-    if (!strategy) {
+    if (!aggregate) {
       return Result.fail(
         new NotFoundError(
           strategyId
@@ -20,6 +20,6 @@ export class GetStrategyUseCase {
       );
     }
 
-    return Result.ok(strategy);
+    return Result.ok(aggregate);
   }
 }

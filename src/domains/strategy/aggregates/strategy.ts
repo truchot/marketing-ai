@@ -1,28 +1,49 @@
 // ============================================================
 // Strategy Aggregate
-// Represents a validated marketing strategy with OKRs and actions.
+// Represents a validated marketing strategy with 3 layers:
+//   Strategic (4 subsystems) → Tactical → Operational
+//
+// Invariants:
+//   1. OKR count: 1-3
+//   2. Target market: ≥1 segment, ICP with ≥1 pain point
+//   3. Business strategy: non-empty value proposition
+//   4. Marketing foundation: non-empty primary message
+//   5. Feedback loop: ≥1 hypothesis
+//   6. Time horizon: non-empty
+//   7. Roadmap validation: not "rethink"
+//   8. Marketing plan: ≥1 campaign, ≥1 roadmap phase
+//   9. Marketing system: ≥1 process
+//  10. Operational: ≥1 task
+//  11. Cross-layer: every campaign.okrId references an existing OKR
+//  12. Cross-layer: every task.campaignId references an existing campaign
 // ============================================================
 
 import { AggregateRoot } from "@/domains/shared";
 import type {
   MarketingStrategy,
-  MarketingDiagnostic,
-  OKR,
-  Action,
-  ExecutionRoadmap,
+  StrategicLayer,
+  TacticalLayer,
+  OperationalLayer,
   ConstraintsFit,
+  OKR,
+  TargetMarket,
+  BusinessStrategy,
+  FeedbackLoop,
+  MarketingFoundation,
+  MarketingPlan,
+  MarketingSystem,
+  RoadmapValidation,
 } from "@/types/marketing-strategy";
-import { STRATEGY_GENERATED } from "@/domains/shared/domain-events";
+import { STRATEGY_GENERATED, OKR_REMOVED } from "@/domains/shared/domain-events";
 import { IdGenerator } from "@/lib/id-generator";
 
 export class StrategyAggregate extends AggregateRoot {
   private constructor(
     public readonly id: string,
     private readonly _metadata: MarketingStrategy["metadata"],
-    public readonly diagnostic: MarketingDiagnostic,
-    private _okrs: OKR[],
-    private _actions: Action[],
-    private _roadmap: ExecutionRoadmap,
+    private _strategic: StrategicLayer,
+    private _tactical: TacticalLayer,
+    private _operational: OperationalLayer,
     private _constraints: ConstraintsFit,
     private _narrativeSummary: string
   ) {
@@ -37,16 +58,16 @@ export class StrategyAggregate extends AggregateRoot {
     return this._metadata;
   }
 
-  get okrs(): readonly OKR[] {
-    return this._okrs;
+  get strategic(): StrategicLayer {
+    return this._strategic;
   }
 
-  get actions(): readonly Action[] {
-    return this._actions;
+  get tactical(): TacticalLayer {
+    return this._tactical;
   }
 
-  get roadmap(): ExecutionRoadmap {
-    return this._roadmap;
+  get operational(): OperationalLayer {
+    return this._operational;
   }
 
   get constraints(): ConstraintsFit {
@@ -57,15 +78,122 @@ export class StrategyAggregate extends AggregateRoot {
     return this._narrativeSummary;
   }
 
+  // Convenience accessors
+  get diagnostic() {
+    return this._strategic.diagnostic;
+  }
+
+  get okrs(): readonly OKR[] {
+    return this._strategic.okrs;
+  }
+
+  get targetMarket(): TargetMarket {
+    return this._strategic.targetMarket;
+  }
+
+  get businessStrategy(): BusinessStrategy {
+    return this._strategic.businessStrategy;
+  }
+
+  get feedbackLoop(): FeedbackLoop {
+    return this._strategic.feedbackLoop;
+  }
+
+  get marketingFoundation(): MarketingFoundation {
+    return this._strategic.marketingFoundation;
+  }
+
+  get roadmapValidation(): RoadmapValidation {
+    return this._strategic.roadmapValidation;
+  }
+
+  get marketingPlan(): MarketingPlan {
+    return this._tactical.marketingPlan;
+  }
+
+  get marketingSystem(): MarketingSystem {
+    return this._tactical.marketingSystem;
+  }
+
+  /**
+   * Reconstitute a persisted strategy without re-validating invariants
+   * or raising domain events. Used by repositories when loading from storage.
+   */
+  static fromPersisted(id: string, strategy: MarketingStrategy): StrategyAggregate {
+    return new StrategyAggregate(
+      id,
+      strategy.metadata,
+      strategy.strategic,
+      strategy.tactical,
+      strategy.operational,
+      strategy.constraints,
+      strategy.narrativeSummary
+    );
+  }
+
   static create(strategy: MarketingStrategy): StrategyAggregate {
-    if (strategy.okrs.length === 0) {
+    // --- Strategic layer invariants ---
+    if (strategy.strategic.okrs.length === 0) {
       throw new Error("A strategy must have at least one OKR");
     }
-    if (strategy.okrs.length > 3) {
+    if (strategy.strategic.okrs.length > 3) {
       throw new Error("A strategy must have at most 3 OKRs");
     }
-    if (strategy.actions.length === 0) {
-      throw new Error("A strategy must have at least one action");
+    if (strategy.strategic.targetMarket.segments.length === 0) {
+      throw new Error("Target market must have at least one segment");
+    }
+    if (strategy.strategic.targetMarket.icp.painPoints.length === 0) {
+      throw new Error("ICP must have at least one pain point");
+    }
+    if (!strategy.strategic.businessStrategy.valueProposition.trim()) {
+      throw new Error("Business strategy must have a value proposition");
+    }
+    if (!strategy.strategic.marketingFoundation.messaging.primaryMessage.trim()) {
+      throw new Error("Marketing foundation must have a primary message");
+    }
+    if (strategy.strategic.feedbackLoop.hypotheses.length === 0) {
+      throw new Error("Feedback loop must have at least one hypothesis");
+    }
+    if (!strategy.strategic.timeHorizon.trim()) {
+      throw new Error("Strategic layer must have a time horizon");
+    }
+    if (strategy.strategic.roadmapValidation.recommendation === "rethink") {
+      throw new Error("Cannot create strategy — roadmap validation recommends rethinking");
+    }
+
+    // --- Tactical layer invariants ---
+    if (strategy.tactical.marketingPlan.campaigns.length === 0) {
+      throw new Error("Marketing plan must have at least one campaign");
+    }
+    if (strategy.tactical.marketingPlan.roadmap.length === 0) {
+      throw new Error("Marketing plan must have at least one roadmap phase");
+    }
+    if (strategy.tactical.marketingSystem.processes.length === 0) {
+      throw new Error("Marketing system must have at least one process");
+    }
+
+    // --- Operational layer invariants ---
+    if (strategy.operational.tasks.length === 0) {
+      throw new Error("A strategy must have at least one operational task");
+    }
+
+    // --- Cross-layer coherence ---
+    const okrIds = new Set(strategy.strategic.okrs.map((o) => o.id));
+    for (const campaign of strategy.tactical.marketingPlan.campaigns) {
+      if (!okrIds.has(campaign.okrId)) {
+        throw new Error(
+          `Campaign "${campaign.name}" references non-existent OKR "${campaign.okrId}"`
+        );
+      }
+    }
+
+    const campaignIds = new Set(strategy.tactical.marketingPlan.campaigns.map((c) => c.id));
+    for (const task of strategy.operational.tasks) {
+      if (!campaignIds.has(task.campaignId)) {
+        throw new Error(
+          `Task "${task.title}" references non-existent campaign "${task.campaignId}"`
+        );
+      }
     }
 
     const id = IdGenerator.generate("strategy");
@@ -73,10 +201,9 @@ export class StrategyAggregate extends AggregateRoot {
     const aggregate = new StrategyAggregate(
       id,
       strategy.metadata,
-      strategy.diagnostic,
-      strategy.okrs,
-      strategy.actions,
-      strategy.executionRoadmap,
+      strategy.strategic,
+      strategy.tactical,
+      strategy.operational,
       strategy.constraints,
       strategy.narrativeSummary
     );
@@ -88,7 +215,11 @@ export class StrategyAggregate extends AggregateRoot {
         strategyId: id,
         companyName: aggregate.companyName,
         okrCount: aggregate.okrs.length,
-        actionCount: aggregate.actions.length,
+        segmentCount: aggregate.targetMarket.segments.length,
+        hypothesisCount: aggregate.feedbackLoop.hypotheses.length,
+        campaignCount: aggregate.marketingPlan.campaigns.length,
+        processCount: aggregate.marketingSystem.processes.length,
+        taskCount: aggregate.operational.tasks.length,
         maturityScore: aggregate.diagnostic.maturityScore,
       },
     });
@@ -97,28 +228,109 @@ export class StrategyAggregate extends AggregateRoot {
   }
 
   updateOKR(okrId: string, updates: Partial<OKR>): void {
-    const index = this._okrs.findIndex((o) => o.id === okrId);
+    const index = this._strategic.okrs.findIndex((o) => o.id === okrId);
     if (index === -1) {
       throw new Error(`OKR ${okrId} not found`);
     }
-    this._okrs[index] = { ...this._okrs[index], ...updates };
+    this._strategic.okrs[index] = { ...this._strategic.okrs[index], ...updates };
   }
 
   removeOKR(okrId: string): void {
-    this._okrs = this._okrs.filter((o) => o.id !== okrId);
-    this._actions = this._actions.filter((a) => a.okrId !== okrId);
-    if (this._okrs.length === 0) {
+    const remaining = this._strategic.okrs.filter((o) => o.id !== okrId);
+
+    if (remaining.length === this._strategic.okrs.length) {
+      return; // OKR not found, no-op
+    }
+
+    if (remaining.length === 0) {
       throw new Error("Cannot remove last OKR — strategy must have at least one");
     }
+
+    this._strategic.okrs = remaining;
+
+    // Cascade: remove campaigns linked to this OKR
+    const removedCampaignIds = this._tactical.marketingPlan.campaigns
+      .filter((c) => c.okrId === okrId)
+      .map((c) => c.id);
+    this._tactical.marketingPlan.campaigns = this._tactical.marketingPlan.campaigns.filter((c) => c.okrId !== okrId);
+    // Cascade: remove KPIs linked to removed campaigns
+    this._tactical.marketingPlan.kpis = this._tactical.marketingPlan.kpis.filter(
+      (k) => !removedCampaignIds.includes(k.campaignId)
+    );
+    // Cascade: remove backlog items linked to removed campaigns
+    this._tactical.marketingSystem.backlog = this._tactical.marketingSystem.backlog.filter(
+      (b) => !b.linkedCampaignIds.some((id) => removedCampaignIds.includes(id))
+    );
+    // Cascade: remove tasks linked to removed campaigns
+    this._operational.tasks = this._operational.tasks.filter(
+      (t) => !removedCampaignIds.includes(t.campaignId)
+    );
+
+    this.addDomainEvent({
+      type: OKR_REMOVED,
+      occurredAt: new Date().toISOString(),
+      payload: {
+        okrId,
+        removedCampaignIds,
+      },
+    });
   }
 
   toStrategy(): MarketingStrategy {
     return {
       metadata: { ...this._metadata },
-      diagnostic: this.diagnostic,
-      okrs: [...this._okrs],
-      actions: [...this._actions],
-      executionRoadmap: this._roadmap,
+      strategic: {
+        diagnostic: this._strategic.diagnostic,
+        targetMarket: {
+          marketDefinition: this._strategic.targetMarket.marketDefinition,
+          segments: [...this._strategic.targetMarket.segments],
+          icp: { ...this._strategic.targetMarket.icp },
+        },
+        businessStrategy: { ...this._strategic.businessStrategy },
+        feedbackLoop: {
+          hypotheses: [...this._strategic.feedbackLoop.hypotheses],
+          validationTests: [...this._strategic.feedbackLoop.validationTests],
+          reviewCadence: this._strategic.feedbackLoop.reviewCadence,
+          pivotTriggers: [...this._strategic.feedbackLoop.pivotTriggers],
+        },
+        marketingFoundation: {
+          offer: this._strategic.marketingFoundation.offer,
+          positioning: { ...this._strategic.marketingFoundation.positioning },
+          messaging: {
+            primaryMessage: this._strategic.marketingFoundation.messaging.primaryMessage,
+            segmentMessages: [...this._strategic.marketingFoundation.messaging.segmentMessages],
+            proofPoints: [...this._strategic.marketingFoundation.messaging.proofPoints],
+          },
+        },
+        okrs: [...this._strategic.okrs],
+        timeHorizon: this._strategic.timeHorizon,
+        roadmapValidation: { ...this._strategic.roadmapValidation },
+      },
+      tactical: {
+        marketingPlan: {
+          campaigns: [...this._tactical.marketingPlan.campaigns],
+          channelStrategy: [...this._tactical.marketingPlan.channelStrategy],
+          contentPlan: [...this._tactical.marketingPlan.contentPlan],
+          budgetAllocation: [...this._tactical.marketingPlan.budgetAllocation],
+          kpis: [...this._tactical.marketingPlan.kpis],
+          roadmap: [...this._tactical.marketingPlan.roadmap],
+          reviewCycle: this._tactical.marketingPlan.reviewCycle,
+        },
+        marketingSystem: {
+          backlog: [...this._tactical.marketingSystem.backlog],
+          processes: [...this._tactical.marketingSystem.processes],
+          automations: [...this._tactical.marketingSystem.automations],
+          systemArchitecture: {
+            tools: [...this._tactical.marketingSystem.systemArchitecture.tools],
+            dataFlows: [...this._tactical.marketingSystem.systemArchitecture.dataFlows],
+          },
+        },
+      },
+      operational: {
+        tasks: [...this._operational.tasks],
+        calendar: [...this._operational.calendar],
+        weeklyKPIs: [...this._operational.weeklyKPIs],
+      },
       constraints: this._constraints,
       narrativeSummary: this._narrativeSummary,
     };

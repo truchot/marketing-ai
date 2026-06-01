@@ -1,78 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { SaveStrategyUseCase } from "@/domains/strategy/use-cases/save-strategy";
 import { FakeStrategyRepository } from "../fakes/fake-strategy-repository";
-import type { MarketingStrategy } from "@/types/marketing-strategy";
-
-function makeStrategy(
-  overrides: Partial<MarketingStrategy> = {}
-): MarketingStrategy {
-  return {
-    metadata: {
-      companyName: "TestCo",
-      generatedAt: "2026-01-01T00:00:00.000Z",
-      discoveryCompletionStatus: "complete",
-      strategyVersion: 1,
-    },
-    diagnostic: {
-      maturityScore: 55,
-      strengths: ["Good SEO"],
-      weaknesses: ["No paid ads"],
-      opportunities: ["Content marketing"],
-      threats: ["Strong competition"],
-      summary: "Test summary",
-    },
-    okrs: [
-      {
-        id: "okr-1",
-        objective: "Increase visibility",
-        rationale: "Low brand awareness",
-        keyResults: [
-          {
-            id: "kr-1-1",
-            metric: "Monthly organic traffic",
-            current: "1000",
-            target: "5000",
-            timeline: "Q2 2026",
-            confidence: "medium",
-          },
-        ],
-        priority: "primary",
-        linkedDiscoveryData: {
-          fromBlock: "business_context",
-          evidence: "Client mentioned low visibility",
-        },
-      },
-    ],
-    actions: [
-      {
-        id: "action-1",
-        okrId: "okr-1",
-        keyResultId: "kr-1-1",
-        title: "SEO audit",
-        description: "Perform a full SEO audit",
-        type: "quick_win",
-        effort: "low",
-        impact: "high",
-        requiredSkills: ["SEO"],
-        requiredTools: ["Ahrefs"],
-        dependencies: [],
-        suggestedTimeline: "Semaine 1",
-      },
-    ],
-    executionRoadmap: {
-      phase1: { name: "Quick wins", duration: "0-30 jours", actionIds: ["action-1"] },
-      phase2: { name: "Fondations", duration: "30-90 jours", actionIds: [] },
-      phase3: { name: "Stratégique", duration: "90+ jours", actionIds: [] },
-    },
-    constraints: {
-      budgetFit: true,
-      teamFit: true,
-      adaptations: [],
-    },
-    narrativeSummary: "Test narrative.",
-    ...overrides,
-  };
-}
+import { makeStrategy, makeOKR } from "../fixtures/strategy.fixture";
 
 describe("SaveStrategyUseCase", () => {
   function setup() {
@@ -88,7 +17,7 @@ describe("SaveStrategyUseCase", () => {
     const result = useCase.execute(strategy);
 
     expect(result.isOk()).toBe(true);
-    expect(result.value).toMatch(/^strategy-test-/);
+    expect(result.value).toMatch(/^strategy-/);
     expect(repo.getLatest()).not.toBeNull();
     expect(repo.getLatest()!.metadata.companyName).toBe("TestCo");
   });
@@ -113,7 +42,8 @@ describe("SaveStrategyUseCase", () => {
 
   it("should reject strategy with zero OKRs", () => {
     const { useCase } = setup();
-    const strategy = makeStrategy({ okrs: [] });
+    const strategy = makeStrategy();
+    strategy.strategic.okrs = [];
 
     const result = useCase.execute(strategy);
 
@@ -123,24 +53,13 @@ describe("SaveStrategyUseCase", () => {
 
   it("should reject strategy with more than 3 OKRs", () => {
     const { useCase } = setup();
-    const okr = {
-      id: "okr-x",
-      objective: "X",
-      rationale: "X",
-      keyResults: [
-        { id: "kr-x", metric: "X", current: null, target: "X", timeline: "X", confidence: "low" as const },
-      ],
-      priority: "secondary" as const,
-      linkedDiscoveryData: { fromBlock: "business_context" as const, evidence: "X" },
-    };
-    const strategy = makeStrategy({
-      okrs: [
-        { ...okr, id: "okr-1", priority: "primary" },
-        { ...okr, id: "okr-2" },
-        { ...okr, id: "okr-3" },
-        { ...okr, id: "okr-4" },
-      ],
-    });
+    const strategy = makeStrategy();
+    strategy.strategic.okrs = [
+      makeOKR("okr-1", "primary"),
+      makeOKR("okr-2"),
+      makeOKR("okr-3"),
+      makeOKR("okr-4"),
+    ];
 
     const result = useCase.execute(strategy);
 
@@ -148,14 +67,26 @@ describe("SaveStrategyUseCase", () => {
     expect(result.error.message).toContain("at most 3 OKRs");
   });
 
-  it("should reject strategy with zero actions", () => {
+  it("should reject strategy with zero campaigns", () => {
     const { useCase } = setup();
-    const strategy = makeStrategy({ actions: [] });
+    const strategy = makeStrategy();
+    strategy.tactical.marketingPlan.campaigns = [];
 
     const result = useCase.execute(strategy);
 
     expect(result.isErr()).toBe(true);
-    expect(result.error.message).toContain("at least one action");
+    expect(result.error.message).toContain("at least one campaign");
+  });
+
+  it("should reject strategy with zero operational tasks", () => {
+    const { useCase } = setup();
+    const strategy = makeStrategy();
+    strategy.operational.tasks = [];
+
+    const result = useCase.execute(strategy);
+
+    expect(result.isErr()).toBe(true);
+    expect(result.error.message).toContain("at least one operational task");
   });
 
   it("should save multiple strategies and retrieve latest", () => {

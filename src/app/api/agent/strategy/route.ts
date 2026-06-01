@@ -80,10 +80,11 @@ export async function POST(request: NextRequest) {
         sendEvent("start", { timestamp: new Date().toISOString() });
 
         const agent = getStrategyAgent();
-        // maxSteps:8 = parité avec l'ancien maxTurns:8 (diagnostic + OKR + actions + save).
+        // maxSteps:16 — 3-level flow: diagnostic + 4 strategic subsystems + OKRs
+        // + roadmap validation + 2 tactical subsystems + tasks + save.
         const result = await agent.stream(prompt, {
           requestContext,
-          maxSteps: 8,
+          maxSteps: 16,
           ...(conversationId
             ? { memory: { resource: "strategy", thread: conversationId } }
             : {}),

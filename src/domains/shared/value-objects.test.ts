@@ -1,6 +1,5 @@
 // ============================================================
 // Value Objects - Unit Tests
-// Tests for Sector, BrandTone, TargetAudience, and EpisodeType
 // ============================================================
 
 import { describe, it, expect } from "vitest";
@@ -9,6 +8,9 @@ import {
   BrandTone,
   TargetAudience,
   EpisodeType,
+  FeedbackSentiment,
+  Priority,
+  HypothesisStatus,
 } from "./value-objects";
 
 describe("Sector Value Object", () => {
@@ -188,5 +190,110 @@ describe("EpisodeType Value Object", () => {
   it("should convert to string", () => {
     const type = EpisodeType.create("discovery");
     expect(type.toString()).toBe("discovery");
+  });
+});
+
+describe("FeedbackSentiment Value Object", () => {
+  it("should create valid sentiments", () => {
+    expect(FeedbackSentiment.create("positive").value).toBe("positive");
+    expect(FeedbackSentiment.create("neutral").value).toBe("neutral");
+    expect(FeedbackSentiment.create("negative").value).toBe("negative");
+  });
+
+  it("should use predefined constants", () => {
+    expect(FeedbackSentiment.POSITIVE.value).toBe("positive");
+    expect(FeedbackSentiment.NEUTRAL.value).toBe("neutral");
+    expect(FeedbackSentiment.NEGATIVE.value).toBe("negative");
+  });
+
+  it("should throw for invalid sentiment", () => {
+    expect(() => FeedbackSentiment.create("angry")).toThrow(
+      'Invalid FeedbackSentiment: "angry"'
+    );
+  });
+
+  it("should provide semantic helpers", () => {
+    expect(FeedbackSentiment.POSITIVE.isPositive()).toBe(true);
+    expect(FeedbackSentiment.POSITIVE.isNegative()).toBe(false);
+    expect(FeedbackSentiment.NEGATIVE.isNegative()).toBe(true);
+  });
+
+  it("should compare correctly", () => {
+    expect(FeedbackSentiment.create("positive").equals(FeedbackSentiment.POSITIVE)).toBe(true);
+    expect(FeedbackSentiment.POSITIVE.equals(FeedbackSentiment.NEGATIVE)).toBe(false);
+  });
+
+  it("should convert to string", () => {
+    expect(FeedbackSentiment.NEUTRAL.toString()).toBe("neutral");
+  });
+});
+
+describe("Priority Value Object", () => {
+  it("should create valid priorities", () => {
+    expect(Priority.create("primary").value).toBe("primary");
+    expect(Priority.create("secondary").value).toBe("secondary");
+  });
+
+  it("should use predefined constants", () => {
+    expect(Priority.PRIMARY.value).toBe("primary");
+    expect(Priority.SECONDARY.value).toBe("secondary");
+  });
+
+  it("should throw for invalid priority", () => {
+    expect(() => Priority.create("tertiary")).toThrow(
+      'Invalid Priority: "tertiary"'
+    );
+  });
+
+  it("should provide semantic helper", () => {
+    expect(Priority.PRIMARY.isPrimary()).toBe(true);
+    expect(Priority.SECONDARY.isPrimary()).toBe(false);
+  });
+
+  it("should compare correctly", () => {
+    expect(Priority.create("primary").equals(Priority.PRIMARY)).toBe(true);
+    expect(Priority.PRIMARY.equals(Priority.SECONDARY)).toBe(false);
+  });
+
+  it("should convert to string", () => {
+    expect(Priority.PRIMARY.toString()).toBe("primary");
+  });
+});
+
+describe("HypothesisStatus Value Object", () => {
+  it("should create valid statuses", () => {
+    expect(HypothesisStatus.create("untested").value).toBe("untested");
+    expect(HypothesisStatus.create("validated").value).toBe("validated");
+    expect(HypothesisStatus.create("invalidated").value).toBe("invalidated");
+    expect(HypothesisStatus.create("needs_more_data").value).toBe("needs_more_data");
+  });
+
+  it("should use predefined constants", () => {
+    expect(HypothesisStatus.UNTESTED.value).toBe("untested");
+    expect(HypothesisStatus.VALIDATED.value).toBe("validated");
+    expect(HypothesisStatus.INVALIDATED.value).toBe("invalidated");
+    expect(HypothesisStatus.NEEDS_MORE_DATA.value).toBe("needs_more_data");
+  });
+
+  it("should throw for invalid status", () => {
+    expect(() => HypothesisStatus.create("pending")).toThrow(
+      'Invalid HypothesisStatus: "pending"'
+    );
+  });
+
+  it("should detect resolved statuses", () => {
+    expect(HypothesisStatus.VALIDATED.isResolved()).toBe(true);
+    expect(HypothesisStatus.INVALIDATED.isResolved()).toBe(true);
+    expect(HypothesisStatus.UNTESTED.isResolved()).toBe(false);
+    expect(HypothesisStatus.NEEDS_MORE_DATA.isResolved()).toBe(false);
+  });
+
+  it("should compare correctly", () => {
+    expect(HypothesisStatus.create("validated").equals(HypothesisStatus.VALIDATED)).toBe(true);
+    expect(HypothesisStatus.VALIDATED.equals(HypothesisStatus.UNTESTED)).toBe(false);
+  });
+
+  it("should convert to string", () => {
+    expect(HypothesisStatus.UNTESTED.toString()).toBe("untested");
   });
 });

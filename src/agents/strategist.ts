@@ -9,216 +9,39 @@ export function getStrategistSystemPrompt(): string {
   return readFileSync(PROMPT_PATH, "utf-8");
 }
 
-// JSON Schema for structured output (derived from MarketingStrategy TypeScript interface)
-export const marketingStrategySchema: Record<string, unknown> = {
-  type: "object",
-  required: [
-    "metadata",
-    "diagnostic",
-    "okrs",
-    "actions",
-    "executionRoadmap",
-    "constraints",
-    "narrativeSummary",
-  ],
-  properties: {
-    metadata: {
-      type: "object",
-      required: [
-        "companyName",
-        "generatedAt",
-        "discoveryCompletionStatus",
-        "strategyVersion",
-      ],
-      properties: {
-        companyName: { type: "string" },
-        generatedAt: { type: "string" },
-        discoveryCompletionStatus: {
-          type: "string",
-          enum: ["complete", "partial"],
-        },
-        strategyVersion: { type: "number" },
-      },
-    },
-    diagnostic: {
-      type: "object",
-      required: [
-        "maturityScore",
-        "strengths",
-        "weaknesses",
-        "opportunities",
-        "threats",
-        "summary",
-      ],
-      properties: {
-        maturityScore: { type: "number", minimum: 0, maximum: 100 },
-        strengths: { type: "array", items: { type: "string" } },
-        weaknesses: { type: "array", items: { type: "string" } },
-        opportunities: { type: "array", items: { type: "string" } },
-        threats: { type: "array", items: { type: "string" } },
-        summary: { type: "string" },
-      },
-    },
-    okrs: {
-      type: "array",
-      items: {
-        type: "object",
-        required: [
-          "id",
-          "objective",
-          "rationale",
-          "keyResults",
-          "priority",
-          "linkedDiscoveryData",
-        ],
-        properties: {
-          id: { type: "string" },
-          objective: { type: "string" },
-          rationale: { type: "string" },
-          keyResults: {
-            type: "array",
-            items: {
-              type: "object",
-              required: [
-                "id",
-                "metric",
-                "current",
-                "target",
-                "timeline",
-                "confidence",
-              ],
-              properties: {
-                id: { type: "string" },
-                metric: { type: "string" },
-                current: { type: ["string", "null"] },
-                target: { type: "string" },
-                timeline: { type: "string" },
-                confidence: {
-                  type: "string",
-                  enum: ["low", "medium", "high"],
-                },
-              },
-            },
-          },
-          priority: {
-            type: "string",
-            enum: ["primary", "secondary"],
-          },
-          linkedDiscoveryData: {
-            type: "object",
-            required: ["fromBlock", "evidence"],
-            properties: {
-              fromBlock: {
-                type: "string",
-                enum: [
-                  "problem_value",
-                  "audience",
-                  "marketing_landscape",
-                  "business_context",
-                ],
-              },
-              evidence: { type: "string" },
-            },
-          },
-        },
-      },
-    },
-    actions: {
-      type: "array",
-      items: {
-        type: "object",
-        required: [
-          "id",
-          "okrId",
-          "keyResultId",
-          "title",
-          "description",
-          "type",
-          "effort",
-          "impact",
-          "requiredSkills",
-          "requiredTools",
-          "dependencies",
-          "suggestedTimeline",
-        ],
-        properties: {
-          id: { type: "string" },
-          okrId: { type: "string" },
-          keyResultId: { type: "string" },
-          title: { type: "string" },
-          description: { type: "string" },
-          type: {
-            type: "string",
-            enum: ["quick_win", "strategic", "foundation"],
-          },
-          effort: { type: "string", enum: ["low", "medium", "high"] },
-          impact: { type: "string", enum: ["low", "medium", "high"] },
-          requiredSkills: { type: "array", items: { type: "string" } },
-          requiredTools: { type: "array", items: { type: "string" } },
-          dependencies: { type: "array", items: { type: "string" } },
-          suggestedTimeline: { type: "string" },
-          channel: { type: "string" },
-          audienceSegment: { type: "string" },
-        },
-      },
-    },
-    executionRoadmap: {
-      type: "object",
-      required: ["phase1", "phase2", "phase3"],
-      properties: {
-        phase1: {
-          type: "object",
-          required: ["name", "duration", "actionIds"],
-          properties: {
-            name: { type: "string" },
-            duration: { type: "string" },
-            actionIds: { type: "array", items: { type: "string" } },
-          },
-        },
-        phase2: {
-          type: "object",
-          required: ["name", "duration", "actionIds"],
-          properties: {
-            name: { type: "string" },
-            duration: { type: "string" },
-            actionIds: { type: "array", items: { type: "string" } },
-          },
-        },
-        phase3: {
-          type: "object",
-          required: ["name", "duration", "actionIds"],
-          properties: {
-            name: { type: "string" },
-            duration: { type: "string" },
-            actionIds: { type: "array", items: { type: "string" } },
-          },
-        },
-      },
-    },
-    constraints: {
-      type: "object",
-      required: ["budgetFit", "teamFit", "adaptations"],
-      properties: {
-        budgetFit: { type: "boolean" },
-        teamFit: { type: "boolean" },
-        adaptations: { type: "array", items: { type: "string" } },
-      },
-    },
-    narrativeSummary: { type: "string" },
-  },
-};
+// JSON Schema for structured output — composed from sub-schemas
+// that mirror the TypeScript interfaces in src/types/marketing-strategy.ts
+export { marketingStrategySchema } from "./schema";
 
 // Type guard for the structured output
 export function isMarketingStrategy(
   data: unknown
 ): data is MarketingStrategy {
+  if (
+    typeof data !== "object" ||
+    data === null ||
+    !("metadata" in data) ||
+    !("strategic" in data) ||
+    !("tactical" in data) ||
+    !("operational" in data) ||
+    !("narrativeSummary" in data)
+  ) {
+    return false;
+  }
+  const strategic = (data as Record<string, unknown>).strategic;
+  const tactical = (data as Record<string, unknown>).tactical;
   return (
-    typeof data === "object" &&
-    data !== null &&
-    "metadata" in data &&
-    "diagnostic" in data &&
-    "okrs" in data &&
-    "actions" in data &&
-    "narrativeSummary" in data
+    typeof strategic === "object" &&
+    strategic !== null &&
+    "targetMarket" in strategic &&
+    "businessStrategy" in strategic &&
+    "feedbackLoop" in strategic &&
+    "marketingFoundation" in strategic &&
+    "timeHorizon" in strategic &&
+    "roadmapValidation" in strategic &&
+    typeof tactical === "object" &&
+    tactical !== null &&
+    "marketingPlan" in tactical &&
+    "marketingSystem" in tactical
   );
 }
