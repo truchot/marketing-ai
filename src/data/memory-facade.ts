@@ -8,6 +8,8 @@ import type { BusinessDiscovery } from "@/types/business-discovery";
  *
  * C'est le SEUL point de traduction entre les deux contextes.
  */
+const DISCOVERY_SOURCE = "onboarding";
+
 export class MemoryFacade implements IMemoryFacade {
   constructor(private readonly semanticRepo: ISemanticMemoryRepository) {}
 
@@ -23,7 +25,7 @@ export class MemoryFacade implements IMemoryFacade {
   }
 
   private storeCompanyMetadata(discovery: BusinessDiscovery): void {
-    const src = "onboarding";
+    const src = DISCOVERY_SOURCE;
     this.semanticRepo.addClientFact(
       "company",
       `Nom: ${discovery.metadata.companyName}`,
@@ -37,7 +39,7 @@ export class MemoryFacade implements IMemoryFacade {
   }
 
   private storeProblemContext(discovery: BusinessDiscovery): void {
-    const src = "onboarding";
+    const src = DISCOVERY_SOURCE;
     this.semanticRepo.addClientFact(
       "problem",
       `Problème: ${discovery.problem.statement} (niveau: ${discovery.problem.painLevel}, fréquence: ${discovery.problem.frequency})`,
@@ -53,7 +55,7 @@ export class MemoryFacade implements IMemoryFacade {
   }
 
   private storeValueProposition(discovery: BusinessDiscovery): void {
-    const src = "onboarding";
+    const src = DISCOVERY_SOURCE;
     this.semanticRepo.addClientFact(
       "value_proposition",
       `Transformation: ${discovery.valueProposition.transformation.before} → ${discovery.valueProposition.transformation.after} (délai: ${discovery.valueProposition.transformation.timeToValue})`,
@@ -74,7 +76,7 @@ export class MemoryFacade implements IMemoryFacade {
   }
 
   private storeAudiences(discovery: BusinessDiscovery): void {
-    const src = "onboarding";
+    const src = DISCOVERY_SOURCE;
     for (const audience of discovery.audiences) {
       this.semanticRepo.addClientFact(
         "audience",
@@ -92,7 +94,7 @@ export class MemoryFacade implements IMemoryFacade {
   }
 
   private storeMarketing(discovery: BusinessDiscovery): void {
-    const src = "onboarding";
+    const src = DISCOVERY_SOURCE;
     for (const channel of discovery.currentMarketing.channels) {
       this.semanticRepo.addClientFact(
         "marketing",
@@ -134,7 +136,7 @@ export class MemoryFacade implements IMemoryFacade {
   }
 
   private storeBusinessContext(discovery: BusinessDiscovery): void {
-    const src = "onboarding";
+    const src = DISCOVERY_SOURCE;
     this.semanticRepo.addClientFact(
       "business",
       `Phase: ${discovery.businessContext.stage} — ${discovery.businessContext.stageDetails}`,
@@ -160,7 +162,7 @@ export class MemoryFacade implements IMemoryFacade {
   }
 
   private storeSummary(discovery: BusinessDiscovery): void {
-    const src = "onboarding";
+    const src = DISCOVERY_SOURCE;
     this.semanticRepo.addClientFact(
       "summary",
       discovery.narrativeSummary,
@@ -169,7 +171,7 @@ export class MemoryFacade implements IMemoryFacade {
   }
 
   private storeStrategicHypotheses(discovery: BusinessDiscovery): void {
-    const src = "onboarding";
+    const src = DISCOVERY_SOURCE;
     for (const hypothesis of discovery.strategicHypotheses) {
       this.semanticRepo.addClientFact("strategy", hypothesis, src);
     }

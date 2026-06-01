@@ -1,6 +1,5 @@
 import type { ISemanticMemoryRepository } from "../ports";
-import type { ClientFact } from "@/types/memory";
-import { domainEventBus, CLIENT_FACT_ADDED, Result, ValidationError } from "@/domains/shared";
+import { domainEventBus, CLIENT_FACT_ADDED, executeUseCase } from "@/domains/shared";
 
 interface AddClientFactInput {
   category: string;
@@ -11,8 +10,8 @@ interface AddClientFactInput {
 export class AddClientFactUseCase {
   constructor(private semanticRepo: ISemanticMemoryRepository) {}
 
-  execute(input: AddClientFactInput): Result<ClientFact> {
-    try {
+  execute(input: AddClientFactInput) {
+    return executeUseCase(() => {
       const fact = this.semanticRepo.addClientFact(
         input.category,
         input.fact,
@@ -23,11 +22,7 @@ export class AddClientFactUseCase {
         occurredAt: new Date().toISOString(),
         payload: { factId: fact.id, category: input.category },
       });
-      return Result.ok(fact);
-    } catch (error) {
-      return Result.fail(new ValidationError(
-        error instanceof Error ? error.message : "Unknown validation error"
-      ));
-    }
+      return fact;
+    });
   }
 }

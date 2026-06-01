@@ -1,26 +1,22 @@
 import type { ICompanyProfileRepository } from "@/domains/client-knowledge/ports";
 import type { CompanyProfile } from "@/types";
-import {
-  getCompanyProfile,
-  setCompanyProfile,
-  resetCompanyProfile,
-} from "./company-profile";
+
+let companyProfile: CompanyProfile | null = null;
 
 export class InMemoryCompanyProfileRepository
   implements ICompanyProfileRepository
 {
   get(): CompanyProfile | null {
-    return getCompanyProfile();
+    return companyProfile;
   }
 
-  save(
-    data: Omit<CompanyProfile, "id" | "createdAt" | "updatedAt">
-  ): CompanyProfile {
-    return setCompanyProfile(data);
+  save(profile: CompanyProfile): CompanyProfile {
+    companyProfile = profile;
+    return companyProfile;
   }
 
   reset(): void {
-    resetCompanyProfile();
+    companyProfile = null;
   }
 }
 
