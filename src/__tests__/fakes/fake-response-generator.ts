@@ -1,13 +1,13 @@
 import type { IResponseGenerator } from "@/domains/conversation/ports/response-generator";
 
-/**
- * Deterministic response generator for tests.
- * Returns a fixed response string so assertions are predictable.
- */
 export class FakeResponseGenerator implements IResponseGenerator {
-  constructor(private response: string = "This is a test response.") {}
+  private response = "Réponse de test générée";
 
-  generate(): string {
+  setResponse(response: string): void {
+    this.response = response;
+  }
+
+  async generate(): Promise<string> {
     return this.response;
   }
 }

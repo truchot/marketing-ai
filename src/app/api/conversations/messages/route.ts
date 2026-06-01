@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const result = sendMessageUseCase.execute(content);
+  const result = await sendMessageUseCase.execute(content);
   if (result.isErr()) {
     return NextResponse.json(
       { error: result.error.message },

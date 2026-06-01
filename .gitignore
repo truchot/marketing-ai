@@ -40,5 +40,14 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# mastra (studio/build artifacts + local libsql stores)
+.mastra/
+*.db
+*.db-shm
+*.db-wal
+mastra.db*
+
 # claude
 .claude-worktrees/
+.claude/worktrees/
+.claude/settings.local.json

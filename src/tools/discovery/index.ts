@@ -3,7 +3,7 @@
 // Coupled with the existing memory system
 // ============================================================
 
-import { query } from "@anthropic-ai/claude-agent-sdk";
+import { generateText } from "@/mastra/model/generate-text";
 import { recordEpisodeUseCase, addClientFactUseCase } from "@/infrastructure/composition-root";
 import type { BusinessDiscovery } from "@/types/business-discovery";
 import { runEnrichmentAndReturn, type WebsiteInsights } from "./website-enrichment";
@@ -122,70 +122,28 @@ export async function fetchAndCleanHtml(url: string, maxChars: number = 8000): P
 }
 
 /**
- * Appelle Claude Haiku via le Claude Agent SDK pour analyser du contenu.
+ * Appelle Claude Sonnet via l'adaptateur Claude Agent SDK pour analyser du contenu.
+ * Passe par `generateText` (donc par `claudeAgentModel`) — pas d'appel direct à query().
  */
 export async function callClaudeSonnet(prompt: string): Promise<string> {
-  const result = query({
-    prompt,
-    options: {
-      model: "claude-sonnet-4-5-20250929",
-      permissionMode: "bypassPermissions",
-      allowDangerouslySkipPermissions: true,
-      maxTurns: 1,
-      persistSession: false,
-    },
-  });
-
-  let text = "";
-  for await (const msg of result) {
-    if (msg.type === "assistant") {
-      for (const block of msg.message.content) {
-        if (block.type === "text") {
-          text += block.text;
-        }
-      }
-    } else if (msg.type === "result") {
-      if (msg.subtype === "success") {
-        return text || msg.result;
-      }
-      console.error("[callClaudeSonnet] Query failed:", msg.subtype, msg.errors);
-      throw new Error(`Claude Sonnet query failed: ${msg.subtype}${msg.errors?.length ? ` - ${msg.errors.join(", ")}` : ""}`);
-    }
+  const text = await generateText("claude-sonnet-4-5-20250929", prompt);
+  if (!text) {
+    throw new Error("No result from Claude Sonnet");
   }
-
-  throw new Error("No result from Claude Sonnet query");
+  return text;
 }
 
+/**
+ * Appelle Claude Haiku via l'adaptateur Claude Agent SDK pour analyser du contenu.
+ * Passe par `generateText` (donc par `claudeAgentModel`) — pas d'appel direct à query().
+ */
 export async function callClaudeHaiku(prompt: string, _maxTokens: number = 1024): Promise<string> {
-  const result = query({
-    prompt,
-    options: {
-      model: "claude-haiku-4-5-20251001",
-      permissionMode: "bypassPermissions",
-      allowDangerouslySkipPermissions: true,
-      maxTurns: 2,
-      persistSession: false,
-    },
-  });
-
-  let text = "";
-  for await (const msg of result) {
-    if (msg.type === "assistant") {
-      for (const block of msg.message.content) {
-        if (block.type === "text") {
-          text += block.text;
-        }
-      }
-    } else if (msg.type === "result") {
-      if (msg.subtype === "success") {
-        return text || msg.result;
-      }
-      console.error("[callClaudeHaiku] Query failed:", msg.subtype, msg.errors);
-      throw new Error(`Claude Haiku query failed: ${msg.subtype}${msg.errors?.length ? ` - ${msg.errors.join(", ")}` : ""}`);
-    }
+  void _maxTokens;
+  const text = await generateText("claude-haiku-4-5-20251001", prompt);
+  if (!text) {
+    throw new Error("No result from Claude Haiku");
   }
-
-  throw new Error("No result from Claude Haiku query");
+  return text;
 }
 
 /**
