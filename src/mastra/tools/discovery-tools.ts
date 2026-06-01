@@ -1,13 +1,13 @@
 // ============================================================
-// Tools discovery pour l'agent Mastra.
+// Discovery tools for the Mastra agent.
 //
-// Convertit les 6 tools SDK (ancien tool-definitions.ts) en createTool
-// Mastra. La logique métier est RÉUTILISÉE par import depuis
-// src/tools/discovery/index.ts — rien n'est réécrit ici.
+// Converts the 6 SDK tools (former tool-definitions.ts) into Mastra
+// createTool. The business logic is REUSED by importing from
+// src/tools/discovery/index.ts — nothing is rewritten here.
 //
-// Le contrôle de flux (present_choices / signal_interview_complete) est
-// détecté par la route via les tool-calls du stream ; ces deux tools se
-// contentent donc d'accuser réception.
+// Flow control (present_choices / signal_interview_complete) is
+// detected by the route via the stream's tool-calls; these two tools
+// therefore simply acknowledge receipt.
 // ============================================================
 
 import { createTool } from "@mastra/core/tools";
@@ -21,23 +21,23 @@ import {
 
 const saveDiscoveryBlockTool = createTool({
   id: "saveDiscoveryBlock",
-  description: `Persiste un bloc validé de discovery dans la mémoire épisodique du système.
+  description: `Persists a validated discovery block into the system's episodic memory.
 
-QUAND L'UTILISER :
-- Après avoir complété un bloc d'interview (problème/valeur, audience, marketing, business)
-- Quand l'interlocuteur a validé la synthèse du bloc
-- Pour éviter la perte d'information sur les longues conversations
+WHEN TO USE IT:
+- After completing an interview block (problem/value, audience, marketing, business)
+- When the interlocutor has validated the block's summary
+- To prevent information loss on long conversations
 
-IMPORTANT : Toujours demander validation à l'interlocuteur avant de sauvegarder avec validatedBy=true.`,
+IMPORTANT: Always ask the interlocutor for validation before saving with validatedBy=true.`,
   inputSchema: z.object({
-    blockNumber: z.number().int().min(1).max(4).describe("Numéro du bloc (1-4)"),
+    blockNumber: z.number().int().min(1).max(4).describe("Block number (1-4)"),
     blockName: z
       .enum(["problem_value", "audience", "marketing_landscape", "business_context"])
-      .describe("Nom technique du bloc"),
-    data: z.record(z.string(), z.unknown()).describe("Données partielles de BusinessDiscovery pour ce bloc"),
+      .describe("Technical name of the block"),
+    data: z.record(z.string(), z.unknown()).describe("Partial BusinessDiscovery data for this block"),
     validatedBy: z
       .boolean()
-      .describe("L'interlocuteur a-t-il validé cette synthèse ? true = validé, false = brouillon"),
+      .describe("Has the interlocutor validated this summary? true = validated, false = draft"),
   }),
   outputSchema: z.object({
     success: z.boolean(),
@@ -55,19 +55,19 @@ IMPORTANT : Toujours demander validation à l'interlocuteur avant de sauvegarder
 
 const enrichFromWebsiteTool = createTool({
   id: "enrichFromWebsite",
-  description: `Enrichit la découverte en analysant le site web de l'entreprise.
+  description: `Enriches the discovery by analyzing the company's website.
 
-L'outil analyse le site et RETOURNE les insights (proposition de valeur, offres, audience, social proof, contenu, pricing, etc.) pour que tu pré-remplisses les réponses et évites les questions redondantes.
+The tool analyzes the site and RETURNS the insights (value proposition, offerings, audience, social proof, content, pricing, etc.) so that you can pre-fill the answers and avoid redundant questions.
 
-QUAND L'UTILISER :
-- Dès que l'interlocuteur fournit une URL de site web
-- Appeler UNE SEULE FOIS par URL
+WHEN TO USE IT:
+- As soon as the interlocutor provides a website URL
+- Call it ONLY ONCE per URL
 
-IMPORTANT :
-- Exploite les insights retournés pour accélérer l'entretien (Fast Track)`,
+IMPORTANT:
+- Leverage the returned insights to speed up the interview (Fast Track)`,
   inputSchema: z.object({
-    websiteUrl: z.string().url().describe("URL complète du site web (ex: https://example.com)"),
-    companyName: z.string().optional().describe("Nom de l'entreprise (optionnel, améliore l'analyse)"),
+    websiteUrl: z.string().url().describe("Full website URL (e.g. https://example.com)"),
+    companyName: z.string().optional().describe("Company name (optional, improves the analysis)"),
   }),
   outputSchema: z.object({
     success: z.boolean(),
@@ -83,16 +83,16 @@ IMPORTANT :
 
 const checkCompetitorsTool = createTool({
   id: "checkCompetitors",
-  description: `Analyse rapide des concurrents mentionnés par l'interlocuteur.
+  description: `Quick analysis of the competitors mentioned by the interlocutor.
 
-QUAND L'UTILISER :
-- Quand l'interlocuteur mentionne des concurrents spécifiques
-- Maximum 3 concurrents analysés (limite de rapidité)
+WHEN TO USE IT:
+- When the interlocutor mentions specific competitors
+- A maximum of 3 competitors analyzed (speed limit)
 
-MODÈLE : Claude Haiku (rapide et économique). Analyse de surface uniquement.`,
+MODEL: Claude Haiku (fast and cost-effective). Surface-level analysis only.`,
   inputSchema: z.object({
-    competitorUrls: z.array(z.string().url()).optional().describe("URLs des sites concurrents (max 3 recommandé)"),
-    competitorNames: z.array(z.string()).optional().describe("Noms des concurrents sans URL (retournera placeholder)"),
+    competitorUrls: z.array(z.string().url()).optional().describe("URLs of the competitor sites (max 3 recommended)"),
+    competitorNames: z.array(z.string()).optional().describe("Names of competitors without a URL (will return a placeholder)"),
   }),
   outputSchema: z.object({
     competitors: z.array(
@@ -115,23 +115,23 @@ MODÈLE : Claude Haiku (rapide et économique). Analyse de surface uniquement.`,
 
 const suggestQuestionsTool = createTool({
   id: "suggestQuestions",
-  description: `Suggère les prochaines questions pertinentes basées sur le secteur et la progression.
+  description: `Suggests the next relevant questions based on the sector and the progress.
 
-QUAND L'UTILISER :
-- Pour guidance contextuelle pendant l'interview
-- Quand l'agent a besoin d'inspiration pour approfondir un bloc
+WHEN TO USE IT:
+- For contextual guidance during the interview
+- When the agent needs inspiration to dig deeper into a block
 
-SECTEURS SUPPORTÉS : saas, ecommerce, agency, startup, other.
-Les questions suggérées sont des guides, pas des scripts rigides.`,
+SUPPORTED SECTORS: saas, ecommerce, agency, startup, other.
+The suggested questions are guides, not rigid scripts.`,
   inputSchema: z.object({
     sector: z
       .enum(["saas", "ecommerce", "agency", "startup", "other"])
-      .describe("Secteur de l'entreprise"),
-    completedBlocks: z.array(z.number().int()).describe("Numéros des blocs déjà complétés (ex: [1, 2])"),
+      .describe("Sector of the company"),
+    completedBlocks: z.array(z.number().int()).describe("Numbers of the blocks already completed (e.g. [1, 2])"),
     currentBlockData: z
       .record(z.string(), z.unknown())
       .optional()
-      .describe("Données partielles du bloc en cours (optionnel)"),
+      .describe("Partial data of the current block (optional)"),
   }),
   outputSchema: z.object({
     nextQuestions: z.array(z.string()),
@@ -147,15 +147,15 @@ Les questions suggérées sont des guides, pas des scripts rigides.`,
 
 const signalFastTrackCompleteTool = createTool({
   id: "signal_fast_track_complete",
-  description: `Appelle cet outil quand la phase Fast Track est terminée — c'est-à-dire quand tu as collecté : nom, secteur, problème principal, audience principale, objectif prioritaire, et stade de l'entreprise (certains via le site web, d'autres via les questions).
+  description: `Call this tool when the Fast Track phase is complete — that is, when you have collected: name, sector, main problem, main audience, priority objective, and the company's stage (some via the website, others via the questions).
 
-IMPORTANT : Inclus un résumé structuré de ce que tu sais déjà. Ce résumé sera utilisé pour générer les premières recommandations.
+IMPORTANT: Include a structured summary of what you already know. This summary will be used to generate the first recommendations.
 
-Appelle cet outil AVANT de proposer le choix "approfondir ou voir les recommandations".`,
+Call this tool BEFORE offering the choice "go deeper or see the recommendations".`,
   inputSchema: z.object({
     summary: z
       .string()
-      .describe("Synthèse structurée : contexte en 3 lignes, hypothèses stratégiques rapides, gaps identifiés"),
+      .describe("Structured summary: context in 3 lines, quick strategic hypotheses, identified gaps"),
   }),
   outputSchema: z.object({ acknowledged: z.boolean() }),
   execute: async () => ({ acknowledged: true }),
@@ -164,7 +164,7 @@ Appelle cet outil AVANT de proposer le choix "approfondir ou voir les recommanda
 const signalInterviewCompleteTool = createTool({
   id: "signal_interview_complete",
   description:
-    "Appelle cet outil quand l'entretien de découverte complet (Deep Dive) est terminé et que tu as couvert les 4 blocs (problème/proposition de valeur, audiences, marketing actuel, contexte business). Appelle-le en même temps que ton message de clôture.",
+    "Call this tool when the full discovery interview (Deep Dive) is complete and you have covered the 4 blocks (problem/value proposition, audiences, current marketing, business context). Call it together with your closing message.",
   inputSchema: z.object({}),
   outputSchema: z.object({ acknowledged: z.boolean() }),
   execute: async () => ({ acknowledged: true }),
@@ -173,18 +173,18 @@ const signalInterviewCompleteTool = createTool({
 const presentChoicesTool = createTool({
   id: "present_choices",
   description:
-    "Utilise cet outil quand tu poses une question à choix fermés (ex: secteur d'activité, niveau d'urgence). Au lieu d'écrire les options dans ton message texte, appelle cet outil pour afficher une interface de sélection claire. N'inclus PAS les options dans ton texte. Tu peux écrire un court texte d'introduction avant d'appeler l'outil.",
+    "Use this tool when you ask a closed-choice question (e.g. business sector, urgency level). Instead of writing the options in your text message, call this tool to display a clear selection interface. Do NOT include the options in your text. You can write a short introductory text before calling the tool.",
   inputSchema: z.object({
-    question: z.string().describe("La question posée à l'utilisateur"),
+    question: z.string().describe("The question asked to the user"),
     choices: z
       .array(
         z.object({
-          value: z.string().describe("Identifiant technique du choix (ex: saas)"),
-          label: z.string().describe("Libellé affiché (ex: SaaS)"),
-          description: z.string().optional().describe("Description courte optionnelle"),
+          value: z.string().describe("Technical identifier of the choice (e.g. saas)"),
+          label: z.string().describe("Displayed label (e.g. SaaS)"),
+          description: z.string().optional().describe("Optional short description"),
         })
       )
-      .describe("Les options proposées"),
+      .describe("The proposed options"),
   }),
   outputSchema: z.object({ presented: z.boolean() }),
   execute: async () => ({ presented: true }),
