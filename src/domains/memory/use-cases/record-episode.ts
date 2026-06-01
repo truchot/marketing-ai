@@ -15,7 +15,8 @@ export class RecordEpisodeUseCase {
   constructor(private episodicRepo: IEpisodicMemoryRepository) {}
 
   execute(input: RecordEpisodeInput) {
-    return executeUseCase(() => {
+    return executeUseCase(async () => {
+      // Create rich aggregate - validates invariants and raises domain events
       const aggregate = EpisodeAggregate.create(
         input.type,
         input.description,

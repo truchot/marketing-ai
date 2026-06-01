@@ -81,6 +81,21 @@ export interface DiscoveryLinkedPayload {
   discoveryId: string;
 }
 
+export interface ExperimentCreatedPayload {
+  experimentId: string;
+  keyResultId: string;
+  okrId: string;
+  companyName: string;
+  priorityScore: number;
+}
+
+export interface ExperimentConcludedPayload {
+  experimentId: string;
+  keyResultId: string;
+  metThreshold: boolean;
+  measuredValue: string;
+}
+
 // --- Discriminated union of all domain events ---
 
 export type DomainEvent =
@@ -95,7 +110,9 @@ export type DomainEvent =
   | { readonly type: typeof STRATEGY_GENERATED; readonly occurredAt: string; readonly payload: StrategyGeneratedPayload }
   | { readonly type: typeof OKR_REMOVED; readonly occurredAt: string; readonly payload: OKRRemovedPayload }
   | { readonly type: typeof COMPANY_PROFILE_UPDATED; readonly occurredAt: string; readonly payload: CompanyProfileUpdatedPayload }
-  | { readonly type: typeof DISCOVERY_LINKED; readonly occurredAt: string; readonly payload: DiscoveryLinkedPayload };
+  | { readonly type: typeof DISCOVERY_LINKED; readonly occurredAt: string; readonly payload: DiscoveryLinkedPayload }
+  | { readonly type: typeof EXPERIMENT_CREATED; readonly occurredAt: string; readonly payload: ExperimentCreatedPayload }
+  | { readonly type: typeof EXPERIMENT_CONCLUDED; readonly occurredAt: string; readonly payload: ExperimentConcludedPayload };
 
 // --- Event type constants ---
 
@@ -111,6 +128,8 @@ export const STRATEGY_GENERATED = "STRATEGY_GENERATED" as const;
 export const OKR_REMOVED = "OKR_REMOVED" as const;
 export const COMPANY_PROFILE_UPDATED = "COMPANY_PROFILE_UPDATED" as const;
 export const DISCOVERY_LINKED = "DISCOVERY_LINKED" as const;
+export const EXPERIMENT_CREATED = "EXPERIMENT_CREATED" as const;
+export const EXPERIMENT_CONCLUDED = "EXPERIMENT_CONCLUDED" as const;
 
 // --- Event Bus ---
 

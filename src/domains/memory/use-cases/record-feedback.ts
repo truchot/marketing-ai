@@ -13,23 +13,18 @@ export class RecordFeedbackUseCase {
   constructor(private episodicRepo: IEpisodicMemoryRepository) {}
 
   execute(input: RecordFeedbackInput) {
-    return executeUseCase(() => {
-      const feedback = this.episodicRepo.recordFeedback(
+    return executeUseCase(async () => {
+      const feedback = await this.episodicRepo.recordFeedback(
         input.source,
         input.sentiment,
         input.content,
         input.taskId
       );
-
       domainEventBus.publish({
         type: FEEDBACK_RECORDED,
         occurredAt: new Date().toISOString(),
-        payload: {
-          feedbackId: feedback.id,
-          sentiment: input.sentiment,
-        },
+        payload: { feedbackId: feedback.id, sentiment: input.sentiment },
       });
-
       return feedback;
     });
   }

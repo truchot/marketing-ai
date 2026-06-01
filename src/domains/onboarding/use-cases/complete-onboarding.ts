@@ -19,24 +19,24 @@ export class CompleteOnboardingUseCase {
     discovery: BusinessDiscovery,
     messages: { role: "user" | "assistant"; content: string }[]
   ) {
-    return executeUseCase(() => {
-      const discoveryId = this.storeDiscovery(discovery);
-      const profile = this.createProfile(discovery, discoveryId);
-      this.memoryFacade.storeDiscoveryFacts(discovery);
-      this.saveConversationHistory(messages);
+    return executeUseCase(async () => {
+      const discoveryId = await this.storeDiscovery(discovery);
+      const profile = await this.createProfile(discovery, discoveryId);
+      await this.memoryFacade.storeDiscoveryFacts(discovery);
+      await this.saveConversationHistory(messages);
       this.publishCompletionEvent(profile, discovery, discoveryId);
       return profile;
     });
   }
 
-  private storeDiscovery(discovery: BusinessDiscovery): string {
+  private storeDiscovery(discovery: BusinessDiscovery): Promise<string> {
     return this.discoveryRepo.save(discovery);
   }
 
-  private createProfile(
+  private async createProfile(
     discovery: BusinessDiscovery,
     discoveryId: string
-  ): CompanyProfile {
+  ): Promise<CompanyProfile> {
     const aggregate = CompanyProfileAggregate.create({
       name: discovery.metadata.companyName,
       sector: discovery.metadata.sector,
@@ -49,10 +49,10 @@ export class CompleteOnboardingUseCase {
     return this.profileRepo.save(aggregate.toDTO());
   }
 
-  private saveConversationHistory(
+  private async saveConversationHistory(
     messages: { role: "user" | "assistant"; content: string }[]
-  ): void {
-    this.conversationRepo.addBulk(messages);
+  ): Promise<void> {
+    await this.conversationRepo.addBulk(messages);
   }
 
   private publishCompletionEvent(

@@ -51,7 +51,7 @@ const persistStep = createStep({
   inputSchema: businessDiscoveryZodSchema,
   outputSchema: persistOutputSchema,
   execute: async ({ inputData }) => {
-    const result = completeOnboardingUseCase.execute(inputData as BusinessDiscovery, []);
+    const result = await completeOnboardingUseCase.execute(inputData as BusinessDiscovery, []);
     if (result.isErr()) {
       throw new Error(result.error.message);
     }

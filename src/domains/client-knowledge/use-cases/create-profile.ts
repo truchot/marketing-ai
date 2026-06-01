@@ -14,7 +14,7 @@ export class CreateProfileUseCase {
   constructor(private profileRepo: ICompanyProfileRepository) {}
 
   execute(input: CreateProfileInput) {
-    return executeUseCase(() => {
+    return executeUseCase(async () => {
       const aggregate = CompanyProfileAggregate.create({
         name: input.name,
         sector: input.sector,

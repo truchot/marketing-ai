@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: marketing-ai-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: marketing
+      POSTGRES_PASSWORD: marketing
+      POSTGRES_DB: marketing_ai
+    ports:
+      - "5433:5432"
+    volumes:
+      - marketing_ai_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U marketing -d marketing_ai"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  marketing_ai_pgdata:

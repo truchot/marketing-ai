@@ -19,6 +19,10 @@ import {
   STRATEGY_AGENT_ID,
   STRATEGY_EXTRACTION_AGENT_ID,
 } from "./agents/strategy-agent";
+import {
+  experimentationExtractionAgent,
+  EXPERIMENTATION_EXTRACTION_AGENT_ID,
+} from "./agents/experimentation-agent";
 import { onboardingWorkflow, ONBOARDING_WORKFLOW_ID } from "./workflows/onboarding";
 
 const DB_URL = process.env.MASTRA_DB_URL ?? "file:./mastra.db";
@@ -30,6 +34,7 @@ export const mastra = new Mastra({
     [CONVERSATION_AGENT_ID]: conversationAgent,
     [STRATEGY_AGENT_ID]: strategyAgent,
     [STRATEGY_EXTRACTION_AGENT_ID]: strategyExtractionAgent,
+    [EXPERIMENTATION_EXTRACTION_AGENT_ID]: experimentationExtractionAgent,
   },
   workflows: {
     [ONBOARDING_WORKFLOW_ID]: onboardingWorkflow,
@@ -56,4 +61,8 @@ export function getStrategyAgent() {
 
 export function getStrategyExtractionAgent() {
   return mastra.getAgent(STRATEGY_EXTRACTION_AGENT_ID);
+}
+
+export function getExperimentationExtractionAgent() {
+  return mastra.getAgent(EXPERIMENTATION_EXTRACTION_AGENT_ID);
 }

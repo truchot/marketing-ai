@@ -11,8 +11,8 @@ export class AddClientFactUseCase {
   constructor(private semanticRepo: ISemanticMemoryRepository) {}
 
   execute(input: AddClientFactInput) {
-    return executeUseCase(() => {
-      const fact = this.semanticRepo.addClientFact(
+    return executeUseCase(async () => {
+      const fact = await this.semanticRepo.addClientFact(
         input.category,
         input.fact,
         input.source

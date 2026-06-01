@@ -1,6 +1,6 @@
 # Glossaire d'Ubiquitous Language -- Marketing AI
 
-> **Derniere mise a jour** : 2026-02-07
+> **Derniere mise a jour** : 2026-06-01
 > **Convention** : Les termes metier sont en anglais (langue du code), les definitions et explications sont en francais.
 
 ---
@@ -13,6 +13,8 @@
 4. [Onboarding Context](#4-onboarding-context)
 5. [Shared Kernel](#5-shared-kernel)
 6. [Incoherences et recommandations](#6-incoherences-et-recommandations)
+7. [Strategy Context](#7-strategy-context)
+8. [Experimentation Context](#8-experimentation-context)
 
 ---
 
@@ -496,3 +498,147 @@ Ces trois types representent le meme concept a des niveaux de detail differents,
 | 6.2 | Ambiguite Episode/EpisodicContext | Faible | Faible | Basse |
 | 6.8 | Agent non formalise | Faible | Eleve | Basse |
 | 6.9 | Importance perdue a la promotion | Faible | Moyen | Basse |
+
+---
+
+## 7. Strategy Context
+
+Le contexte Strategy transforme une `BusinessDiscovery` en strategie marketing validee. C'est la source de verite du « quoi faire » : diagnostic, objectifs mesurables et plan d'actions priorise. Il est consomme en lecture par le contexte Experimentation.
+
+### 7.1. MarketingStrategy
+
+| Attribut | Detail |
+|----------|--------|
+| **Nom** | MarketingStrategy / StrategyAggregate |
+| **Definition** | Livrable principal de l'agent Strategist. Agrege un diagnostic, 1 a 3 OKR, un plan d'actions priorise, une roadmap d'execution, un fit de contraintes et une synthese narrative. |
+| **Contexte** | Strategy Context |
+| **Invariants** | Au moins 1 OKR, au plus 3 OKR. Au moins 1 action. La suppression d'un OKR retire ses actions liees et ne peut pas laisser zero OKR. |
+| **Relations** | Produit a partir d'une `BusinessDiscovery` (Client Knowledge). Publie `STRATEGY_GENERATED`. Lu par le contexte Experimentation (via `keyResultId` / `actionId`). |
+| **Fichiers** | `src/types/marketing-strategy.ts`, `src/domains/strategy/aggregates/strategy.ts`, `src/app/api/agent/strategy/structured/` |
+
+### 7.2. MarketingDiagnostic
+
+| Attribut | Detail |
+|----------|--------|
+| **Nom** | MarketingDiagnostic |
+| **Definition** | Etat des lieux marketing : score de maturite (0-100), SWOT (forces, faiblesses, opportunites, menaces) et synthese. |
+| **Contexte** | Strategy Context |
+| **Invariants** | `maturityScore` est un entier 0-100. |
+| **Relations** | Composant de `MarketingStrategy`. Sert de base au choix des OKR. |
+| **Fichiers** | `src/types/marketing-strategy.ts` |
+
+### 7.3. OKR (Objective & Key Results)
+
+| Attribut | Detail |
+|----------|--------|
+| **Nom** | OKR |
+| **Definition** | Objectif qualitatif inspirant associe a un ensemble de Key Results mesurables. Chaque OKR trace son origine dans la discovery via `linkedDiscoveryData`. |
+| **Contexte** | Strategy Context |
+| **Invariants** | `priority` ∈ {`primary`, `secondary`}. Possede au moins un `KeyResult`. |
+| **Relations** | Contient des `KeyResult`. Cible des `Action`. Un `Experiment` se rattache toujours a un `KeyResult` d'un OKR. |
+| **Fichiers** | `src/types/marketing-strategy.ts` |
+
+### 7.4. KeyResult
+
+| Attribut | Detail |
+|----------|--------|
+| **Nom** | KeyResult |
+| **Definition** | Resultat cle mesurable d'un OKR : un KPI (`metric`), une baseline optionnelle (`current`), une cible (`target`), un horizon (`timeline`) et un niveau de confiance. |
+| **Contexte** | Strategy Context |
+| **Invariants** | `confidence` ∈ {`low`, `medium`, `high`}. |
+| **Relations** | **Garde-fou de l'Experimentation** : tout `Experiment` reference un `keyResultId` (requis). |
+| **Fichiers** | `src/types/marketing-strategy.ts` |
+
+### 7.5. Action
+
+| Attribut | Detail |
+|----------|--------|
+| **Nom** | Action |
+| **Definition** | Initiative marketing reliee a un OKR et un KeyResult, qualifiee par un type (`quick_win`, `strategic`, `foundation`), un niveau d'`impact` et d'`effort`, un canal et un segment. C'est une intention strategique, pas encore un pari testable. |
+| **Contexte** | Strategy Context |
+| **Invariants** | `type` ∈ {`quick_win`, `strategic`, `foundation`}. `impact`/`effort` ∈ {`low`, `medium`, `high`}. |
+| **Relations** | Rangee en phases par `ExecutionRoadmap`. **Promue en `Experiment`** par `ExperimentAggregate.promoteFromAction()` (qui amorce le score ICE depuis `impact`/`effort`). |
+| **Fichiers** | `src/types/marketing-strategy.ts` |
+
+### 7.6. ExecutionRoadmap
+
+| Attribut | Detail |
+|----------|--------|
+| **Nom** | ExecutionRoadmap |
+| **Definition** | Sequencement des actions en 3 phases temporelles : phase1 (quick wins, 0-30 j), phase2 (fondations, 30-90 j), phase3 (strategique, 90+ j). |
+| **Contexte** | Strategy Context |
+| **Invariants** | Chaque phase reference des `actionIds` existants. Cadence grossiere : ni hebdomadaire, ni quotidienne (c'est le role de l'Experimentation). |
+| **Relations** | Composant de `MarketingStrategy`. La granularite fine hebdo/daily est apportee par le contexte Experimentation. |
+| **Fichiers** | `src/types/marketing-strategy.ts` |
+
+---
+
+## 8. Experimentation Context
+
+Le contexte Experimentation est la couche d'execution cadencee sous la Strategy. Il decline les actions strategiques en paris falsifiables (hebdomadaire) puis en atomes shippables (quotidien), et porte la boucle d'apprentissage data-driven. Voir `docs/adr/0001-bounded-context-experimentation.md`.
+
+### 8.1. Experiment
+
+| Attribut | Detail |
+|----------|--------|
+| **Nom** | Experiment / ExperimentAggregate |
+| **Definition** | Pari marketing testable, cadence hebdomadaire. Transforme une intention (`Action`) en hypothese falsifiable avec metrique de succes et seuil. Agregat racine qui **possede** ses `DailyAction` (premier agregat a entites enfants du projet). |
+| **Contexte** | Experimentation Context |
+| **Invariants** | `keyResultId` **requis** (garde-fou). `hypothesis.threshold` non vide (falsifiabilite). Score ICE dans [1, 10]. Cycle de vie : `draft → selected → running → concluded` (ou `archived`). Les `DailyAction` ne se modifient qu'a travers la racine. |
+| **Relations** | Reference (sans muter) un `KeyResult` et optionnellement une `Action` de la Strategy. Publie `EXPERIMENT_CREATED` (creation) et `EXPERIMENT_CONCLUDED` (cloture). A terme, ecrit son `learning` en memoire semantique. |
+| **Fichiers** | `src/types/experiment.ts`, `src/domains/experimentation/aggregates/experiment.ts` |
+
+### 8.2. Hypothesis
+
+| Attribut | Detail |
+|----------|--------|
+| **Nom** | Hypothesis |
+| **Definition** | Carte d'hypothese falsifiable : « On parie que [belief] aupres de [audience] va generer [outcome], mesure par [successMetric], seuil [threshold]. » |
+| **Contexte** | Experimentation Context |
+| **Invariants** | `threshold` non vide -- c'est ce qui rend l'experience data-driven plutot qu'au feeling. |
+| **Relations** | Portee par un `Experiment`. Le couple `successMetric` + `threshold` sera confronte au resultat mesure (`ExperimentResult`). |
+| **Fichiers** | `src/types/experiment.ts` |
+
+### 8.3. IceScore / priorityScore
+
+| Attribut | Detail |
+|----------|--------|
+| **Nom** | IceScore / priorityScore |
+| **Definition** | Score de priorisation a 3 dimensions sur 1-10 : Impact, Confidence, Ease. `priorityScore = (impact + confidence + ease) / 3`, arrondi a 1 decimale. Sert a classer le backlog. |
+| **Contexte** | Experimentation Context |
+| **Invariants** | Chaque dimension ∈ [1, 10]. `impact`/`ease` sont amorces depuis l'`Action` source (`low=3, medium=6, high=9` ; ease = inverse de l'effort). |
+| **Relations** | `confidence` est alimentee par les `ConfidenceSource`. Complete le couple `impact`/`effort` deja porte par l'`Action` (qui n'a pas de notion de confiance). |
+| **Fichiers** | `src/types/experiment.ts`, `src/domains/experimentation/aggregates/experiment.ts` |
+
+### 8.4. ConfidenceSource
+
+| Attribut | Detail |
+|----------|--------|
+| **Nom** | ConfidenceSource |
+| **Definition** | Preuve qui justifie le niveau de confiance d'une experience. Type ∈ {`sector_benchmark`, `competitor_intel`, `first_party_result`, `own_analytics`, `semantic_memory`} + une `evidence` verifiable. |
+| **Contexte** | Experimentation Context |
+| **Invariants** | Les sources se **superposent dans le temps** : benchmark/concurrents au demarrage (cold-start), puis first-party/analytics, puis regles apprises. La machine sevre le benchmark au profit du first-party. |
+| **Relations** | Alimente la dimension `confidence` du `IceScore`. Mise a jour par `recomputeConfidence()` (recalibrage hebdomadaire). |
+| **Fichiers** | `src/types/experiment.ts` |
+
+### 8.5. DailyAction
+
+| Attribut | Detail |
+|----------|--------|
+| **Nom** | DailyAction |
+| **Definition** | Atome shippable, cadence quotidienne. Declinaison d'un `Experiment` en une production concrete d'un jour (un post, une relance, une sous-tache de build), avec son asset produit. Entite enfant de l'`Experiment`. |
+| **Contexte** | Experimentation Context |
+| **Invariants** | Cycle : `proposed → validated → shipped` (ou `skipped` / `carried_over`). La validation exige un asset produit. Le ship d'un atome promeut l'experience en `running`. Bornee par la capacite du fondateur (mode copilote). |
+| **Relations** | Appartient a un `Experiment` (modifiee uniquement via la racine). Agregee par la projection `DailyPlan`. Le report (`carry_over`) cree un nouvel atome lie a l'original via `carryOverFrom`. |
+| **Fichiers** | `src/types/experiment.ts`, `src/domains/experimentation/aggregates/experiment.ts` |
+
+### 8.6. DailyPlan (projection)
+
+| Attribut | Detail |
+|----------|--------|
+| **Nom** | DailyPlan |
+| **Definition** | Projection en lecture (read-model), **pas un agregat**. Aplatit les `DailyAction` de tous les `Experiment` pour repondre a « que shippe-t-on aujourd'hui ? », en conservant le fil de causalite vers le `KeyResult` parent. |
+| **Contexte** | Experimentation Context |
+| **Invariants** | Pure lecture : ne porte aucun invariant metier propre, ne modifie aucun etat. |
+| **Relations** | Construite a partir du `IExperimentRepository`. Vue quotidienne/hebdomadaire du backlog en cours. |
+| **Fichiers** | `src/domains/experimentation/` (use-cases / projection) |

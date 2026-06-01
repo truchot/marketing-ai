@@ -9,8 +9,8 @@ export class ConsolidateMemoryUseCase {
   ) {}
 
   execute() {
-    return executeUseCase(() => {
-      this.pipeline.runConsolidation();
+    return executeUseCase(async () => {
+      await this.pipeline.runConsolidation();
       return this.queryService.getStats();
     });
   }

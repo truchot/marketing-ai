@@ -5,17 +5,15 @@ import { Result, NotFoundError } from "@/domains/shared";
 export class GetStrategyUseCase {
   constructor(private strategyRepo: IStrategyRepository) {}
 
-  execute(strategyId?: string): Result<StrategyAggregate> {
+  async execute(strategyId?: string): Promise<Result<StrategyAggregate>> {
     const aggregate = strategyId
-      ? this.strategyRepo.get(strategyId)
-      : this.strategyRepo.getLatest();
+      ? await this.strategyRepo.get(strategyId)
+      : await this.strategyRepo.getLatest();
 
     if (!aggregate) {
       return Result.fail(
         new NotFoundError(
-          strategyId
-            ? `Strategy ${strategyId} not found`
-            : "No strategy found"
+          strategyId ? `Strategy ${strategyId} not found` : "No strategy found"
         )
       );
     }

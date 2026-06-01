@@ -1,34 +1,41 @@
+// ============================================================
+// PrismaBusinessDiscoveryRepository
+// The 8-block BusinessDiscovery document is stored as JSONB
+// (hybrid normalization — cf. ADR notes / CONTEXT_MAP).
+// ============================================================
+
+import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
+import { IdGenerator } from "@/lib/id-generator";
 import type { IBusinessDiscoveryRepository } from "@/domains/client-knowledge/ports";
 import type { BusinessDiscovery } from "@/types/business-discovery";
-import { IdGenerator } from "@/lib/id-generator";
 
-const store = new Map<string, BusinessDiscovery>();
-let latestId: string | null = null;
-
-export class InMemoryBusinessDiscoveryRepository
-  implements IBusinessDiscoveryRepository
-{
-  save(discovery: BusinessDiscovery): string {
+export class PrismaBusinessDiscoveryRepository implements IBusinessDiscoveryRepository {
+  async save(discovery: BusinessDiscovery): Promise<string> {
     const id = IdGenerator.generate("discovery");
-    store.set(id, discovery);
-    latestId = id;
+    await prisma.businessDiscovery.create({
+      data: {
+        id,
+        companyName: discovery.metadata.companyName,
+        data: discovery as unknown as Prisma.InputJsonValue,
+      },
+    });
     return id;
   }
 
-  get(discoveryId: string): BusinessDiscovery | null {
-    return store.get(discoveryId) ?? null;
+  async get(discoveryId: string): Promise<BusinessDiscovery | null> {
+    const row = await prisma.businessDiscovery.findUnique({ where: { id: discoveryId } });
+    return row ? (row.data as unknown as BusinessDiscovery) : null;
   }
 
-  getLatest(): BusinessDiscovery | null {
-    if (!latestId) return null;
-    return store.get(latestId) ?? null;
+  async getLatest(): Promise<BusinessDiscovery | null> {
+    const row = await prisma.businessDiscovery.findFirst({ orderBy: { seq: "desc" } });
+    return row ? (row.data as unknown as BusinessDiscovery) : null;
   }
 
-  reset(): void {
-    store.clear();
-    latestId = null;
+  async reset(): Promise<void> {
+    await prisma.businessDiscovery.deleteMany({});
   }
 }
 
-export const businessDiscoveryRepository =
-  new InMemoryBusinessDiscoveryRepository();
+export const businessDiscoveryRepository = new PrismaBusinessDiscoveryRepository();

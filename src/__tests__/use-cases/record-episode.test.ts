@@ -9,10 +9,10 @@ describe("RecordEpisodeUseCase", () => {
     return { episodicRepo, useCase };
   }
 
-  it("should record an episode with the correct data", () => {
+  it("should record an episode with the correct data", async () => {
     const { episodicRepo, useCase } = setup();
 
-    const result = useCase.execute({
+    const result = await useCase.execute({
       type: "interaction",
       description: "User asked about pricing",
       data: { topic: "pricing" },
@@ -31,15 +31,15 @@ describe("RecordEpisodeUseCase", () => {
     expect(episode.metadata.timestamp).toBeDefined();
 
     // Verify it was persisted in the repository
-    const episodes = episodicRepo.getEpisodes();
+    const episodes = await episodicRepo.getEpisodes();
     expect(episodes).toHaveLength(1);
     expect(episodes[0].id).toBe(episode.id);
   });
 
-  it("should reject an invalid importance value", () => {
+  it("should reject an invalid importance value", async () => {
     const { useCase } = setup();
 
-    const result = useCase.execute({
+    const result = await useCase.execute({
       type: "interaction",
       description: "Some episode",
       data: {},
@@ -51,10 +51,10 @@ describe("RecordEpisodeUseCase", () => {
     expect(result.error.message).toContain("critical");
   });
 
-  it("should reject an empty tag", () => {
+  it("should reject an empty tag", async () => {
     const { useCase } = setup();
 
-    const result = useCase.execute({
+    const result = await useCase.execute({
       type: "interaction",
       description: "Some episode",
       data: {},
@@ -66,12 +66,12 @@ describe("RecordEpisodeUseCase", () => {
     expect(result.error.message).toContain("empty");
   });
 
-  it("should accept all valid episode types", () => {
+  it("should accept all valid episode types", async () => {
     const { useCase } = setup();
 
     const types = ["interaction", "task_result", "feedback", "discovery"] as const;
     for (const type of types) {
-      const result = useCase.execute({
+      const result = await useCase.execute({
         type,
         description: `Episode of type ${type}`,
         data: {},

@@ -10,8 +10,8 @@ export class StartSessionUseCase {
   constructor(private workingRepo: IWorkingMemoryRepository) {}
 
   execute(input: StartSessionInput) {
-    return executeUseCase(() => {
-      this.workingRepo.startSession(input.task, input.objective);
+    return executeUseCase(async () => {
+      await this.workingRepo.startSession(input.task, input.objective);
     });
   }
 }

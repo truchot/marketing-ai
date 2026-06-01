@@ -7,9 +7,9 @@ export class SaveStrategyUseCase {
   constructor(private strategyRepo: IStrategyRepository) {}
 
   execute(strategy: MarketingStrategy) {
-    return executeUseCase(() => {
+    return executeUseCase(async () => {
       const aggregate = StrategyAggregate.create(strategy);
-      this.strategyRepo.save(aggregate.id, aggregate.toStrategy());
+      await this.strategyRepo.save(aggregate.id, aggregate.toStrategy());
       aggregate.publishEvents();
       return aggregate.id;
     });

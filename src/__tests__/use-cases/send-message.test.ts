@@ -41,7 +41,7 @@ describe("SendMessageUseCase", () => {
     expect(userMessage.role).toBe("user");
     expect(userMessage.content).toBe("Hello, I need help with SEO.");
 
-    const allMessages = conversationRepo.getAll();
+    const allMessages = await conversationRepo.getAll();
     expect(allMessages.some((m) => m.id === userMessage.id)).toBe(true);
   });
 
@@ -56,7 +56,7 @@ describe("SendMessageUseCase", () => {
     expect(assistantMessage.role).toBe("assistant");
     expect(assistantMessage.content).toBe("Sure, I can help with SEO!");
 
-    const allMessages = conversationRepo.getAll();
+    const allMessages = await conversationRepo.getAll();
     expect(allMessages.some((m) => m.id === assistantMessage.id)).toBe(true);
   });
 
@@ -69,7 +69,7 @@ describe("SendMessageUseCase", () => {
     if (!result.isOk()) return;
     const { userMessage } = result.value;
 
-    const episodes = episodicRepo.getEpisodes();
+    const episodes = await episodicRepo.getEpisodes();
     expect(episodes).toHaveLength(1);
     expect(episodes[0].type).toBe("interaction");
     expect(episodes[0].description).toBe("What is content marketing?");

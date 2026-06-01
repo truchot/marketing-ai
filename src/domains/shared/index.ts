@@ -29,6 +29,8 @@ export {
   OKR_REMOVED,
   COMPANY_PROFILE_UPDATED,
   DISCOVERY_LINKED,
+  EXPERIMENT_CREATED,
+  EXPERIMENT_CONCLUDED,
 } from "./domain-events";
 
 export { AggregateRoot } from "./aggregate-root";

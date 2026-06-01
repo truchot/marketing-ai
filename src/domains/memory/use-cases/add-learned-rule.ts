@@ -13,7 +13,7 @@ export class AddLearnedRuleUseCase {
   constructor(private semanticRepo: ISemanticMemoryRepository) {}
 
   execute(input: AddLearnedRuleInput) {
-    return executeUseCase(() => {
+    return executeUseCase(async () => {
       ConfidenceLevelVO.create(input.confidence);
       return this.semanticRepo.addLearnedRule(
         input.description,

@@ -12,21 +12,21 @@ export class ConsolidationPipeline {
     private semanticMemory: ISemanticMemoryRepository
   ) {}
 
-  runConsolidation(): void {
-    this.consolidateWorkingToEpisodic();
-    this.consolidateEpisodicToSemantic();
-    this.pruneOldEpisodes();
+  async runConsolidation(): Promise<void> {
+    await this.consolidateWorkingToEpisodic();
+    await this.consolidateEpisodicToSemantic();
+    await this.pruneOldEpisodes();
   }
 
-  private consolidateWorkingToEpisodic(): void {
-    const session = this.workingMemory.clearSession();
+  private async consolidateWorkingToEpisodic(): Promise<void> {
+    const session = await this.workingMemory.clearSession();
     if (!session) return;
 
     const intermediateKeys = Object.keys(session.intermediateResults);
     const scratchpadKeys = Object.keys(session.scratchpad);
 
     if (intermediateKeys.length > 0 || scratchpadKeys.length > 0) {
-      this.episodicMemory.recordEpisode(
+      await this.episodicMemory.recordEpisode(
         "task_result",
         `Session: ${session.task} - ${session.objective}`,
         {
@@ -40,15 +40,16 @@ export class ConsolidationPipeline {
     }
   }
 
-  private consolidateEpisodicToSemantic(): void {
-    for (const pattern of this.episodicMemory.getEmergentPatterns()) {
+  private async consolidateEpisodicToSemantic(): Promise<void> {
+    const patterns = await this.episodicMemory.getEmergentPatterns();
+    for (const pattern of patterns) {
       if (pattern.occurrences >= PATTERN_PROMOTION_THRESHOLD) {
-        const validatedPatterns = this.semanticMemory.getValidatedPatterns();
+        const validatedPatterns = await this.semanticMemory.getValidatedPatterns();
         const alreadyValidated = validatedPatterns.some(
           (vp) => vp.type === pattern.type
         );
         if (!alreadyValidated) {
-          this.semanticMemory.addValidatedPattern(
+          await this.semanticMemory.addValidatedPattern(
             pattern.type,
             pattern.description,
             `Observed ${pattern.occurrences} times`,
@@ -61,7 +62,8 @@ export class ConsolidationPipeline {
 
     // Promote recurring feedback to preferences
     const feedbackBySentiment = new Map<string, number>();
-    for (const fb of this.episodicMemory.getFeedback()) {
+    const allFeedback = await this.episodicMemory.getFeedback();
+    for (const fb of allFeedback) {
       const key = `${fb.sentiment}:${fb.content.slice(0, 50)}`;
       feedbackBySentiment.set(
         key,
@@ -71,12 +73,12 @@ export class ConsolidationPipeline {
     for (const [key, count] of feedbackBySentiment) {
       if (count >= PATTERN_PROMOTION_THRESHOLD) {
         const [sentiment, content] = key.split(":");
-        const preferences = this.semanticMemory.getPreferences();
+        const preferences = await this.semanticMemory.getPreferences();
         const alreadyPreference = preferences.some(
           (p) => p.key === content
         );
         if (!alreadyPreference) {
-          this.semanticMemory.addPreference(
+          await this.semanticMemory.addPreference(
             "feedback",
             content,
             `${sentiment} (${count} occurrences)`,
@@ -87,7 +89,7 @@ export class ConsolidationPipeline {
     }
   }
 
-  private pruneOldEpisodes(): void {
-    this.episodicMemory.prune(EPISODIC_RETENTION_DAYS);
+  private async pruneOldEpisodes(): Promise<void> {
+    await this.episodicMemory.prune(EPISODIC_RETENTION_DAYS);
   }
 }

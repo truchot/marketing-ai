@@ -8,13 +8,17 @@ import {
 } from "@/types/memory";
 import type { ISemanticMemoryRepository } from "@/domains/memory/ports";
 
+/**
+ * In-memory semantic store. Kept as the test double for the Memory context.
+ * Production uses the Prisma-backed implementation (see ./prisma-semantic-memory).
+ */
 export class SemanticMemoryStore implements ISemanticMemoryRepository {
   private clientFacts: ClientFact[] = [];
   private preferences: Preference[] = [];
   private validatedPatterns: ValidatedPattern[] = [];
   private learnedRules: LearnedRule[] = [];
 
-  addClientFact(category: string, fact: string, source: string): ClientFact {
+  async addClientFact(category: string, fact: string, source: string): Promise<ClientFact> {
     const cf: ClientFact = {
       id: `fact-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       category,
@@ -26,12 +30,12 @@ export class SemanticMemoryStore implements ISemanticMemoryRepository {
     return cf;
   }
 
-  addPreference(
+  async addPreference(
     category: string,
     key: string,
     value: string,
     confidence: ConfidenceLevel
-  ): Preference {
+  ): Promise<Preference> {
     const existing = this.preferences.find(
       (p) => p.category === category && p.key === key
     );
@@ -52,13 +56,13 @@ export class SemanticMemoryStore implements ISemanticMemoryRepository {
     return pref;
   }
 
-  addValidatedPattern(
+  async addValidatedPattern(
     type: string,
     description: string,
     trigger: string,
     outcome: string,
     recommendation: string
-  ): ValidatedPattern {
+  ): Promise<ValidatedPattern> {
     const vp: ValidatedPattern = {
       id: `pat-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       type,
@@ -72,12 +76,12 @@ export class SemanticMemoryStore implements ISemanticMemoryRepository {
     return vp;
   }
 
-  addLearnedRule(
+  async addLearnedRule(
     description: string,
     domain: string,
     action: string,
     confidence: ConfidenceLevel
-  ): LearnedRule {
+  ): Promise<LearnedRule> {
     const lr: LearnedRule = {
       id: `rule-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       description,
@@ -90,14 +94,14 @@ export class SemanticMemoryStore implements ISemanticMemoryRepository {
     return lr;
   }
 
-  reset(): void {
+  async reset(): Promise<void> {
     this.clientFacts = [];
     this.preferences = [];
     this.validatedPatterns = [];
     this.learnedRules = [];
   }
 
-  getSemanticContext(): SemanticContext {
+  async getSemanticContext(): Promise<SemanticContext> {
     return {
       clientFacts: [...this.clientFacts],
       preferences: [...this.preferences],
@@ -106,19 +110,19 @@ export class SemanticMemoryStore implements ISemanticMemoryRepository {
     };
   }
 
-  getClientFacts(): ClientFact[] {
+  async getClientFacts(): Promise<ClientFact[]> {
     return this.clientFacts;
   }
 
-  getPreferences(): Preference[] {
+  async getPreferences(): Promise<Preference[]> {
     return this.preferences;
   }
 
-  getValidatedPatterns(): ValidatedPattern[] {
+  async getValidatedPatterns(): Promise<ValidatedPattern[]> {
     return this.validatedPatterns;
   }
 
-  getLearnedRules(): LearnedRule[] {
+  async getLearnedRules(): Promise<LearnedRule[]> {
     return this.learnedRules;
   }
 }

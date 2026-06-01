@@ -2,178 +2,164 @@ import type { IMemoryFacade } from "@/domains/onboarding/ports/memory-facade";
 import type { ISemanticMemoryRepository } from "@/domains/memory/ports";
 import type { BusinessDiscovery } from "@/types/business-discovery";
 
+type Fact = { category: string; fact: string };
+
+const DISCOVERY_SOURCE = "onboarding";
+
 /**
  * Anti-Corruption Layer : traduit BusinessDiscovery (contexte Onboarding)
  * en ClientFacts sémantiques (contexte Memory).
  *
  * C'est le SEUL point de traduction entre les deux contextes.
  */
-const DISCOVERY_SOURCE = "onboarding";
-
 export class MemoryFacade implements IMemoryFacade {
   constructor(private readonly semanticRepo: ISemanticMemoryRepository) {}
 
-  storeDiscoveryFacts(discovery: BusinessDiscovery): void {
-    this.storeCompanyMetadata(discovery);
-    this.storeProblemContext(discovery);
-    this.storeValueProposition(discovery);
-    this.storeAudiences(discovery);
-    this.storeMarketing(discovery);
-    this.storeBusinessContext(discovery);
-    this.storeSummary(discovery);
-    this.storeStrategicHypotheses(discovery);
+  async storeDiscoveryFacts(discovery: BusinessDiscovery): Promise<void> {
+    const facts: Fact[] = [
+      ...this.companyMetadata(discovery),
+      ...this.problemContext(discovery),
+      ...this.valueProposition(discovery),
+      ...this.audiences(discovery),
+      ...this.marketing(discovery),
+      ...this.businessContext(discovery),
+      ...this.summary(discovery),
+      ...this.strategicHypotheses(discovery),
+    ];
+    for (const f of facts) {
+      await this.semanticRepo.addClientFact(f.category, f.fact, DISCOVERY_SOURCE);
+    }
   }
 
-  private storeCompanyMetadata(discovery: BusinessDiscovery): void {
-    const src = DISCOVERY_SOURCE;
-    this.semanticRepo.addClientFact(
-      "company",
-      `Nom: ${discovery.metadata.companyName}`,
-      src
-    );
-    this.semanticRepo.addClientFact(
-      "market",
-      `Secteur: ${discovery.metadata.sector}`,
-      src
-    );
+  private companyMetadata(discovery: BusinessDiscovery): Fact[] {
+    return [
+      { category: "company", fact: `Nom: ${discovery.metadata.companyName}` },
+      { category: "market", fact: `Secteur: ${discovery.metadata.sector}` },
+    ];
   }
 
-  private storeProblemContext(discovery: BusinessDiscovery): void {
-    const src = DISCOVERY_SOURCE;
-    this.semanticRepo.addClientFact(
-      "problem",
-      `Problème: ${discovery.problem.statement} (niveau: ${discovery.problem.painLevel}, fréquence: ${discovery.problem.frequency})`,
-      src
-    );
+  private problemContext(discovery: BusinessDiscovery): Fact[] {
+    const facts: Fact[] = [
+      {
+        category: "problem",
+        fact: `Problème: ${discovery.problem.statement} (niveau: ${discovery.problem.painLevel}, fréquence: ${discovery.problem.frequency})`,
+      },
+    ];
     for (const alt of discovery.problem.currentAlternatives) {
-      this.semanticRepo.addClientFact(
-        "problem",
-        `Alternative actuelle: ${alt.alternative} — Limites: ${alt.limitations}`,
-        src
-      );
+      facts.push({
+        category: "problem",
+        fact: `Alternative actuelle: ${alt.alternative} — Limites: ${alt.limitations}`,
+      });
     }
+    return facts;
   }
 
-  private storeValueProposition(discovery: BusinessDiscovery): void {
-    const src = DISCOVERY_SOURCE;
-    this.semanticRepo.addClientFact(
-      "value_proposition",
-      `Transformation: ${discovery.valueProposition.transformation.before} → ${discovery.valueProposition.transformation.after} (délai: ${discovery.valueProposition.transformation.timeToValue})`,
-      src
-    );
-    this.semanticRepo.addClientFact(
-      "differentiator",
-      `Différenciateur: ${discovery.valueProposition.uniqueDifferentiator}`,
-      src
-    );
+  private valueProposition(discovery: BusinessDiscovery): Fact[] {
+    const facts: Fact[] = [
+      {
+        category: "value_proposition",
+        fact: `Transformation: ${discovery.valueProposition.transformation.before} → ${discovery.valueProposition.transformation.after} (délai: ${discovery.valueProposition.transformation.timeToValue})`,
+      },
+      {
+        category: "differentiator",
+        fact: `Différenciateur: ${discovery.valueProposition.uniqueDifferentiator}`,
+      },
+    ];
     for (const proof of discovery.valueProposition.proofPoints) {
-      this.semanticRepo.addClientFact(
-        "value_proposition",
-        `Preuve (${proof.type}): ${proof.description}${proof.verified ? " [vérifié]" : " [non vérifié]"}`,
-        src
-      );
+      facts.push({
+        category: "value_proposition",
+        fact: `Preuve (${proof.type}): ${proof.description}${proof.verified ? " [vérifié]" : " [non vérifié]"}`,
+      });
     }
+    return facts;
   }
 
-  private storeAudiences(discovery: BusinessDiscovery): void {
-    const src = DISCOVERY_SOURCE;
+  private audiences(discovery: BusinessDiscovery): Fact[] {
+    const facts: Fact[] = [];
     for (const audience of discovery.audiences) {
-      this.semanticRepo.addClientFact(
-        "audience",
-        `Segment "${audience.segment}" (${audience.priority}): douleur=${audience.painIntensity}, déclencheur="${audience.triggerMoment}", contexte d'achat="${audience.buyingContext}", canaux=[${audience.channels.join(", ")}]`,
-        src
-      );
+      facts.push({
+        category: "audience",
+        fact: `Segment "${audience.segment}" (${audience.priority}): douleur=${audience.painIntensity}, déclencheur="${audience.triggerMoment}", contexte d'achat="${audience.buyingContext}", canaux=[${audience.channels.join(", ")}]`,
+      });
       for (const obj of audience.objections) {
-        this.semanticRepo.addClientFact(
-          "audience",
-          `Objection (${audience.segment}): "${obj.objection}" — Réponse: ${obj.currentAnswer ?? "pas encore de réponse"}`,
-          src
-        );
+        facts.push({
+          category: "audience",
+          fact: `Objection (${audience.segment}): "${obj.objection}" — Réponse: ${obj.currentAnswer ?? "pas encore de réponse"}`,
+        });
       }
     }
+    return facts;
   }
 
-  private storeMarketing(discovery: BusinessDiscovery): void {
-    const src = DISCOVERY_SOURCE;
+  private marketing(discovery: BusinessDiscovery): Fact[] {
+    const facts: Fact[] = [];
     for (const channel of discovery.currentMarketing.channels) {
-      this.semanticRepo.addClientFact(
-        "marketing",
-        `Canal "${channel.name}" (${channel.type}): fréquence=${channel.frequency}, résultats=${channel.perceivedResults}${channel.notes ? `, notes: ${channel.notes}` : ""}`,
-        src
-      );
+      facts.push({
+        category: "marketing",
+        fact: `Canal "${channel.name}" (${channel.type}): fréquence=${channel.frequency}, résultats=${channel.perceivedResults}${channel.notes ? `, notes: ${channel.notes}` : ""}`,
+      });
     }
     if (discovery.currentMarketing.bestPerforming) {
-      this.semanticRepo.addClientFact(
-        "marketing",
-        `Meilleur canal: ${discovery.currentMarketing.bestPerforming}`,
-        src
-      );
+      facts.push({
+        category: "marketing",
+        fact: `Meilleur canal: ${discovery.currentMarketing.bestPerforming}`,
+      });
     }
     if (discovery.currentMarketing.biggestGap) {
-      this.semanticRepo.addClientFact(
-        "marketing",
-        `Plus grand manque: ${discovery.currentMarketing.biggestGap}`,
-        src
-      );
+      facts.push({
+        category: "marketing",
+        fact: `Plus grand manque: ${discovery.currentMarketing.biggestGap}`,
+      });
     }
-    this.semanticRepo.addClientFact(
-      "marketing",
-      `Équipe: ${discovery.currentMarketing.team.size} personne(s), dédié marketing=${discovery.currentMarketing.team.dedicatedToMarketing}, compétences=[${discovery.currentMarketing.team.skills.join(", ")}], manques=[${discovery.currentMarketing.team.gaps.join(", ")}]`,
-      src
-    );
-    this.semanticRepo.addClientFact(
-      "marketing",
-      `Budget: ${discovery.currentMarketing.budget.range}, répartition: ${discovery.currentMarketing.budget.allocation}, flexibilité: ${discovery.currentMarketing.budget.flexibility}`,
-      src
-    );
+    facts.push({
+      category: "marketing",
+      fact: `Équipe: ${discovery.currentMarketing.team.size} personne(s), dédié marketing=${discovery.currentMarketing.team.dedicatedToMarketing}, compétences=[${discovery.currentMarketing.team.skills.join(", ")}], manques=[${discovery.currentMarketing.team.gaps.join(", ")}]`,
+    });
+    facts.push({
+      category: "marketing",
+      fact: `Budget: ${discovery.currentMarketing.budget.range}, répartition: ${discovery.currentMarketing.budget.allocation}, flexibilité: ${discovery.currentMarketing.budget.flexibility}`,
+    });
     for (const tool of discovery.currentMarketing.tools) {
-      this.semanticRepo.addClientFact(
-        "marketing",
-        `Outil "${tool.name}" (${tool.category}): maturité=${tool.maturity}`,
-        src
-      );
+      facts.push({
+        category: "marketing",
+        fact: `Outil "${tool.name}" (${tool.category}): maturité=${tool.maturity}`,
+      });
     }
+    return facts;
   }
 
-  private storeBusinessContext(discovery: BusinessDiscovery): void {
-    const src = DISCOVERY_SOURCE;
-    this.semanticRepo.addClientFact(
-      "business",
-      `Phase: ${discovery.businessContext.stage} — ${discovery.businessContext.stageDetails}`,
-      src
-    );
-    this.semanticRepo.addClientFact(
-      "business",
-      `Objectif principal: ${discovery.businessContext.primaryGoal.description}${discovery.businessContext.primaryGoal.metric ? ` (KPI: ${discovery.businessContext.primaryGoal.metric})` : ""}, horizon: ${discovery.businessContext.primaryGoal.timeline}`,
-      src
-    );
+  private businessContext(discovery: BusinessDiscovery): Fact[] {
+    const facts: Fact[] = [
+      {
+        category: "business",
+        fact: `Phase: ${discovery.businessContext.stage} — ${discovery.businessContext.stageDetails}`,
+      },
+      {
+        category: "business",
+        fact: `Objectif principal: ${discovery.businessContext.primaryGoal.description}${discovery.businessContext.primaryGoal.metric ? ` (KPI: ${discovery.businessContext.primaryGoal.metric})` : ""}, horizon: ${discovery.businessContext.primaryGoal.timeline}`,
+      },
+    ];
     for (const constraint of discovery.businessContext.constraints) {
-      this.semanticRepo.addClientFact(
-        "business",
-        `Contrainte (${constraint.type}, ${constraint.severity}): ${constraint.description}`,
-        src
-      );
+      facts.push({
+        category: "business",
+        fact: `Contrainte (${constraint.type}, ${constraint.severity}): ${constraint.description}`,
+      });
     }
-    this.semanticRepo.addClientFact(
-      "business",
-      `Urgence: ${discovery.businessContext.urgency}`,
-      src
-    );
+    facts.push({
+      category: "business",
+      fact: `Urgence: ${discovery.businessContext.urgency}`,
+    });
+    return facts;
   }
 
-  private storeSummary(discovery: BusinessDiscovery): void {
-    const src = DISCOVERY_SOURCE;
-    this.semanticRepo.addClientFact(
-      "summary",
-      discovery.narrativeSummary,
-      src
-    );
+  private summary(discovery: BusinessDiscovery): Fact[] {
+    return [{ category: "summary", fact: discovery.narrativeSummary }];
   }
 
-  private storeStrategicHypotheses(discovery: BusinessDiscovery): void {
-    const src = DISCOVERY_SOURCE;
-    for (const hypothesis of discovery.strategicHypotheses) {
-      this.semanticRepo.addClientFact("strategy", hypothesis, src);
-    }
+  private strategicHypotheses(discovery: BusinessDiscovery): Fact[] {
+    return discovery.strategicHypotheses.map((hypothesis) => ({
+      category: "strategy",
+      fact: hypothesis,
+    }));
   }
 }

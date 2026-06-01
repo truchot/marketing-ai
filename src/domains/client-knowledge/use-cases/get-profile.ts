@@ -5,8 +5,6 @@ export class GetProfileUseCase {
   constructor(private profileRepo: ICompanyProfileRepository) {}
 
   execute() {
-    return executeUseCase(() => {
-      return this.profileRepo.get();
-    });
+    return executeUseCase(() => this.profileRepo.get());
   }
 }

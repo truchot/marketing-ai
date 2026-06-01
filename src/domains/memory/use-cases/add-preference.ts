@@ -1,6 +1,11 @@
 import type { ISemanticMemoryRepository } from "../ports";
 import type { ConfidenceLevel } from "@/types/memory";
-import { domainEventBus, PREFERENCE_UPDATED, ConfidenceLevel as ConfidenceLevelVO, executeUseCase } from "@/domains/shared";
+import {
+  domainEventBus,
+  PREFERENCE_UPDATED,
+  ConfidenceLevel as ConfidenceLevelVO,
+  executeUseCase,
+} from "@/domains/shared";
 
 interface AddPreferenceInput {
   category: string;
@@ -13,9 +18,9 @@ export class AddPreferenceUseCase {
   constructor(private semanticRepo: ISemanticMemoryRepository) {}
 
   execute(input: AddPreferenceInput) {
-    return executeUseCase(() => {
+    return executeUseCase(async () => {
       ConfidenceLevelVO.create(input.confidence);
-      const pref = this.semanticRepo.addPreference(
+      const pref = await this.semanticRepo.addPreference(
         input.category,
         input.key,
         input.value,

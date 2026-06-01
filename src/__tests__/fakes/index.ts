@@ -17,3 +17,4 @@ export { FakeConversationRepository } from "./fake-conversation-repository";
 export { FakeCompanyProfileRepository } from "./fake-company-profile-repository";
 export { FakeResponseGenerator } from "./fake-response-generator";
 export { FakeStrategyRepository } from "./fake-strategy-repository";
+export { FakeExperimentRepository } from "./fake-experiment-repository";

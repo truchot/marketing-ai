@@ -10,27 +10,23 @@ export class FakeStrategyRepository implements IStrategyRepository {
   private store = new Map<string, MarketingStrategy>();
   private latestId: string | null = null;
 
-  save(id: string, strategy: MarketingStrategy): void {
+  async save(id: string, strategy: MarketingStrategy): Promise<void> {
     this.store.set(id, strategy);
     this.latestId = id;
   }
 
-  get(strategyId: string): StrategyAggregate | null {
+  async get(strategyId: string): Promise<StrategyAggregate | null> {
     const strategy = this.store.get(strategyId);
     if (!strategy) return null;
     return StrategyAggregate.fromPersisted(strategyId, strategy);
   }
 
-  getLatest(): StrategyAggregate | null {
+  async getLatest(): Promise<StrategyAggregate | null> {
     if (!this.latestId) return null;
     return this.get(this.latestId);
   }
 
-  getAll(): MarketingStrategy[] {
-    return [...this.store.values()];
-  }
-
-  reset(): void {
+  async reset(): Promise<void> {
     this.store.clear();
     this.latestId = null;
   }

@@ -1,15 +1,15 @@
-import { defineConfig } from 'vitest/config';
+import { defineConfig, configDefaults } from 'vitest/config';
 import path from 'path';
 
 export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    // Exclure les worktrees git (copies de session) pour ne pas exécuter
-    // des tests dupliqués/obsolètes hors de l'arbre principal.
+    // Integration tests hit a real Postgres — excluded from the default run
+    // (run them with `npm run test:integration`). Worktrees are session copies.
     exclude: [
-      '**/node_modules/**',
-      '**/dist/**',
+      ...configDefaults.exclude,
+      '**/*.integration.test.ts',
       '**/.claude-worktrees/**',
       '**/.claude/worktrees/**',
     ],

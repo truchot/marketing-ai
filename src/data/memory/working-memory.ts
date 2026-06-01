@@ -1,10 +1,14 @@
 import { WorkingSession, WorkingContext } from "@/types/memory";
 import type { IWorkingMemoryRepository } from "@/domains/memory/ports";
 
+/**
+ * In-memory working store. Kept as the test double for the Memory context.
+ * Production uses the Prisma-backed implementation (see ./prisma-working-memory).
+ */
 export class WorkingMemoryStore implements IWorkingMemoryRepository {
   private workingSession: WorkingSession | null = null;
 
-  startSession(task: string, objective: string): void {
+  async startSession(task: string, objective: string): Promise<void> {
     this.workingSession = {
       id: `session-${Date.now()}`,
       task,
@@ -16,35 +20,35 @@ export class WorkingMemoryStore implements IWorkingMemoryRepository {
     };
   }
 
-  storeIntermediate(key: string, data: unknown): void {
+  async storeIntermediate(key: string, data: unknown): Promise<void> {
     if (this.workingSession) {
       this.workingSession.intermediateResults[key] = data;
     }
   }
 
-  updateAttention(focus: string): void {
+  async updateAttention(focus: string): Promise<void> {
     if (this.workingSession) {
       this.workingSession.attentionFocus = focus;
     }
   }
 
-  setScratchpad(key: string, value: string): void {
+  async setScratchpad(key: string, value: string): Promise<void> {
     if (this.workingSession) {
       this.workingSession.scratchpad[key] = value;
     }
   }
 
-  getWorkingContext(): WorkingContext {
+  async getWorkingContext(): Promise<WorkingContext> {
     return { session: this.workingSession };
   }
 
-  clearSession(): WorkingSession | null {
+  async clearSession(): Promise<WorkingSession | null> {
     const session = this.workingSession;
     this.workingSession = null;
     return session;
   }
 
-  reset(): void {
+  async reset(): Promise<void> {
     this.workingSession = null;
   }
 }

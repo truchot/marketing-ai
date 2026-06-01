@@ -9,5 +9,5 @@ export interface IMemoryFacade {
    * Enrichit la mémoire sémantique avec toutes les données
    * extraites lors de la découverte business.
    */
-  storeDiscoveryFacts(discovery: BusinessDiscovery): void;
+  storeDiscoveryFacts(discovery: BusinessDiscovery): Promise<void>;
 }

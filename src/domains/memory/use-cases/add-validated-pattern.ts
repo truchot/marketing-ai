@@ -13,7 +13,7 @@ export class AddValidatedPatternUseCase {
   constructor(private semanticRepo: ISemanticMemoryRepository) {}
 
   execute(input: AddValidatedPatternInput) {
-    return executeUseCase(() => {
+    return executeUseCase(async () => {
       return this.semanticRepo.addValidatedPattern(
         input.type,
         input.description,

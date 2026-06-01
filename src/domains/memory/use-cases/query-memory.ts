@@ -6,9 +6,9 @@ export class QueryMemoryUseCase {
   constructor(private queryService: MemoryQueryService) {}
 
   execute(options: MemoryQueryOptions) {
-    return executeUseCase(() => {
-      const memory = this.queryService.query(options);
-      const stats = this.queryService.getStats();
+    return executeUseCase(async () => {
+      const memory = await this.queryService.query(options);
+      const stats = await this.queryService.getStats();
       return { memory, stats };
     });
   }

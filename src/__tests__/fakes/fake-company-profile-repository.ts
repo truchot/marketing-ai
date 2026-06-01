@@ -8,16 +8,16 @@ import type { CompanyProfile } from "@/types";
 export class FakeCompanyProfileRepository implements ICompanyProfileRepository {
   private profile: CompanyProfile | null = null;
 
-  get(): CompanyProfile | null {
+  async get(): Promise<CompanyProfile | null> {
     return this.profile;
   }
 
-  save(profile: CompanyProfile): CompanyProfile {
+  async save(profile: CompanyProfile): Promise<CompanyProfile> {
     this.profile = profile;
     return this.profile;
   }
 
-  reset(): void {
+  async reset(): Promise<void> {
     this.profile = null;
   }
 }

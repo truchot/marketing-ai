@@ -9,11 +9,11 @@ export class FakeConversationRepository implements IConversationRepository {
   private messages: ConversationMessage[] = [];
   private counter = 0;
 
-  getAll(): ConversationMessage[] {
+  async getAll(): Promise<ConversationMessage[]> {
     return [...this.messages];
   }
 
-  add(role: "user" | "assistant", content: string): ConversationMessage {
+  async add(role: "user" | "assistant", content: string): Promise<ConversationMessage> {
     this.counter += 1;
     const msg: ConversationMessage = {
       id: `msg-${this.counter}`,
@@ -25,13 +25,17 @@ export class FakeConversationRepository implements IConversationRepository {
     return msg;
   }
 
-  addBulk(
+  async addBulk(
     msgs: { role: "user" | "assistant"; content: string }[]
-  ): ConversationMessage[] {
-    return msgs.map((m) => this.add(m.role, m.content));
+  ): Promise<ConversationMessage[]> {
+    const out: ConversationMessage[] = [];
+    for (const m of msgs) {
+      out.push(await this.add(m.role, m.content));
+    }
+    return out;
   }
 
-  reset(): void {
+  async reset(): Promise<void> {
     this.messages = [];
     this.counter = 0;
   }

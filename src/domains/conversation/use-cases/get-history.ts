@@ -5,8 +5,6 @@ export class GetHistoryUseCase {
   constructor(private conversationRepo: IConversationRepository) {}
 
   execute() {
-    return executeUseCase(() => {
-      return this.conversationRepo.getAll();
-    });
+    return executeUseCase(() => this.conversationRepo.getAll());
   }
 }

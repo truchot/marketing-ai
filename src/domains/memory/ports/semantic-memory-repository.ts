@@ -8,14 +8,14 @@ import type {
 } from "@/types/memory";
 
 export interface ISemanticMemoryRepository {
-  addClientFact(category: string, fact: string, source: string): ClientFact;
+  addClientFact(category: string, fact: string, source: string): Promise<ClientFact>;
 
   addPreference(
     category: string,
     key: string,
     value: string,
     confidence: ConfidenceLevel
-  ): Preference;
+  ): Promise<Preference>;
 
   addValidatedPattern(
     type: string,
@@ -23,19 +23,19 @@ export interface ISemanticMemoryRepository {
     trigger: string,
     outcome: string,
     recommendation: string
-  ): ValidatedPattern;
+  ): Promise<ValidatedPattern>;
 
   addLearnedRule(
     description: string,
     domain: string,
     action: string,
     confidence: ConfidenceLevel
-  ): LearnedRule;
+  ): Promise<LearnedRule>;
 
-  getSemanticContext(): SemanticContext;
-  getClientFacts(): ClientFact[];
-  getPreferences(): Preference[];
-  getValidatedPatterns(): ValidatedPattern[];
-  getLearnedRules(): LearnedRule[];
-  reset(): void; // For testing
+  getSemanticContext(): Promise<SemanticContext>;
+  getClientFacts(): Promise<ClientFact[]>;
+  getPreferences(): Promise<Preference[]>;
+  getValidatedPatterns(): Promise<ValidatedPattern[]>;
+  getLearnedRules(): Promise<LearnedRule[]>;
+  reset(): Promise<void>; // For testing
 }

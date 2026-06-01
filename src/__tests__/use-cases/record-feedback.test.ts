@@ -9,10 +9,10 @@ describe("RecordFeedbackUseCase", () => {
     return { episodicRepo, useCase };
   }
 
-  it("should record positive feedback", () => {
+  it("should record positive feedback", async () => {
     const { episodicRepo, useCase } = setup();
 
-    const result = useCase.execute({
+    const result = await useCase.execute({
       source: "user",
       sentiment: "positive",
       content: "Great response, very helpful!",
@@ -27,15 +27,15 @@ describe("RecordFeedbackUseCase", () => {
     expect(feedback.timestamp).toBeDefined();
 
     // Verify persisted
-    const allFeedback = episodicRepo.getFeedback();
+    const allFeedback = await episodicRepo.getFeedback();
     expect(allFeedback).toHaveLength(1);
     expect(allFeedback[0].id).toBe(feedback.id);
   });
 
-  it("should record negative feedback", () => {
+  it("should record negative feedback", async () => {
     const { useCase } = setup();
 
-    const result = useCase.execute({
+    const result = await useCase.execute({
       source: "user",
       sentiment: "negative",
       content: "The suggestion was off-topic.",
@@ -46,10 +46,10 @@ describe("RecordFeedbackUseCase", () => {
     expect(result.value.content).toBe("The suggestion was off-topic.");
   });
 
-  it("should record feedback with a taskId", () => {
+  it("should record feedback with a taskId", async () => {
     const { useCase } = setup();
 
-    const result = useCase.execute({
+    const result = await useCase.execute({
       source: "user",
       sentiment: "positive",
       content: "Task completed well",
@@ -60,10 +60,10 @@ describe("RecordFeedbackUseCase", () => {
     expect(result.value.taskId).toBe("task-123");
   });
 
-  it("should record neutral feedback", () => {
+  it("should record neutral feedback", async () => {
     const { useCase } = setup();
 
-    const result = useCase.execute({
+    const result = await useCase.execute({
       source: "system",
       sentiment: "neutral",
       content: "Average performance on the task.",

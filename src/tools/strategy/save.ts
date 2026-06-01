@@ -16,7 +16,7 @@ interface SaveStrategyOutput {
 export async function saveStrategy(
   strategy: MarketingStrategy
 ): Promise<SaveStrategyOutput> {
-  const result = saveStrategyUseCase.execute(strategy);
+  const result = await saveStrategyUseCase.execute(strategy);
 
   if (result.isErr()) {
     return {

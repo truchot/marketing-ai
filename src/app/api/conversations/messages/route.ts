@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getHistoryUseCase, sendMessageUseCase } from "@/infrastructure/composition-root";
 
 export async function GET() {
-  const result = getHistoryUseCase.execute();
+  const result = await getHistoryUseCase.execute();
   if (result.isErr()) {
     return NextResponse.json(
       { error: result.error.message },
