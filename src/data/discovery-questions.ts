@@ -8,6 +8,7 @@ interface QuestionSet {
   block2: string[]; // Audiences & Segments
   block3: string[]; // Paysage marketing actuel
   block4: string[]; // Objectifs & Contexte business
+  block5: string[]; // Unit Economics (revenue-first marketing)
 }
 
 export const discoveryQuestionBank: Record<string, QuestionSet> = {
@@ -50,6 +51,14 @@ export const discoveryQuestionBank: Record<string, QuestionSet> = {
       "Y a-t-il des dépendances techniques ou produit qui ralentissent le marketing ?",
       "Quelle métrique suivez-vous de plus près (CAC, LTV, churn, activation) ?",
     ],
+    block5: [
+      "Do you know your customer acquisition cost (CAC)? If so, how do you compute it?",
+      "What is the average lifetime value (LTV) of a customer? How long do they stay on average?",
+      "How many months does it take to pay back the acquisition of a new customer (CAC payback)?",
+      "What is the average value of a first contract or first order (ACV/iACV)?",
+      "Do you track your LTV/CAC ratio? If so, what is it today?",
+      "Do you have a qualified revenue pipeline that you track regularly?",
+    ],
   },
 
   // ============================================================
@@ -89,6 +98,14 @@ export const discoveryQuestionBank: Record<string, QuestionSet> = {
       "Quelles sont vos contraintes principales (stock, logistique, budget marketing) ?",
       "Quelle métrique suivez-vous de plus près (ROAS, CAC, LTV, taux de conversion) ?",
     ],
+    block5: [
+      "Do you know your customer acquisition cost (CAC) across all channels?",
+      "What is the lifetime value of a customer (LTV)? How many orders on average?",
+      "How long does it take to pay back a newly acquired customer (CAC payback)?",
+      "What is your average first-order basket vs subsequent orders?",
+      "Do you track your LTV/CAC ratio? What is it today?",
+      "Do you have visibility into qualified revenue in your pipeline (email, retargeting)?",
+    ],
   },
 
   // ============================================================
@@ -126,6 +143,14 @@ export const discoveryQuestionBank: Record<string, QuestionSet> = {
       "Y a-t-il des échéances importantes (conférences, lancements, recrutements) ?",
       "Quel KPI suivez-vous de près (pipeline, taux de conversion, valeur client) ?",
     ],
+    block5: [
+      "Do you know your cost to acquire a new client (CAC)?",
+      "What is the lifetime value of a typical client (LTV)? Average client relationship duration?",
+      "How long does it take to pay back a client's acquisition (CAC payback)?",
+      "What is the average value of a first contract (ACV)?",
+      "Do you track the LTV/CAC ratio to measure your acquisition profitability?",
+      "Do you have a qualified revenue pipeline that you track (CRM, ongoing deals)?",
+    ],
   },
 
   // ============================================================
@@ -161,6 +186,14 @@ export const discoveryQuestionBank: Record<string, QuestionSet> = {
       "Quelles métriques de croissance suivez-vous (signups, activation, rétention) ?",
       "Quelles sont vos plus grandes contraintes (temps, budget, compétences) ?",
       "Quel résultat concret devez-vous atteindre dans les 3 prochains mois ?",
+    ],
+    block5: [
+      "Do you know how much it costs you to acquire a user/customer (CAC)?",
+      "Do you have a sense of the lifetime value of your users (LTV)?",
+      "How long until a customer pays back their acquisition cost (CAC payback)?",
+      "What is the average value of a first transaction or subscription?",
+      "Do you track financial metrics such as the LTV/CAC ratio?",
+      "Do you have an identified and tracked revenue pipeline?",
     ],
   },
 
@@ -198,6 +231,14 @@ export const discoveryQuestionBank: Record<string, QuestionSet> = {
       "Quelle métrique ou résultat suivez-vous de près ?",
       "Qu'est-ce qui changerait vraiment la donne pour votre business ?",
     ],
+    block5: [
+      "Do you know your customer acquisition cost (CAC)? How do you compute it?",
+      "What is the average lifetime value of a customer (LTV)?",
+      "How long does it take to pay back a customer's acquisition (CAC payback)?",
+      "What is the average value of a first sale or first contract?",
+      "Do you track the LTV/CAC ratio to assess your marketing profitability?",
+      "Do you have visibility into your qualified revenue pipeline?",
+    ],
   },
 };
 
@@ -206,7 +247,7 @@ export const discoveryQuestionBank: Record<string, QuestionSet> = {
  */
 export function getQuestionsForBlock(
   sector: keyof typeof discoveryQuestionBank,
-  blockNumber: 1 | 2 | 3 | 4
+  blockNumber: 1 | 2 | 3 | 4 | 5
 ): string[] {
   const blockKey = `block${blockNumber}` as keyof QuestionSet;
   const sectorQuestions = discoveryQuestionBank[sector] || discoveryQuestionBank.other;
