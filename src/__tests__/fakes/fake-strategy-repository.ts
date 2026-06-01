@@ -1,5 +1,6 @@
 import type { IStrategyRepository } from "@/domains/strategy/ports";
 import type { MarketingStrategy } from "@/types/marketing-strategy";
+import { StrategyAggregate } from "@/domains/strategy/aggregates";
 
 /**
  * Standalone in-memory strategy repository for tests.
@@ -8,23 +9,21 @@ import type { MarketingStrategy } from "@/types/marketing-strategy";
 export class FakeStrategyRepository implements IStrategyRepository {
   private store = new Map<string, MarketingStrategy>();
   private latestId: string | null = null;
-  private counter = 0;
 
-  save(strategy: MarketingStrategy): string {
-    this.counter += 1;
-    const id = `strategy-test-${this.counter}`;
+  save(id: string, strategy: MarketingStrategy): void {
     this.store.set(id, strategy);
     this.latestId = id;
-    return id;
   }
 
-  get(strategyId: string): MarketingStrategy | null {
-    return this.store.get(strategyId) ?? null;
+  get(strategyId: string): StrategyAggregate | null {
+    const strategy = this.store.get(strategyId);
+    if (!strategy) return null;
+    return StrategyAggregate.fromPersisted(strategyId, strategy);
   }
 
-  getLatest(): MarketingStrategy | null {
+  getLatest(): StrategyAggregate | null {
     if (!this.latestId) return null;
-    return this.store.get(this.latestId) ?? null;
+    return this.get(this.latestId);
   }
 
   getAll(): MarketingStrategy[] {
@@ -34,6 +33,5 @@ export class FakeStrategyRepository implements IStrategyRepository {
   reset(): void {
     this.store.clear();
     this.latestId = null;
-    this.counter = 0;
   }
 }

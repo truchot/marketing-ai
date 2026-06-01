@@ -1,25 +1,25 @@
 import type { IStrategyRepository } from "@/domains/strategy/ports";
 import type { MarketingStrategy } from "@/types/marketing-strategy";
-import { IdGenerator } from "@/lib/id-generator";
+import { StrategyAggregate } from "@/domains/strategy/aggregates";
 
 const store = new Map<string, MarketingStrategy>();
 let latestId: string | null = null;
 
 export class InMemoryStrategyRepository implements IStrategyRepository {
-  save(strategy: MarketingStrategy): string {
-    const id = IdGenerator.generate("strategy");
+  save(id: string, strategy: MarketingStrategy): void {
     store.set(id, strategy);
     latestId = id;
-    return id;
   }
 
-  get(strategyId: string): MarketingStrategy | null {
-    return store.get(strategyId) ?? null;
+  get(strategyId: string): StrategyAggregate | null {
+    const strategy = store.get(strategyId);
+    if (!strategy) return null;
+    return StrategyAggregate.fromPersisted(strategyId, strategy);
   }
 
-  getLatest(): MarketingStrategy | null {
+  getLatest(): StrategyAggregate | null {
     if (!latestId) return null;
-    return store.get(latestId) ?? null;
+    return this.get(latestId);
   }
 
   reset(): void {
