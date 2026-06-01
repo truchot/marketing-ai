@@ -1,12 +1,12 @@
 // ============================================================
-// Tools strategy pour l'agent Mastra.
+// Strategy tools for the Mastra agent.
 //
-// Convertit les 6 tools SDK (ancien strategy/tool-definitions.ts) en
-// createTool Mastra. La logique métier est RÉUTILISÉE par import depuis
-// src/tools/strategy/index.ts — rien n'est réécrit ici.
+// Converts the 6 SDK tools (former strategy/tool-definitions.ts) into
+// Mastra createTool. The business logic is REUSED by importing from
+// src/tools/strategy/index.ts — nothing is rewritten here.
 //
-// État de session (diagnostic, OKRs validés, choix, complétion) porté par
-// RequestContext sous STRATEGY_STATE_KEY. Voir [[mastra-migration]].
+// Session state (diagnostic, validated OKRs, choices, completion) carried by
+// RequestContext under STRATEGY_STATE_KEY. See [[mastra-migration]].
 // ============================================================
 
 import { createTool } from "@mastra/core/tools";
@@ -32,17 +32,17 @@ function getState(requestContext?: RequestContext): StrategySessionState | undef
 
 const generateDiagnosticTool = createTool({
   id: "generateDiagnostic",
-  description: `Analyse le BusinessDiscovery et produit un diagnostic SWOT + score de maturité marketing.
+  description: `Analyzes the BusinessDiscovery and produces a SWOT diagnostic + marketing maturity score.
 
-QUAND L'UTILISER :
-- En tout début de session stratégique, dès réception du discovery
-- UNE SEULE FOIS par session
+WHEN TO USE IT:
+- At the very start of the strategy session, as soon as the discovery is received
+- ONLY ONCE per session
 
-APRÈS L'APPEL :
-- Présente le diagnostic au client de manière synthétique
-- Demande validation avant de passer aux OKR`,
+AFTER THE CALL:
+- Present the diagnostic to the client in a concise way
+- Ask for validation before moving on to the OKRs`,
   inputSchema: z.object({
-    discovery: z.record(z.string(), z.unknown()).describe("L'objet BusinessDiscovery complet"),
+    discovery: z.record(z.string(), z.unknown()).describe("The complete BusinessDiscovery object"),
   }),
   outputSchema: z.record(z.string(), z.unknown()),
   execute: async (inputData, ctx) => {
@@ -57,11 +57,11 @@ APRÈS L'APPEL :
 
 const proposeOKRTool = createTool({
   id: "proposeOKR",
-  description: `Génère 2-3 OKR marketing basés sur le diagnostic et le discovery.
+  description: `Generates 2-3 marketing OKRs based on the diagnostic and the discovery.
 
-QUAND L'UTILISER :
-- Après validation du diagnostic par le client
-- UNE SEULE FOIS (génère tous les OKR en un appel)`,
+WHEN TO USE IT:
+- After the diagnostic has been validated by the client
+- ONLY ONCE (generates all OKRs in a single call)`,
   inputSchema: z.object({}),
   outputSchema: z.union([
     z.array(z.record(z.string(), z.unknown())),
@@ -70,7 +70,7 @@ QUAND L'UTILISER :
   execute: async (_inputData, ctx) => {
     const state = getState(ctx?.requestContext);
     if (!state?.discovery || !state?.diagnostic) {
-      return { error: "Diagnostic manquant. Appelle generateDiagnostic d'abord." };
+      return { error: "Missing diagnostic. Call generateDiagnostic first." };
     }
     const okrs = await proposeOKRs({
       discovery: state.discovery,
@@ -84,9 +84,9 @@ QUAND L'UTILISER :
 
 const proposeActionsTool = createTool({
   id: "proposeActions",
-  description: `Génère des actions concrètes pour un OKR validé (3-4 actions classées quick_win / foundation / strategic).`,
+  description: `Generates concrete actions for a validated OKR (3-4 actions classified as quick_win / foundation / strategic).`,
   inputSchema: z.object({
-    okrId: z.string().describe("ID de l'OKR pour lequel générer les actions"),
+    okrId: z.string().describe("ID of the OKR for which to generate the actions"),
   }),
   outputSchema: z.union([
     z.array(z.record(z.string(), z.unknown())),
@@ -94,11 +94,11 @@ const proposeActionsTool = createTool({
   ]),
   execute: async (inputData, ctx) => {
     const state = getState(ctx?.requestContext);
-    if (!state?.discovery) return { error: "Discovery manquant." };
+    if (!state?.discovery) return { error: "Missing discovery." };
     const okr = state.validatedOKRs.find((o) => o.id === inputData.okrId);
     if (!okr) {
       return {
-        error: `OKR ${inputData.okrId} non trouvé. OKRs disponibles : ${state.validatedOKRs.map((o) => o.id).join(", ")}`,
+        error: `OKR ${inputData.okrId} not found. Available OKRs: ${state.validatedOKRs.map((o) => o.id).join(", ")}`,
       };
     }
     const actions = await proposeActions({ discovery: state.discovery, okr });
@@ -108,10 +108,10 @@ const proposeActionsTool = createTool({
 
 const adjustOKRTool = createTool({
   id: "adjustOKR",
-  description: `Ajuste un OKR existant selon le feedback du client. Peut être appelé plusieurs fois.`,
+  description: `Adjusts an existing OKR based on the client's feedback. Can be called multiple times.`,
   inputSchema: z.object({
-    okrId: z.string().describe("ID de l'OKR à ajuster"),
-    adjustment: z.string().describe("Description du changement demandé par le client"),
+    okrId: z.string().describe("ID of the OKR to adjust"),
+    adjustment: z.string().describe("Description of the change requested by the client"),
   }),
   outputSchema: z.union([
     z.record(z.string(), z.unknown()),
@@ -119,9 +119,9 @@ const adjustOKRTool = createTool({
   ]),
   execute: async (inputData, ctx) => {
     const state = getState(ctx?.requestContext);
-    if (!state?.discovery) return { error: "Discovery manquant." };
+    if (!state?.discovery) return { error: "Missing discovery." };
     const okr = state.validatedOKRs.find((o) => o.id === inputData.okrId);
-    if (!okr) return { error: `OKR ${inputData.okrId} non trouvé.` };
+    if (!okr) return { error: `OKR ${inputData.okrId} not found.` };
     const adjusted = await adjustOKR({
       okr,
       adjustment: inputData.adjustment,
@@ -136,9 +136,9 @@ const adjustOKRTool = createTool({
 
 const saveStrategyTool = createTool({
   id: "saveStrategy",
-  description: `Persiste la stratégie complète (diagnostic + OKR + actions + roadmap) en mémoire. UNE SEULE FOIS, en fin de session.`,
+  description: `Persists the complete strategy (diagnostic + OKR + actions + roadmap) to memory. ONLY ONCE, at the end of the session.`,
   inputSchema: z.object({
-    strategy: z.record(z.string(), z.unknown()).describe("L'objet MarketingStrategy complet"),
+    strategy: z.record(z.string(), z.unknown()).describe("The complete MarketingStrategy object"),
   }),
   outputSchema: z.object({ success: z.boolean(), message: z.string().optional() }),
   execute: async (inputData, ctx) => {
@@ -153,18 +153,18 @@ const saveStrategyTool = createTool({
 const presentChoicesTool = createTool({
   id: "present_choices",
   description:
-    "Utilise cet outil quand tu poses une question à choix fermés. Écris un court texte d'introduction AVANT d'appeler l'outil, et n'inclus PAS les options dans ton texte.",
+    "Use this tool when you ask a closed-ended question. Write a short introductory text BEFORE calling the tool, and do NOT include the options in your text.",
   inputSchema: z.object({
-    question: z.string().describe("La question posée à l'utilisateur"),
+    question: z.string().describe("The question asked to the user"),
     choices: z
       .array(
         z.object({
-          value: z.string().describe("Identifiant technique du choix"),
-          label: z.string().describe("Libellé affiché"),
-          description: z.string().optional().describe("Description courte optionnelle"),
+          value: z.string().describe("Technical identifier of the choice"),
+          label: z.string().describe("Displayed label"),
+          description: z.string().optional().describe("Optional short description"),
         })
       )
-      .describe("Les options proposées"),
+      .describe("The proposed options"),
   }),
   outputSchema: z.object({ presented: z.boolean() }),
   execute: async (inputData, ctx) => {

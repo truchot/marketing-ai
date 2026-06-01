@@ -60,10 +60,10 @@ describe("flattenPrompt", () => {
       "APPEND"
     );
     expect(systemPrompt).toBe("SYS\n\nAPPEND");
-    expect(prompt).toContain("Utilisateur: Bonjour");
+    expect(prompt).toContain("User: Bonjour");
     expect(prompt).toContain("Assistant: Salut");
-    expect(prompt).toContain("Assistant a appelé l'outil `foo` avec {\"a\":1}");
-    expect(prompt).toContain('Résultat de `foo`: {"ok":true}');
+    expect(prompt).toContain("Assistant called the tool `foo` with {\"a\":1}");
+    expect(prompt).toContain('Result of `foo`: {"ok":true}');
   });
 
   it("systemPrompt undefined si aucun message system", () => {

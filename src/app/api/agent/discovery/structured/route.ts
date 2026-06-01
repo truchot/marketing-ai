@@ -8,10 +8,10 @@ export const maxDuration = 300;
 
 const STRUCTURED_PREAMBLE = `## Mode: Structured Output
 
-Tu recois la transcription complete d'un entretien de decouverte.
-Analyse-la et produis l'objet BusinessDiscovery complet au format JSON.
-Remplis TOUS les champs en te basant sur les informations de l'entretien.
-Les informations manquantes doivent etre ajoutees dans metadata.gaps.`;
+You receive the complete transcript of a discovery interview.
+Analyze it and produce the complete BusinessDiscovery object in JSON format.
+Fill in ALL fields based on the information from the interview.
+Missing information must be added to metadata.gaps.`;
 
 // POST /api/agent/discovery/structured
 // Takes the full interview transcript and produces the BusinessDiscovery JSON

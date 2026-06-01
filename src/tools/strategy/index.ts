@@ -78,35 +78,35 @@ export async function generateDiagnostic(
   const maturityScore = channelScore + teamScore + toolScore + budgetScore + strategyScore;
 
   // --- Generate SWOT via Claude Haiku (extraction task, not strategic reasoning) ---
-  const swotPrompt = `Tu es un analyste marketing senior. Analyse ce diagnostic de découverte business et produis un SWOT concis.
+  const swotPrompt = `You are a senior marketing analyst. Analyze this business discovery diagnostic and produce a concise SWOT.
 
-Données de découverte :
-- Entreprise : ${discovery.metadata.companyName} (${discovery.metadata.sector})
-- Stade : ${discovery.businessContext.stage} — ${discovery.businessContext.stageDetails}
-- Problème : ${discovery.problem.statement} (douleur : ${discovery.problem.painLevel})
-- Proposition de valeur : avant="${discovery.valueProposition.transformation.before}" → après="${discovery.valueProposition.transformation.after}"
-- Différenciateur : ${discovery.valueProposition.uniqueDifferentiator}
-- Audiences : ${discovery.audiences.map((a) => `${a.segment} (${a.priority})`).join(", ")}
-- Canaux actifs : ${discovery.currentMarketing.channels.map((c) => `${c.name} (${c.perceivedResults})`).join(", ")}
-- Canaux abandonnés : ${discovery.currentMarketing.abandonedChannels.map((c) => c.name).join(", ") || "aucun"}
-- Meilleur canal : ${discovery.currentMarketing.bestPerforming || "inconnu"}
-- Plus gros gap : ${discovery.currentMarketing.biggestGap || "inconnu"}
-- Équipe : ${discovery.currentMarketing.team.size} pers., skills: ${discovery.currentMarketing.team.skills.join(", ")}, gaps: ${discovery.currentMarketing.team.gaps.join(", ")}
-- Budget : ${discovery.currentMarketing.budget.range} (${discovery.currentMarketing.budget.flexibility})
-- Objectif principal : ${discovery.businessContext.primaryGoal.description}
-- Contraintes : ${discovery.businessContext.constraints.map((c) => `${c.type}: ${c.description} (${c.severity})`).join("; ")}
-- Score maturité marketing : ${maturityScore}/100
+Discovery data:
+- Company: ${discovery.metadata.companyName} (${discovery.metadata.sector})
+- Stage: ${discovery.businessContext.stage} — ${discovery.businessContext.stageDetails}
+- Problem: ${discovery.problem.statement} (pain: ${discovery.problem.painLevel})
+- Value proposition: before="${discovery.valueProposition.transformation.before}" → after="${discovery.valueProposition.transformation.after}"
+- Differentiator: ${discovery.valueProposition.uniqueDifferentiator}
+- Audiences: ${discovery.audiences.map((a) => `${a.segment} (${a.priority})`).join(", ")}
+- Active channels: ${discovery.currentMarketing.channels.map((c) => `${c.name} (${c.perceivedResults})`).join(", ")}
+- Abandoned channels: ${discovery.currentMarketing.abandonedChannels.map((c) => c.name).join(", ") || "none"}
+- Best performing channel: ${discovery.currentMarketing.bestPerforming || "unknown"}
+- Biggest gap: ${discovery.currentMarketing.biggestGap || "unknown"}
+- Team: ${discovery.currentMarketing.team.size} people, skills: ${discovery.currentMarketing.team.skills.join(", ")}, gaps: ${discovery.currentMarketing.team.gaps.join(", ")}
+- Budget: ${discovery.currentMarketing.budget.range} (${discovery.currentMarketing.budget.flexibility})
+- Primary goal: ${discovery.businessContext.primaryGoal.description}
+- Constraints: ${discovery.businessContext.constraints.map((c) => `${c.type}: ${c.description} (${c.severity})`).join("; ")}
+- Marketing maturity score: ${maturityScore}/100
 
-Réponds en JSON strict :
+Respond in strict JSON:
 {
   "strengths": ["...", "..."],
   "weaknesses": ["...", "..."],
   "opportunities": ["...", "..."],
   "threats": ["...", "..."],
-  "summary": "Synthèse en 3-5 lignes"
+  "summary": "Summary in 3-5 lines"
 }
 
-Maximum 3 éléments par catégorie. Sois concis et actionnable.`;
+Maximum 3 items per category. Be concise and actionable.`;
 
   const responseText = await callClaudeHaiku(swotPrompt, 1024);
   const swot = extractJsonFromResponse<{
@@ -123,13 +123,13 @@ Maximum 3 éléments par catégorie. Sois concis et actionnable.`;
     weaknesses: swot.weaknesses || [],
     opportunities: swot.opportunities || [],
     threats: swot.threats || [],
-    summary: swot.summary || `Score de maturité marketing : ${maturityScore}/100.`,
+    summary: swot.summary || `Marketing maturity score: ${maturityScore}/100.`,
   };
 
   // Store diagnostic as episode
   recordEpisodeUseCase.execute({
     type: "task_result",
-    description: `Diagnostic marketing généré pour ${discovery.metadata.companyName} — score ${maturityScore}/100`,
+    description: `Marketing diagnostic generated for ${discovery.metadata.companyName} — score ${maturityScore}/100`,
     data: { diagnostic, companyName: discovery.metadata.companyName },
     tags: ["strategy", "diagnostic", "swot"],
     importance: "medium",
@@ -153,34 +153,34 @@ export async function proposeOKRs(
 ): Promise<OKR[]> {
   const { discovery, diagnostic, existingOKRs } = input;
 
-  const existingObjectives = existingOKRs.map((o) => o.objective).join(", ") || "aucun";
+  const existingObjectives = existingOKRs.map((o) => o.objective).join(", ") || "none";
 
-  const prompt = `Tu es un stratège marketing senior. Génère 2-3 OKR marketing basés sur ce diagnostic.
+  const prompt = `You are a senior marketing strategist. Generate 2-3 marketing OKRs based on this diagnostic.
 
-## Contexte
-- Entreprise : ${discovery.metadata.companyName} (${discovery.metadata.sector}, stade: ${discovery.businessContext.stage})
-- Objectif principal : ${discovery.businessContext.primaryGoal.description} (metric: ${discovery.businessContext.primaryGoal.metric || "non défini"}, timeline: ${discovery.businessContext.primaryGoal.timeline})
-- Score maturité : ${diagnostic.maturityScore}/100
-- Forces : ${diagnostic.strengths.join(", ")}
-- Faiblesses : ${diagnostic.weaknesses.join(", ")}
-- Opportunités : ${diagnostic.opportunities.join(", ")}
-- Audience primaire : ${discovery.audiences.find((a) => a.priority === "primary")?.segment || "non définie"}
-- Budget : ${discovery.currentMarketing.budget.range} (${discovery.currentMarketing.budget.flexibility})
-- Équipe : ${discovery.currentMarketing.team.size} pers. (dédiée: ${discovery.currentMarketing.team.dedicatedToMarketing})
-- Urgence : ${discovery.businessContext.urgency}
-- Contraintes : ${discovery.businessContext.constraints.map((c) => `${c.type}: ${c.description}`).join("; ")}
-- OKR déjà proposés : ${existingObjectives}
-- Hypothèses stratégiques (du discovery) : ${discovery.strategicHypotheses.join("; ")}
+## Context
+- Company: ${discovery.metadata.companyName} (${discovery.metadata.sector}, stage: ${discovery.businessContext.stage})
+- Primary goal: ${discovery.businessContext.primaryGoal.description} (metric: ${discovery.businessContext.primaryGoal.metric || "undefined"}, timeline: ${discovery.businessContext.primaryGoal.timeline})
+- Maturity score: ${diagnostic.maturityScore}/100
+- Strengths: ${diagnostic.strengths.join(", ")}
+- Weaknesses: ${diagnostic.weaknesses.join(", ")}
+- Opportunities: ${diagnostic.opportunities.join(", ")}
+- Primary audience: ${discovery.audiences.find((a) => a.priority === "primary")?.segment || "undefined"}
+- Budget: ${discovery.currentMarketing.budget.range} (${discovery.currentMarketing.budget.flexibility})
+- Team: ${discovery.currentMarketing.team.size} people (dedicated: ${discovery.currentMarketing.team.dedicatedToMarketing})
+- Urgency: ${discovery.businessContext.urgency}
+- Constraints: ${discovery.businessContext.constraints.map((c) => `${c.type}: ${c.description}`).join("; ")}
+- OKRs already proposed: ${existingObjectives}
+- Strategic hypotheses (from discovery): ${discovery.strategicHypotheses.join("; ")}
 
-## Règles
-- Maximum 3 OKR, minimum 2
-- 1 OKR "primary", les autres "secondary"
-- Chaque OKR doit avoir 2-3 Key Results mesurables
-- Chaque KR doit avoir un target et un timeline réalistes
-- Lie chaque OKR à un bloc du discovery (problem_value, audience, marketing_landscape, business_context)
-- Adapte au stade : ${discovery.businessContext.stage}
+## Rules
+- Maximum 3 OKRs, minimum 2
+- 1 OKR "primary", the others "secondary"
+- Each OKR must have 2-3 measurable Key Results
+- Each KR must have a realistic target and timeline
+- Link each OKR to a discovery block (problem_value, audience, marketing_landscape, business_context)
+- Adapt to the stage: ${discovery.businessContext.stage}
 
-Réponds en JSON strict :
+Respond in strict JSON:
 [
   {
     "id": "okr-1",
@@ -203,7 +203,7 @@ Réponds en JSON strict :
   // Store as episode
   recordEpisodeUseCase.execute({
     type: "task_result",
-    description: `${okrArray.length} OKR proposés pour ${discovery.metadata.companyName}`,
+    description: `${okrArray.length} OKRs proposed for ${discovery.metadata.companyName}`,
     data: { okrs: okrArray },
     tags: ["strategy", "okr", "proposal"],
     importance: "high",
@@ -226,29 +226,29 @@ export async function proposeActions(
 ): Promise<Action[]> {
   const { discovery, okr } = input;
 
-  const prompt = `Tu es un stratège marketing senior. Génère des actions concrètes pour cet OKR.
+  const prompt = `You are a senior marketing strategist. Generate concrete actions for this OKR.
 
 ## OKR
-- Objectif : ${okr.objective}
-- Key Results : ${okr.keyResults.map((kr) => `${kr.metric} → ${kr.target} (${kr.timeline})`).join("; ")}
+- Objective: ${okr.objective}
+- Key Results: ${okr.keyResults.map((kr) => `${kr.metric} → ${kr.target} (${kr.timeline})`).join("; ")}
 
-## Contexte entreprise
-- ${discovery.metadata.companyName} (${discovery.metadata.sector}, stade: ${discovery.businessContext.stage})
-- Équipe : ${discovery.currentMarketing.team.size} pers., skills: ${discovery.currentMarketing.team.skills.join(", ")}, gaps: ${discovery.currentMarketing.team.gaps.join(", ")}
-- Budget : ${discovery.currentMarketing.budget.range} (${discovery.currentMarketing.budget.flexibility})
-- Outils actuels : ${discovery.currentMarketing.tools.map((t) => `${t.name} (${t.maturity})`).join(", ")}
-- Canaux actifs : ${discovery.currentMarketing.channels.map((c) => `${c.name} (${c.perceivedResults})`).join(", ")}
-- Canaux abandonnés : ${discovery.currentMarketing.abandonedChannels.map((c) => `${c.name}: ${c.reason}`).join("; ") || "aucun"}
-- Contraintes : ${discovery.businessContext.constraints.map((c) => `${c.type}: ${c.description} (${c.severity})`).join("; ")}
+## Company context
+- ${discovery.metadata.companyName} (${discovery.metadata.sector}, stage: ${discovery.businessContext.stage})
+- Team: ${discovery.currentMarketing.team.size} people, skills: ${discovery.currentMarketing.team.skills.join(", ")}, gaps: ${discovery.currentMarketing.team.gaps.join(", ")}
+- Budget: ${discovery.currentMarketing.budget.range} (${discovery.currentMarketing.budget.flexibility})
+- Current tools: ${discovery.currentMarketing.tools.map((t) => `${t.name} (${t.maturity})`).join(", ")}
+- Active channels: ${discovery.currentMarketing.channels.map((c) => `${c.name} (${c.perceivedResults})`).join(", ")}
+- Abandoned channels: ${discovery.currentMarketing.abandonedChannels.map((c) => `${c.name}: ${c.reason}`).join("; ") || "none"}
+- Constraints: ${discovery.businessContext.constraints.map((c) => `${c.type}: ${c.description} (${c.severity})`).join("; ")}
 
-## Règles
-- 3-4 actions par OKR
-- Au moins 1 quick_win (low effort, high impact)
-- Chaque action liée à un Key Result spécifique
-- Actions réalistes pour la taille de l'équipe et le budget
-- Ne recommande PAS un canal abandonné sauf si tu justifies clairement
+## Rules
+- 3-4 actions per OKR
+- At least 1 quick_win (low effort, high impact)
+- Each action linked to a specific Key Result
+- Actions realistic for the team size and budget
+- Do NOT recommend an abandoned channel unless you clearly justify it
 
-Réponds en JSON strict :
+Respond in strict JSON:
 [
   {
     "id": "action-1",
@@ -262,7 +262,7 @@ Réponds en JSON strict :
     "requiredSkills": ["..."],
     "requiredTools": ["..."],
     "dependencies": [],
-    "suggestedTimeline": "Semaine 1-2",
+    "suggestedTimeline": "Week 1-2",
     "channel": "...",
     "audienceSegment": "..."
   }
@@ -311,7 +311,7 @@ export async function saveStrategy(
     for (const kr of okr.keyResults) {
       addClientFactUseCase.execute({
         category: "strategy",
-        fact: `KR: ${kr.metric} — cible ${kr.target} (${kr.timeline})`,
+        fact: `KR: ${kr.metric} — target ${kr.target} (${kr.timeline})`,
         source: "strategy_agent",
       });
     }
@@ -319,13 +319,13 @@ export async function saveStrategy(
 
   addClientFactUseCase.execute({
     category: "strategy",
-    fact: `Score maturité marketing: ${strategy.diagnostic.maturityScore}/100`,
+    fact: `Marketing maturity score: ${strategy.diagnostic.maturityScore}/100`,
     source: "strategy_agent",
   });
 
   return {
     success: true,
-    message: `Stratégie sauvegardée : ${strategy.okrs.length} OKR, ${strategy.actions.length} actions.`,
+    message: `Strategy saved: ${strategy.okrs.length} OKRs, ${strategy.actions.length} actions.`,
     strategyId,
   };
 }
@@ -345,20 +345,20 @@ export async function adjustOKR(
 ): Promise<OKR> {
   const { okr, adjustment, discovery } = input;
 
-  const prompt = `Tu es un stratège marketing. Ajuste cet OKR selon le feedback client.
+  const prompt = `You are a marketing strategist. Adjust this OKR according to the client feedback.
 
-## OKR actuel
+## Current OKR
 ${JSON.stringify(okr, null, 2)}
 
-## Feedback client
+## Client feedback
 ${adjustment}
 
-## Contexte
-- Entreprise : ${discovery.metadata.companyName} (${discovery.metadata.sector})
-- Stade : ${discovery.businessContext.stage}
-- Objectif principal : ${discovery.businessContext.primaryGoal.description}
+## Context
+- Company: ${discovery.metadata.companyName} (${discovery.metadata.sector})
+- Stage: ${discovery.businessContext.stage}
+- Primary goal: ${discovery.businessContext.primaryGoal.description}
 
-Retourne l'OKR ajusté en JSON strict, même format que l'input.`;
+Return the adjusted OKR in strict JSON, same format as the input.`;
 
   const responseText = await callClaudeHaiku(prompt, 1024);
   return extractJsonFromResponse<OKR>(responseText);

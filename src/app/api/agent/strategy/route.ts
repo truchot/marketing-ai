@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
   }
 
   const transcript = messages
-    .map((m) => `${m.role === "user" ? "Utilisateur" : "Lia"} : ${m.content}`)
+    .map((m) => `${m.role === "user" ? "User" : "Lia"} : ${m.content}`)
     .join("\n\n");
 
   // Validate discoveryJson if provided
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const prompt = `${transcript}${discoveryContext}\n\nContinue la session stratégique.`;
+  const prompt = `${transcript}${discoveryContext}\n\nContinue the strategy session.`;
 
   // État de session porté par RequestContext (par requête, partagé avec les tools).
   const sessionState = createStrategySessionState();

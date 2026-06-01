@@ -52,9 +52,9 @@ export async function POST(request: NextRequest) {
 
   // Transcript aplati (l'agent reçoit tout l'historique à chaque tour, comme avant).
   const transcript = messages
-    .map((m) => `${m.role === "user" ? "Utilisateur" : "Lia"} : ${m.content}`)
+    .map((m) => `${m.role === "user" ? "User" : "Lia"} : ${m.content}`)
     .join("\n\n");
-  const prompt = `${transcript}\n\nContinue l'entretien de découverte.`;
+  const prompt = `${transcript}\n\nContinue the discovery interview.`;
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({

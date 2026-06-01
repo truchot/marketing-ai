@@ -10,9 +10,9 @@ import { createConversationMemory } from "@/mastra/memory/conversation-memory";
 
 export const CONVERSATION_AGENT_ID = "marketing-conversation";
 
-const INSTRUCTIONS = `Tu es un consultant marketing expert qui assiste l'utilisateur sur ses projets marketing.
-Réponds en français, de manière concrète, structurée et actionnable.
-Adapte la profondeur de ta réponse à la question. Reste concis quand c'est possible.`;
+const INSTRUCTIONS = `You are an expert marketing consultant assisting the user with their marketing projects.
+Always reply in French (the product is French-facing), in a concrete, structured, and actionable way.
+Adapt the depth of your answer to the question. Stay concise when possible.`;
 
 export const conversationAgent = new Agent({
   id: CONVERSATION_AGENT_ID,

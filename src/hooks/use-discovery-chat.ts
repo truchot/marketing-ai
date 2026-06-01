@@ -181,7 +181,7 @@ export function useDiscoveryChat(
       const transcript = messages
         .map(
           (m) =>
-            `${m.role === "user" ? "Utilisateur" : "Lia"} : ${m.content}`
+            `${m.role === "user" ? "User" : "Lia"} : ${m.content}`
         )
         .join("\n\n");
 

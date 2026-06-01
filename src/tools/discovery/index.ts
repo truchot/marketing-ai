@@ -9,7 +9,7 @@ import type { BusinessDiscovery } from "@/types/business-discovery";
 import { runEnrichmentAndReturn, type WebsiteInsights } from "./website-enrichment";
 
 // ============================================================
-// Tool 1: saveDiscoveryBlock (OBLIGATOIRE)
+// Tool 1: saveDiscoveryBlock (MANDATORY)
 // ============================================================
 
 interface SaveDiscoveryBlockInput {
@@ -31,13 +31,13 @@ export async function saveDiscoveryBlock(
   const { blockNumber, blockName, data, validatedBy } = input;
 
   const blockNameMap = {
-    problem_value: "Problème & Proposition de valeur",
+    problem_value: "Problem & Value Proposition",
     audience: "Audiences & Segments",
-    marketing_landscape: "Paysage marketing actuel",
-    business_context: "Objectifs & Contexte business",
+    marketing_landscape: "Current marketing landscape",
+    business_context: "Goals & Business Context",
   };
 
-  const description = `Bloc ${blockNumber} : ${blockNameMap[blockName]} ${validatedBy ? "(validé)" : "(non validé)"}`;
+  const description = `Block ${blockNumber}: ${blockNameMap[blockName]} ${validatedBy ? "(validated)" : "(not validated)"}`;
 
   const tags = [
     "discovery",
@@ -75,7 +75,7 @@ export async function saveDiscoveryBlock(
   if (validatedBy && data.metadata?.companyName) {
     const factResult = addClientFactUseCase.execute({
       category: "discovery",
-      fact: `${blockNameMap[blockName]} complété pour ${data.metadata.companyName}`,
+      fact: `${blockNameMap[blockName]} completed for ${data.metadata.companyName}`,
       source: "discovery_agent",
     });
     if (factResult.isErr()) {
@@ -86,15 +86,15 @@ export async function saveDiscoveryBlock(
 
   return {
     success: true,
-    message: `Bloc ${blockNumber} enregistré avec succès dans la mémoire épisodique.`,
+    message: `Block ${blockNumber} saved successfully to episodic memory.`,
     episodeId: episode.id,
   };
 }
 
-// ========== Fonctions utilitaires partagées (exportées) ==========
+// ========== Shared utility functions (exported) ==========
 
 /**
- * Retire scripts, styles et tags HTML d'une string.
+ * Removes scripts, styles and HTML tags from a string.
  */
 export function cleanHtml(html: string, maxChars: number = 8000): string {
   return html
@@ -107,7 +107,7 @@ export function cleanHtml(html: string, maxChars: number = 8000): string {
 }
 
 /**
- * Fetch et nettoie le contenu HTML d'une URL.
+ * Fetches and cleans the HTML content of a URL.
  */
 export async function fetchAndCleanHtml(url: string, maxChars: number = 8000): Promise<string> {
   const response = await fetch(url, {
@@ -122,8 +122,8 @@ export async function fetchAndCleanHtml(url: string, maxChars: number = 8000): P
 }
 
 /**
- * Appelle Claude Sonnet via l'adaptateur Claude Agent SDK pour analyser du contenu.
- * Passe par `generateText` (donc par `claudeAgentModel`) — pas d'appel direct à query().
+ * Calls Claude Sonnet via the Claude Agent SDK adapter to analyze content.
+ * Goes through `generateText` (and therefore `claudeAgentModel`) — no direct call to query().
  */
 export async function callClaudeSonnet(prompt: string): Promise<string> {
   const text = await generateText("claude-sonnet-4-5-20250929", prompt);
@@ -134,8 +134,8 @@ export async function callClaudeSonnet(prompt: string): Promise<string> {
 }
 
 /**
- * Appelle Claude Haiku via l'adaptateur Claude Agent SDK pour analyser du contenu.
- * Passe par `generateText` (donc par `claudeAgentModel`) — pas d'appel direct à query().
+ * Calls Claude Haiku via the Claude Agent SDK adapter to analyze content.
+ * Goes through `generateText` (and therefore `claudeAgentModel`) — no direct call to query().
  */
 export async function callClaudeHaiku(prompt: string, _maxTokens: number = 1024): Promise<string> {
   void _maxTokens;
@@ -147,7 +147,7 @@ export async function callClaudeHaiku(prompt: string, _maxTokens: number = 1024)
 }
 
 /**
- * Extrait un objet JSON d'une réponse texte de Claude.
+ * Extracts a JSON object from a Claude text response.
  */
 export function extractJsonFromResponse<T>(text: string): T {
   const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -158,7 +158,7 @@ export function extractJsonFromResponse<T>(text: string): T {
 }
 
 // ============================================================
-// Tool 2: enrichFromWebsite (NON-BLOQUANT)
+// Tool 2: enrichFromWebsite (NON-BLOCKING)
 // ============================================================
 
 interface EnrichFromWebsiteInput {
@@ -181,7 +181,7 @@ export async function enrichFromWebsite(
   if (!insights) {
     return {
       success: false,
-      message: "Le site web n'a pas pu être analysé. Continue l'entretien normalement.",
+      message: "The website could not be analyzed. Continue the interview as normal.",
       insights: null,
     };
   }
@@ -189,13 +189,13 @@ export async function enrichFromWebsite(
   const { technicalSignals: _, socialLinks: __, ...agentInsights } = insights;
   return {
     success: true,
-    message: "Site web analysé avec succès. Utilise ces insights pour pré-remplir les réponses et éviter les questions redondantes.",
+    message: "Website analyzed successfully. Use these insights to pre-fill answers and avoid redundant questions.",
     insights: agentInsights,
   };
 }
 
 // ============================================================
-// Tool 3: checkCompetitors (OPTIONNEL)
+// Tool 3: checkCompetitors (OPTIONAL)
 // ============================================================
 
 interface CheckCompetitorsInput {
@@ -237,20 +237,20 @@ export async function checkCompetitors(
       try {
         const cleanText = await fetchAndCleanHtml(url, 6000);
 
-        const analysisPrompt = `Analyse rapide de ce concurrent :
+        const analysisPrompt = `Quick analysis of this competitor:
 
-1. **Positionnement** : En 1 phrase, comment se positionnent-ils ?
-2. **Canaux visibles** : Quels canaux marketing sont évidents ? (max 3)
-3. **Signaux pricing** : Gratuit, payant, freemium, custom ? Indice de prix si visible.
+1. **Positioning**: In 1 sentence, how do they position themselves?
+2. **Visible channels**: Which marketing channels are obvious? (max 3)
+3. **Pricing signals**: Free, paid, freemium, custom? Price hint if visible.
 
-Réponds en JSON strict :
+Respond in strict JSON:
 {
   "positioning": "...",
   "channels": ["...", "..."],
   "pricingSignals": "..."
 }
 
-Contenu :
+Content:
 ${cleanText}`;
 
         const responseText = await callClaudeHaiku(analysisPrompt, 512);
@@ -259,17 +259,17 @@ ${cleanText}`;
         competitors.push({
           name: new URL(url).hostname,
           url,
-          positioning: parsed.positioning || "Inconnu",
+          positioning: parsed.positioning || "Unknown",
           channels: parsed.channels || [],
-          pricingSignals: parsed.pricingSignals || "Inconnu",
+          pricingSignals: parsed.pricingSignals || "Unknown",
         });
       } catch {
         competitors.push({
           name: new URL(url).hostname,
           url,
-          positioning: "Erreur d'analyse",
+          positioning: "Analysis error",
           channels: [],
-          pricingSignals: "Inconnu",
+          pricingSignals: "Unknown",
         });
       }
     }
@@ -278,9 +278,9 @@ ${cleanText}`;
     for (const name of competitorNames.slice(0, 3 - competitors.length)) {
       competitors.push({
         name,
-        positioning: "URL non fournie - analyse manuelle nécessaire",
+        positioning: "URL not provided - manual analysis required",
         channels: [],
-        pricingSignals: "Inconnu",
+        pricingSignals: "Unknown",
       });
     }
 
@@ -294,7 +294,7 @@ ${cleanText}`;
 }
 
 // ============================================================
-// Tool 4: suggestQuestions (OPTIONNEL - Tool interne)
+// Tool 4: suggestQuestions (OPTIONAL - Internal tool)
 // ============================================================
 
 import { getQuestionsForBlock } from "@/data/discovery-questions";
@@ -320,21 +320,21 @@ export function suggestQuestions(
   if (nextBlock > 4) {
     return {
       nextQuestions: [],
-      reasoning: "Tous les blocs sont complétés. L'entretien de découverte peut être clôturé.",
+      reasoning: "All blocks are completed. The discovery interview can be closed.",
     };
   }
 
   const questions = getQuestionsForBlock(sector, nextBlock as 1 | 2 | 3 | 4);
 
   const blockNames = {
-    1: "Problème & Proposition de valeur",
+    1: "Problem & Value Proposition",
     2: "Audiences & Segments",
-    3: "Paysage marketing actuel",
-    4: "Objectifs & Contexte business",
+    3: "Current marketing landscape",
+    4: "Goals & Business Context",
   };
 
   return {
     nextQuestions: questions,
-    reasoning: `Bloc ${nextBlock} (${blockNames[nextBlock as keyof typeof blockNames]}) à explorer. Questions adaptées au secteur ${sector}.`,
+    reasoning: `Block ${nextBlock} (${blockNames[nextBlock as keyof typeof blockNames]}) to explore. Questions tailored to the ${sector} sector.`,
   };
 }

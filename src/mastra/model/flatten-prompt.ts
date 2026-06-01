@@ -58,7 +58,7 @@ export function flattenPrompt(
       continue;
     }
     if (msg.role === "user") {
-      convo.push(`Utilisateur: ${textOfParts(msg.content)}`);
+      convo.push(`User: ${textOfParts(msg.content)}`);
       continue;
     }
     if (msg.role === "assistant") {
@@ -67,7 +67,7 @@ export function flattenPrompt(
           convo.push(`Assistant: ${part.text}`);
         } else if (part.type === "tool-call") {
           convo.push(
-            `Assistant a appelé l'outil \`${part.toolName}\` avec ${JSON.stringify(part.input)}.`
+            `Assistant called the tool \`${part.toolName}\` with ${JSON.stringify(part.input)}.`
           );
         }
       }
@@ -76,7 +76,7 @@ export function flattenPrompt(
     if (msg.role === "tool") {
       for (const part of msg.content) {
         if (part.type === "tool-result") {
-          convo.push(`Résultat de \`${part.toolName}\`: ${stringifyToolOutput(part.output)}`);
+          convo.push(`Result of \`${part.toolName}\`: ${stringifyToolOutput(part.output)}`);
         }
       }
     }
