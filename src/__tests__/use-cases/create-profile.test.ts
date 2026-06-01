@@ -9,10 +9,10 @@ describe("CreateProfileUseCase", () => {
     return { profileRepo, useCase };
   }
 
-  it("should create a profile with the correct data", () => {
+  it("should create a profile with the correct data", async () => {
     const { useCase } = setup();
 
-    const result = useCase.execute({
+    const result = await useCase.execute({
       name: "Acme Corp",
       sector: "SaaS B2B",
       description: "Cloud-based project management tool",
@@ -32,12 +32,12 @@ describe("CreateProfileUseCase", () => {
     expect(profile.updatedAt).toBeDefined();
   });
 
-  it("should persist the profile in the repository", () => {
+  it("should persist the profile in the repository", async () => {
     const { profileRepo, useCase } = setup();
 
-    expect(profileRepo.get()).toBeNull();
+    expect(await profileRepo.get()).toBeNull();
 
-    const result = useCase.execute({
+    const result = await useCase.execute({
       name: "TechStart",
       sector: "EdTech",
       description: "Online learning platform for developers",
@@ -46,17 +46,17 @@ describe("CreateProfileUseCase", () => {
     });
 
     expect(result.isOk()).toBe(true);
-    const saved = profileRepo.get();
+    const saved = await profileRepo.get();
     expect(saved).not.toBeNull();
     expect(saved!.id).toBe(result.value.id);
     expect(saved!.name).toBe("TechStart");
     expect(saved!.sector).toBe("EdTech");
   });
 
-  it("should update the profile on a second save", () => {
+  it("should update the profile on a second save", async () => {
     const { profileRepo, useCase } = setup();
 
-    useCase.execute({
+    await useCase.execute({
       name: "Original Corp",
       sector: "Finance",
       description: "Original description for company",
@@ -64,7 +64,7 @@ describe("CreateProfileUseCase", () => {
       brandTone: "Formal",
     });
 
-    const result = useCase.execute({
+    const result = await useCase.execute({
       name: "Updated Corp",
       sector: "FinTech",
       description: "Updated description for company",
@@ -73,7 +73,7 @@ describe("CreateProfileUseCase", () => {
     });
 
     expect(result.isOk()).toBe(true);
-    const saved = profileRepo.get();
+    const saved = await profileRepo.get();
     expect(saved!.name).toBe("Updated Corp");
     expect(saved!.sector).toBe("FinTech");
     expect(saved!.description).toBe("Updated description for company");

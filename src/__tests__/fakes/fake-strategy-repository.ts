@@ -10,7 +10,7 @@ export class FakeStrategyRepository implements IStrategyRepository {
   private latestId: string | null = null;
   private counter = 0;
 
-  save(strategy: MarketingStrategy): string {
+  async save(strategy: MarketingStrategy): Promise<string> {
     this.counter += 1;
     const id = `strategy-test-${this.counter}`;
     this.store.set(id, strategy);
@@ -18,20 +18,20 @@ export class FakeStrategyRepository implements IStrategyRepository {
     return id;
   }
 
-  get(strategyId: string): MarketingStrategy | null {
+  async get(strategyId: string): Promise<MarketingStrategy | null> {
     return this.store.get(strategyId) ?? null;
   }
 
-  getLatest(): MarketingStrategy | null {
+  async getLatest(): Promise<MarketingStrategy | null> {
     if (!this.latestId) return null;
     return this.store.get(this.latestId) ?? null;
   }
 
-  getAll(): MarketingStrategy[] {
+  async getAll(): Promise<MarketingStrategy[]> {
     return [...this.store.values()];
   }
 
-  reset(): void {
+  async reset(): Promise<void> {
     this.store.clear();
     this.latestId = null;
     this.counter = 0;

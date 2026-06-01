@@ -9,13 +9,13 @@ export class FakeCompanyProfileRepository implements ICompanyProfileRepository {
   private profile: CompanyProfile | null = null;
   private counter = 0;
 
-  get(): CompanyProfile | null {
+  async get(): Promise<CompanyProfile | null> {
     return this.profile;
   }
 
-  save(
+  async save(
     data: Omit<CompanyProfile, "id" | "createdAt" | "updatedAt">
-  ): CompanyProfile {
+  ): Promise<CompanyProfile> {
     this.counter += 1;
     const now = "2026-01-01T00:00:00.000Z";
     if (this.profile) {
@@ -31,7 +31,7 @@ export class FakeCompanyProfileRepository implements ICompanyProfileRepository {
     return this.profile;
   }
 
-  reset(): void {
+  async reset(): Promise<void> {
     this.profile = null;
     this.counter = 0;
   }

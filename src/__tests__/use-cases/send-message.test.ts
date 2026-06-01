@@ -29,43 +29,43 @@ describe("SendMessageUseCase", () => {
     return { conversationRepo, episodicRepo, responseGenerator, useCase };
   }
 
-  it("should add the user message to the conversation", () => {
+  it("should add the user message to the conversation", async () => {
     const { conversationRepo, useCase } = setup();
 
-    const result = useCase.execute("Hello, I need help with SEO.");
+    const result = await useCase.execute("Hello, I need help with SEO.");
 
     expect(result.isOk()).toBe(true);
     const { userMessage } = result.value;
     expect(userMessage.role).toBe("user");
     expect(userMessage.content).toBe("Hello, I need help with SEO.");
 
-    const allMessages = conversationRepo.getAll();
+    const allMessages = await conversationRepo.getAll();
     expect(allMessages.some((m) => m.id === userMessage.id)).toBe(true);
   });
 
-  it("should generate and add the assistant response", () => {
+  it("should generate and add the assistant response", async () => {
     const { conversationRepo, useCase } = setup("Sure, I can help with SEO!");
 
-    const result = useCase.execute("Help me with SEO");
+    const result = await useCase.execute("Help me with SEO");
 
     expect(result.isOk()).toBe(true);
     const { assistantMessage } = result.value;
     expect(assistantMessage.role).toBe("assistant");
     expect(assistantMessage.content).toBe("Sure, I can help with SEO!");
 
-    const allMessages = conversationRepo.getAll();
+    const allMessages = await conversationRepo.getAll();
     expect(allMessages.some((m) => m.id === assistantMessage.id)).toBe(true);
   });
 
-  it("should record the interaction in episodic memory", () => {
+  it("should record the interaction in episodic memory", async () => {
     const { episodicRepo, useCase } = setup();
 
-    const result = useCase.execute("What is content marketing?");
+    const result = await useCase.execute("What is content marketing?");
 
     expect(result.isOk()).toBe(true);
     const { userMessage } = result.value;
 
-    const episodes = episodicRepo.getEpisodes();
+    const episodes = await episodicRepo.getEpisodes();
     expect(episodes).toHaveLength(1);
     expect(episodes[0].type).toBe("interaction");
     expect(episodes[0].description).toBe("What is content marketing?");
@@ -77,7 +77,7 @@ describe("SendMessageUseCase", () => {
     expect(episodes[0].metadata.importance).toBe("medium");
   });
 
-  it("should publish a MESSAGE_SENT domain event", () => {
+  it("should publish a MESSAGE_SENT domain event", async () => {
     const { useCase } = setup();
 
     const publishedEvents: DomainEvent[] = [];
@@ -85,7 +85,7 @@ describe("SendMessageUseCase", () => {
       publishedEvents.push(event);
     });
 
-    const result = useCase.execute("Test message");
+    const result = await useCase.execute("Test message");
 
     expect(result.isOk()).toBe(true);
     const { userMessage, assistantMessage } = result.value;
@@ -99,10 +99,10 @@ describe("SendMessageUseCase", () => {
     expect(publishedEvents[0].occurredAt).toBeDefined();
   });
 
-  it("should return both user and assistant messages", () => {
+  it("should return both user and assistant messages", async () => {
     const { useCase } = setup();
 
-    const result = useCase.execute("Hello");
+    const result = await useCase.execute("Hello");
 
     expect(result.isOk()).toBe(true);
     expect(result.value.userMessage).toBeDefined();

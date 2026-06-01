@@ -81,19 +81,19 @@ describe("SaveStrategyUseCase", () => {
     return { repo, useCase };
   }
 
-  it("should save a valid strategy and return an id", () => {
+  it("should save a valid strategy and return an id", async () => {
     const { repo, useCase } = setup();
     const strategy = makeStrategy();
 
-    const result = useCase.execute(strategy);
+    const result = await useCase.execute(strategy);
 
     expect(result.isOk()).toBe(true);
     expect(result.value).toMatch(/^strategy-test-/);
-    expect(repo.getLatest()).not.toBeNull();
-    expect(repo.getLatest()!.metadata.companyName).toBe("TestCo");
+    expect(await repo.getLatest()).not.toBeNull();
+    expect((await repo.getLatest())!.metadata.companyName).toBe("TestCo");
   });
 
-  it("should preserve metadata through save round-trip", () => {
+  it("should preserve metadata through save round-trip", async () => {
     const { repo, useCase } = setup();
     const strategy = makeStrategy({
       metadata: {
@@ -104,24 +104,24 @@ describe("SaveStrategyUseCase", () => {
       },
     });
 
-    useCase.execute(strategy);
-    const saved = repo.getLatest()!;
+    await useCase.execute(strategy);
+    const saved = (await repo.getLatest())!;
 
     expect(saved.metadata.discoveryCompletionStatus).toBe("partial");
     expect(saved.metadata.strategyVersion).toBe(2);
   });
 
-  it("should reject strategy with zero OKRs", () => {
+  it("should reject strategy with zero OKRs", async () => {
     const { useCase } = setup();
     const strategy = makeStrategy({ okrs: [] });
 
-    const result = useCase.execute(strategy);
+    const result = await useCase.execute(strategy);
 
     expect(result.isErr()).toBe(true);
     expect(result.error.message).toContain("at least one OKR");
   });
 
-  it("should reject strategy with more than 3 OKRs", () => {
+  it("should reject strategy with more than 3 OKRs", async () => {
     const { useCase } = setup();
     const okr = {
       id: "okr-x",
@@ -142,28 +142,28 @@ describe("SaveStrategyUseCase", () => {
       ],
     });
 
-    const result = useCase.execute(strategy);
+    const result = await useCase.execute(strategy);
 
     expect(result.isErr()).toBe(true);
     expect(result.error.message).toContain("at most 3 OKRs");
   });
 
-  it("should reject strategy with zero actions", () => {
+  it("should reject strategy with zero actions", async () => {
     const { useCase } = setup();
     const strategy = makeStrategy({ actions: [] });
 
-    const result = useCase.execute(strategy);
+    const result = await useCase.execute(strategy);
 
     expect(result.isErr()).toBe(true);
     expect(result.error.message).toContain("at least one action");
   });
 
-  it("should save multiple strategies and retrieve latest", () => {
+  it("should save multiple strategies and retrieve latest", async () => {
     const { repo, useCase } = setup();
 
-    useCase.execute(makeStrategy({ metadata: { companyName: "First", generatedAt: "2026-01-01T00:00:00.000Z", discoveryCompletionStatus: "complete", strategyVersion: 1 } }));
-    useCase.execute(makeStrategy({ metadata: { companyName: "Second", generatedAt: "2026-02-01T00:00:00.000Z", discoveryCompletionStatus: "complete", strategyVersion: 1 } }));
+    await useCase.execute(makeStrategy({ metadata: { companyName: "First", generatedAt: "2026-01-01T00:00:00.000Z", discoveryCompletionStatus: "complete", strategyVersion: 1 } }));
+    await useCase.execute(makeStrategy({ metadata: { companyName: "Second", generatedAt: "2026-02-01T00:00:00.000Z", discoveryCompletionStatus: "complete", strategyVersion: 1 } }));
 
-    expect(repo.getLatest()!.metadata.companyName).toBe("Second");
+    expect((await repo.getLatest())!.metadata.companyName).toBe("Second");
   });
 });

@@ -19,10 +19,10 @@ describe("AddClientFactUseCase", () => {
     return { semanticRepo, useCase };
   }
 
-  it("should add a client fact to semantic memory", () => {
+  it("should add a client fact to semantic memory", async () => {
     const { semanticRepo, useCase } = setup();
 
-    const result = useCase.execute({
+    const result = await useCase.execute({
       category: "business",
       fact: "Client operates in the SaaS B2B market",
       source: "onboarding",
@@ -37,12 +37,12 @@ describe("AddClientFactUseCase", () => {
     expect(fact.addedAt).toBeDefined();
 
     // Verify persisted in repository
-    const facts = semanticRepo.getClientFacts();
+    const facts = await semanticRepo.getClientFacts();
     expect(facts).toHaveLength(1);
     expect(facts[0].id).toBe(fact.id);
   });
 
-  it("should publish a CLIENT_FACT_ADDED domain event", () => {
+  it("should publish a CLIENT_FACT_ADDED domain event", async () => {
     const { useCase } = setup();
 
     const publishedEvents: DomainEvent[] = [];
@@ -50,7 +50,7 @@ describe("AddClientFactUseCase", () => {
       publishedEvents.push(event);
     });
 
-    const result = useCase.execute({
+    const result = await useCase.execute({
       category: "audience",
       fact: "Target audience is marketing directors in mid-size companies",
       source: "conversation",
@@ -66,16 +66,16 @@ describe("AddClientFactUseCase", () => {
     expect(publishedEvents[0].occurredAt).toBeDefined();
   });
 
-  it("should store multiple facts independently", () => {
+  it("should store multiple facts independently", async () => {
     const { semanticRepo, useCase } = setup();
 
-    const result1 = useCase.execute({
+    const result1 = await useCase.execute({
       category: "business",
       fact: "Revenue is 5M ARR",
       source: "onboarding",
     });
 
-    const result2 = useCase.execute({
+    const result2 = await useCase.execute({
       category: "audience",
       fact: "Primary audience is CTOs",
       source: "conversation",
@@ -84,7 +84,7 @@ describe("AddClientFactUseCase", () => {
     expect(result1.isOk()).toBe(true);
     expect(result2.isOk()).toBe(true);
 
-    const allFacts = semanticRepo.getClientFacts();
+    const allFacts = await semanticRepo.getClientFacts();
     expect(allFacts).toHaveLength(2);
     expect(allFacts[0].id).toBe(result1.value.id);
     expect(allFacts[1].id).toBe(result2.value.id);
