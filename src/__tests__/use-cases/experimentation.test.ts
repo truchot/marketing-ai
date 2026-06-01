@@ -7,7 +7,6 @@ import {
 } from "@/domains/experimentation";
 import type { CreateExperimentInput } from "@/domains/experimentation";
 import type { Hypothesis } from "@/types/experiment";
-import type { Action } from "@/types/marketing-strategy";
 import { FakeExperimentRepository } from "../fakes";
 
 // --- Builders ---
@@ -36,25 +35,6 @@ function makeRawInput(overrides: Partial<CreateExperimentInput> = {}): CreateExp
   };
 }
 
-function makeAction(overrides: Partial<Action> = {}): Action {
-  return {
-    id: "action-1",
-    okrId: "okr-1",
-    keyResultId: "kr-1",
-    title: "Créer une page SEO",
-    description: "desc",
-    type: "quick_win",
-    effort: "low",
-    impact: "high",
-    requiredSkills: [],
-    requiredTools: [],
-    dependencies: [],
-    suggestedTimeline: "S1",
-    channel: "seo",
-    ...overrides,
-  };
-}
-
 describe("GenerateBacklogUseCase", () => {
   let repo: FakeExperimentRepository;
   let usecase: GenerateBacklogUseCase;
@@ -75,24 +55,6 @@ describe("GenerateBacklogUseCase", () => {
     expect(backlog.map((e) => e.title)).toEqual(["High", "Low"]); // ranked desc
     expect(backlog.every((e) => e.status === "draft")).toBe(true);
     expect(await repo.list()).toHaveLength(2);
-  });
-
-  it("promotes an Action into an experiment, seeding ICE from the Action levels", async () => {
-    const result = await usecase.execute([
-      {
-        kind: "fromAction",
-        action: makeAction({ impact: "high", effort: "low" }),
-        hypothesis: makeHypothesis(),
-        confidence: 6,
-        companyName: "Kompta",
-      },
-    ]);
-
-    expect(result.isOk()).toBe(true);
-    const exp = result.value[0];
-    expect(exp.ice).toEqual({ impact: 9, confidence: 6, ease: 9 });
-    expect(exp.actionId).toBe("action-1");
-    expect(exp.keyResultId).toBe("kr-1");
   });
 
   it("fails on an empty candidate list", async () => {

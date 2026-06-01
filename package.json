@@ -11,6 +11,8 @@
     "test:run": "vitest run",
     "test:ci": "vitest run --reporter=verbose",
     "test:integration": "vitest run --config vitest.integration.config.ts",
+    "mastra:dev": "mastra dev",
+    "eval:ci": "vitest run src/mastra/scorers",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
     "db:migrate": "prisma migrate dev",
@@ -20,7 +22,13 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
+    "@ai-sdk/provider": "^3.0.10",
     "@anthropic-ai/claude-agent-sdk": "^0.2.34",
+    "@mastra/core": "1.37.1",
+    "@mastra/fastembed": "1.1.1",
+    "@mastra/libsql": "1.11.1",
+    "@mastra/loggers": "1.1.1",
+    "@mastra/memory": "1.20.0",
     "@prisma/client": "^6.19.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -29,9 +37,12 @@
     "radix-ui": "^1.4.3",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "tailwind-merge": "^3.4.0"
+    "tailwind-merge": "^3.4.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@anthropic-ai/sdk": "^0.100.1",
+    "@mastra/evals": "^1.2.3",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -39,6 +50,7 @@
     "@vitejs/plugin-react": "^4.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "mastra": "^1.10.2",
     "prisma": "^6.19.3",
     "shadcn": "^3.8.4",
     "tailwindcss": "^4",

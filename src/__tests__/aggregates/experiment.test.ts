@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import { ExperimentAggregate } from "@/domains/experimentation/aggregates";
 import type { CreateExperimentInput } from "@/domains/experimentation/aggregates";
 import type { Hypothesis, ConfidenceSource } from "@/types/experiment";
-import type { Action } from "@/types/marketing-strategy";
 
 // --- Builders ---
 
@@ -29,26 +28,6 @@ function makeInput(overrides: Partial<CreateExperimentInput> = {}): CreateExperi
     ice: { impact: 8, confidence: 7, ease: 9 },
     confidenceSources: [{ type: "sector_benchmark", evidence: "secteur SaaS B2B" }],
     companyName: "Kompta",
-    ...overrides,
-  };
-}
-
-function makeAction(overrides: Partial<Action> = {}): Action {
-  return {
-    id: "action-1",
-    okrId: "okr-1",
-    keyResultId: "kr-1",
-    title: "Créer une page SEO",
-    description: "Page d'atterrissage SEO",
-    type: "quick_win",
-    effort: "low",
-    impact: "high",
-    requiredSkills: ["marketing"],
-    requiredTools: [],
-    dependencies: [],
-    suggestedTimeline: "Semaine 1-2",
-    channel: "seo",
-    audienceSegment: "freelances",
     ...overrides,
   };
 }
@@ -99,7 +78,6 @@ describe("ExperimentAggregate", () => {
         experimentId: agg.id,
         keyResultId: "kr-1",
         okrId: "okr-1",
-        actionId: "action-1",
         companyName: "Kompta",
         priorityScore: 8,
       });
@@ -149,66 +127,6 @@ describe("ExperimentAggregate", () => {
       const agg = ExperimentAggregate.create(makeInput({ actionId: "   ", title: "  Titre  " }));
       expect(agg.actionId).toBeUndefined();
       expect(agg.title).toBe("Titre");
-    });
-  });
-
-  describe("promoteFromAction", () => {
-    it("seeds ICE impact/ease from the Action levels (high impact → 9, low effort → ease 9)", () => {
-      const agg = ExperimentAggregate.promoteFromAction(makeAction({ impact: "high", effort: "low" }), {
-        hypothesis: makeHypothesis(),
-        confidence: 5,
-        companyName: "Kompta",
-      });
-      expect(agg.ice).toEqual({ impact: 9, confidence: 5, ease: 9 });
-    });
-
-    it("maps medium levels to 6", () => {
-      const agg = ExperimentAggregate.promoteFromAction(makeAction({ impact: "medium", effort: "medium" }), {
-        hypothesis: makeHypothesis(),
-        confidence: 6,
-        companyName: "Kompta",
-      });
-      expect(agg.ice).toEqual({ impact: 6, confidence: 6, ease: 6 });
-    });
-
-    it("inverts effort into ease (high effort → ease 3)", () => {
-      const agg = ExperimentAggregate.promoteFromAction(makeAction({ effort: "high" }), {
-        hypothesis: makeHypothesis(),
-        confidence: 5,
-        companyName: "Kompta",
-      });
-      expect(agg.ice.ease).toBe(3);
-    });
-
-    it("references the Action's keyResultId, okrId and id", () => {
-      const action = makeAction({ id: "action-42", okrId: "okr-7", keyResultId: "kr-7" });
-      const agg = ExperimentAggregate.promoteFromAction(action, {
-        hypothesis: makeHypothesis(),
-        confidence: 5,
-        companyName: "Kompta",
-      });
-      expect(agg.actionId).toBe("action-42");
-      expect(agg.okrId).toBe("okr-7");
-      expect(agg.keyResultId).toBe("kr-7");
-    });
-
-    it("defaults title and channel to the Action, allowing overrides", () => {
-      const defaulted = ExperimentAggregate.promoteFromAction(makeAction(), {
-        hypothesis: makeHypothesis(),
-        confidence: 5,
-        companyName: "Kompta",
-      });
-      expect(defaulted.title).toBe("Créer une page SEO");
-
-      const overridden = ExperimentAggregate.promoteFromAction(makeAction(), {
-        hypothesis: makeHypothesis(),
-        confidence: 5,
-        companyName: "Kompta",
-        title: "Titre custom",
-        channel: "newsletter",
-      });
-      expect(overridden.title).toBe("Titre custom");
-      expect(overridden.toDTO().channel).toBe("newsletter");
     });
   });
 

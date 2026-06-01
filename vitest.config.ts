@@ -5,9 +5,14 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    // Integration tests hit a real Postgres — excluded from the default run.
-    // Run them with `npm run test:integration` (requires docker compose up).
-    exclude: [...configDefaults.exclude, '**/*.integration.test.ts'],
+    // Integration tests hit a real Postgres — excluded from the default run
+    // (run them with `npm run test:integration`). Worktrees are session copies.
+    exclude: [
+      ...configDefaults.exclude,
+      '**/*.integration.test.ts',
+      '**/.claude-worktrees/**',
+      '**/.claude/worktrees/**',
+    ],
   },
   resolve: {
     alias: {

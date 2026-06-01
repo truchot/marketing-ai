@@ -4,6 +4,8 @@ import type { BusinessDiscovery } from "@/types/business-discovery";
 
 type Fact = { category: string; fact: string };
 
+const DISCOVERY_SOURCE = "onboarding";
+
 /**
  * Anti-Corruption Layer : traduit BusinessDiscovery (contexte Onboarding)
  * en ClientFacts sémantiques (contexte Memory).
@@ -25,7 +27,7 @@ export class MemoryFacade implements IMemoryFacade {
       ...this.strategicHypotheses(discovery),
     ];
     for (const f of facts) {
-      await this.semanticRepo.addClientFact(f.category, f.fact, "onboarding");
+      await this.semanticRepo.addClientFact(f.category, f.fact, DISCOVERY_SOURCE);
     }
   }
 

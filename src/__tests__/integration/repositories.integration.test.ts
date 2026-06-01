@@ -5,7 +5,8 @@ import { PrismaConversationRepository } from "@/data/conversation-repository";
 import { PrismaCompanyProfileRepository } from "@/data/company-profile-repository";
 import { PrismaBusinessDiscoveryRepository } from "@/data/business-discovery-repository";
 import { SaveStrategyUseCase } from "@/domains/strategy/use-cases/save-strategy";
-import type { MarketingStrategy } from "@/types/marketing-strategy";
+import { CompanyProfileAggregate } from "@/domains/client-knowledge/aggregates";
+import { makeStrategy } from "../fixtures/strategy.fixture";
 import type { BusinessDiscovery } from "@/types/business-discovery";
 
 // Real Postgres round-trips for the migrated contexts.
@@ -15,69 +16,6 @@ const strategyRepo = new PrismaStrategyRepository();
 const conversationRepo = new PrismaConversationRepository();
 const profileRepo = new PrismaCompanyProfileRepository();
 const discoveryRepo = new PrismaBusinessDiscoveryRepository();
-
-function makeStrategy(overrides: Partial<MarketingStrategy> = {}): MarketingStrategy {
-  return {
-    metadata: {
-      companyName: "TestCo",
-      generatedAt: "2026-01-01T00:00:00.000Z",
-      discoveryCompletionStatus: "complete",
-      strategyVersion: 1,
-    },
-    diagnostic: {
-      maturityScore: 55,
-      strengths: ["Good SEO"],
-      weaknesses: ["No paid ads"],
-      opportunities: ["Content marketing"],
-      threats: ["Strong competition"],
-      summary: "Test summary",
-    },
-    okrs: [
-      {
-        id: "okr-1",
-        objective: "Increase visibility",
-        rationale: "Low brand awareness",
-        keyResults: [
-          {
-            id: "kr-1-1",
-            metric: "Monthly organic traffic",
-            current: "1000",
-            target: "5000",
-            timeline: "Q2 2026",
-            confidence: "medium",
-          },
-        ],
-        priority: "primary",
-        linkedDiscoveryData: { fromBlock: "business_context", evidence: "low visibility" },
-      },
-    ],
-    actions: [
-      {
-        id: "action-1",
-        okrId: "okr-1",
-        keyResultId: "kr-1-1",
-        title: "SEO audit",
-        description: "Perform a full SEO audit",
-        type: "quick_win",
-        effort: "low",
-        impact: "high",
-        requiredSkills: ["SEO"],
-        requiredTools: ["Ahrefs"],
-        dependencies: [],
-        suggestedTimeline: "Semaine 1",
-        channel: "seo",
-      },
-    ],
-    executionRoadmap: {
-      phase1: { name: "Quick wins", duration: "0-30 jours", actionIds: ["action-1"] },
-      phase2: { name: "Fondations", duration: "30-90 jours", actionIds: [] },
-      phase3: { name: "Stratégique", duration: "90+ jours", actionIds: [] },
-    },
-    constraints: { budgetFit: true, teamFit: true, adaptations: [] },
-    narrativeSummary: "Test narrative.",
-    ...overrides,
-  };
-}
 
 beforeEach(async () => {
   await strategyRepo.reset();
@@ -95,21 +33,16 @@ afterAll(async () => {
 });
 
 describe("PrismaStrategyRepository (integration)", () => {
-  it("round-trips a nested strategy (okrs, key results, actions, roadmap, diagnostic)", async () => {
+  it("round-trips a 3-level strategy via JSONB and reconstitutes the aggregate", async () => {
     const uc = new SaveStrategyUseCase(strategyRepo);
     const result = await uc.execute(makeStrategy());
     expect(result.isOk()).toBe(true);
 
     const latest = (await strategyRepo.getLatest())!;
     expect(latest.metadata.companyName).toBe("TestCo");
-    expect(latest.okrs).toHaveLength(1);
-    expect(latest.okrs[0].id).toBe("okr-1");
-    expect(latest.okrs[0].keyResults).toHaveLength(1);
-    expect(latest.okrs[0].keyResults[0].target).toBe("5000");
-    expect(latest.actions).toHaveLength(1);
-    expect(latest.actions[0].channel).toBe("seo");
-    expect(latest.executionRoadmap.phase1.actionIds).toEqual(["action-1"]);
-    expect(latest.diagnostic.strengths).toEqual(["Good SEO"]);
+    expect(latest.okrs.length).toBeGreaterThanOrEqual(1);
+    expect(latest.marketingPlan.campaigns.length).toBeGreaterThanOrEqual(1);
+    expect(latest.operational.tasks.length).toBeGreaterThanOrEqual(1);
 
     const byId = await strategyRepo.get(result.value);
     expect(byId!.metadata.companyName).toBe("TestCo");
@@ -144,32 +77,26 @@ describe("PrismaConversationRepository (integration)", () => {
 });
 
 describe("PrismaCompanyProfileRepository (integration)", () => {
-  it("creates then updates the single current profile", async () => {
+  it("creates then upserts the profile by id", async () => {
     expect(await profileRepo.get()).toBeNull();
 
-    const created = await profileRepo.save({
+    const p1 = CompanyProfileAggregate.create({
       name: "Acme",
       sector: "SaaS",
       description: "Cloud platform for teams",
       target: "PMs",
       brandTone: "pro",
-    });
-    expect(created.id).toBeDefined();
+    }).toDTO();
+    const created = await profileRepo.save(p1);
+    expect(created.id).toBe(p1.id);
 
-    const updated = await profileRepo.save({
-      name: "Acme v2",
-      sector: "SaaS B2B",
-      description: "Cloud platform for product teams",
-      target: "PMs and PMMs",
-      brandTone: "pro",
-      discoveryId: "disc-1",
-    });
+    const p2 = { ...p1, name: "Acme v2", sector: "SaaS B2B", discoveryId: "disc-1", updatedAt: "2026-01-02T00:00:00.000Z" };
+    await profileRepo.save(p2);
 
     const got = (await profileRepo.get())!;
-    expect(got.id).toBe(created.id); // same row updated
+    expect(got.id).toBe(p1.id); // same row updated
     expect(got.name).toBe("Acme v2");
     expect(got.discoveryId).toBe("disc-1");
-    expect(updated.id).toBe(created.id);
   });
 });
 

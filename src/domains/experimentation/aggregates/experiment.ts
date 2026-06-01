@@ -21,22 +21,8 @@ import type {
   ExperimentResult,
   ExperimentStatus,
 } from "@/types/experiment";
-import type { Action, ImpactLevel, EffortLevel } from "@/types/marketing-strategy";
-
 const ICE_MIN = 1;
 const ICE_MAX = 10;
-
-// --- Pure mapping helpers (bridge Strategy levels ↔ ICE 1-10) ---
-
-/** Action.impact (level) → ICE impact score. */
-function impactLevelToScore(level: ImpactLevel): number {
-  return { low: 3, medium: 6, high: 9 }[level];
-}
-
-/** Action.effort (level) → ICE ease score (ease is the INVERSE of effort). */
-function effortLevelToEase(level: EffortLevel): number {
-  return { low: 9, medium: 6, high: 3 }[level];
-}
 
 function assertIceDimension(name: string, value: number): void {
   if (!Number.isFinite(value) || value < ICE_MIN || value > ICE_MAX) {
@@ -152,47 +138,12 @@ export class ExperimentAggregate extends AggregateRoot {
         experimentId: id,
         keyResultId,
         okrId,
-        actionId: actionId ?? null,
         companyName: aggregate._companyName,
         priorityScore: aggregate.priorityScore,
       },
     });
 
     return aggregate;
-  }
-
-  /**
-   * Promote a strategic Action into a testable Experiment.
-   * Seeds ICE impact/ease from the Action's levels; confidence is supplied
-   * (from the 4 data sources). The Action is referenced, never mutated.
-   */
-  static promoteFromAction(
-    action: Action,
-    input: {
-      hypothesis: Hypothesis;
-      confidence: number; // 1-10, fed by confidenceSources
-      confidenceSources?: ConfidenceSource[];
-      companyName: string;
-      title?: string; // defaults to action.title
-      channel?: string; // defaults to action.channel
-    }
-  ): ExperimentAggregate {
-    return ExperimentAggregate.create({
-      keyResultId: action.keyResultId,
-      okrId: action.okrId,
-      actionId: action.id,
-      title: input.title ?? action.title,
-      hypothesis: input.hypothesis,
-      channel: input.channel ?? action.channel ?? "",
-      audienceSegment: action.audienceSegment,
-      ice: {
-        impact: impactLevelToScore(action.impact),
-        confidence: input.confidence,
-        ease: effortLevelToEase(action.effort),
-      },
-      confidenceSources: input.confidenceSources,
-      companyName: input.companyName,
-    });
   }
 
   /** Reconstitute from persistence (no domain events). */

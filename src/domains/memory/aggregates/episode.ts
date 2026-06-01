@@ -139,10 +139,9 @@ export class EpisodeAggregate extends AggregateRoot {
       throw new Error(`Tag "${tagValue}" already exists on this episode`);
     }
 
-    // Create new array with added tag (immutability)
-    const updatedTags = [...this._tags, newTag];
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (this as any)._tags = Object.freeze(updatedTags);
+    // Create new array with added tag (immutability via reassign + freeze)
+    const updatedTags = Object.freeze([...this._tags, newTag]);
+    Object.defineProperty(this, '_tags', { value: updatedTags });
   }
 
   /**

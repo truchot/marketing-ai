@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { query } from "@anthropic-ai/claude-agent-sdk";
-import {
-  getDiscoverySystemPrompt,
-  businessDiscoverySchema,
-  isBusinessDiscovery,
-} from "@/agents/discovery";
+import { getDiscoveryExtractionAgent } from "@/mastra";
+import { isBusinessDiscovery } from "@/agents/discovery";
+import { businessDiscoveryZodSchema } from "@/mastra/schemas/business-discovery";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
+
+const STRUCTURED_PREAMBLE = `## Mode: Structured Output
+
+You receive the complete transcript of a discovery interview.
+Analyze it and produce the complete BusinessDiscovery object in JSON format.
+Fill in ALL fields based on the information from the interview.
+Missing information must be added to metadata.gaps.`;
 
 // POST /api/agent/discovery/structured
 // Takes the full interview transcript and produces the BusinessDiscovery JSON
@@ -16,10 +20,7 @@ export async function POST(request: NextRequest) {
   const { transcript } = body;
 
   if (!transcript || typeof transcript !== "string") {
-    return NextResponse.json(
-      { error: "Transcript is required" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Transcript is required" }, { status: 400 });
   }
 
   if (!process.env.CLAUDE_CODE_OAUTH_TOKEN) {
@@ -29,58 +30,23 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const systemPrompt = `${getDiscoverySystemPrompt()}
-
-## Mode: Structured Output
-
-Tu recois la transcription complete d'un entretien de decouverte.
-Analyse-la et produis l'objet BusinessDiscovery complet au format JSON.
-Remplis TOUS les champs en te basant sur les informations de l'entretien.
-Les informations manquantes doivent etre ajoutees dans metadata.gaps.`;
-
   try {
-    const result = query({
-      prompt: transcript,
-      options: {
-        model: "claude-sonnet-4-5-20250929",
-        systemPrompt,
-        permissionMode: "bypassPermissions",
-        allowDangerouslySkipPermissions: true,
-        tools: [],
-        maxTurns: 1,
-        outputFormat: {
-          type: "json_schema",
-          schema: businessDiscoverySchema,
-        },
-      },
+    const agent = getDiscoveryExtractionAgent();
+    const res = await agent.generate(`${STRUCTURED_PREAMBLE}\n\n${transcript}`, {
+      structuredOutput: { schema: businessDiscoveryZodSchema },
     });
 
-    let structuredOutput: unknown = null;
-
-    for await (const msg of result) {
-      if (msg.type === "result") {
-        if (msg.subtype === "success") {
-          structuredOutput = msg.structured_output ?? null;
-        } else {
-          return NextResponse.json(
-            { error: msg.errors?.join(", ") || "Agent execution failed" },
-            { status: 500 }
-          );
-        }
-      }
-    }
-
-    if (!structuredOutput || !isBusinessDiscovery(structuredOutput)) {
+    // Mastra place l'objet structuré sur `res.object` à l'exécution ; le type
+    // ne l'infère pas toujours selon le schéma -> lecture via cast localisé.
+    const structured: unknown = (res as { object?: unknown }).object;
+    if (!structured || !isBusinessDiscovery(structured)) {
       return NextResponse.json(
         { error: "Failed to produce structured output" },
         { status: 500 }
       );
     }
 
-    return NextResponse.json(
-      { discovery: structuredOutput },
-      { status: 200 }
-    );
+    return NextResponse.json({ discovery: structured }, { status: 200 });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Unknown error" },

@@ -1,6 +1,6 @@
 import type { ISemanticMemoryRepository } from "../ports";
-import type { LearnedRule, ConfidenceLevel } from "@/types/memory";
-import { ConfidenceLevel as ConfidenceLevelVO, Result, ValidationError } from "@/domains/shared";
+import type { ConfidenceLevel } from "@/types/memory";
+import { ConfidenceLevel as ConfidenceLevelVO, executeUseCase } from "@/domains/shared";
 
 interface AddLearnedRuleInput {
   description: string;
@@ -12,22 +12,15 @@ interface AddLearnedRuleInput {
 export class AddLearnedRuleUseCase {
   constructor(private semanticRepo: ISemanticMemoryRepository) {}
 
-  async execute(input: AddLearnedRuleInput): Promise<Result<LearnedRule>> {
-    try {
-      // Validate via Value Object
+  execute(input: AddLearnedRuleInput) {
+    return executeUseCase(async () => {
       ConfidenceLevelVO.create(input.confidence);
-
-      const rule = await this.semanticRepo.addLearnedRule(
+      return this.semanticRepo.addLearnedRule(
         input.description,
         input.domain,
         input.action,
         input.confidence
       );
-      return Result.ok(rule);
-    } catch (error) {
-      return Result.fail(new ValidationError(
-        error instanceof Error ? error.message : "Unknown validation error"
-      ));
-    }
+    });
   }
 }

@@ -1,5 +1,6 @@
 import type { IStrategyRepository } from "@/domains/strategy/ports";
 import type { MarketingStrategy } from "@/types/marketing-strategy";
+import { StrategyAggregate } from "@/domains/strategy/aggregates";
 
 /**
  * Standalone in-memory strategy repository for tests.
@@ -8,32 +9,25 @@ import type { MarketingStrategy } from "@/types/marketing-strategy";
 export class FakeStrategyRepository implements IStrategyRepository {
   private store = new Map<string, MarketingStrategy>();
   private latestId: string | null = null;
-  private counter = 0;
 
-  async save(strategy: MarketingStrategy): Promise<string> {
-    this.counter += 1;
-    const id = `strategy-test-${this.counter}`;
+  async save(id: string, strategy: MarketingStrategy): Promise<void> {
     this.store.set(id, strategy);
     this.latestId = id;
-    return id;
   }
 
-  async get(strategyId: string): Promise<MarketingStrategy | null> {
-    return this.store.get(strategyId) ?? null;
+  async get(strategyId: string): Promise<StrategyAggregate | null> {
+    const strategy = this.store.get(strategyId);
+    if (!strategy) return null;
+    return StrategyAggregate.fromPersisted(strategyId, strategy);
   }
 
-  async getLatest(): Promise<MarketingStrategy | null> {
+  async getLatest(): Promise<StrategyAggregate | null> {
     if (!this.latestId) return null;
-    return this.store.get(this.latestId) ?? null;
-  }
-
-  async getAll(): Promise<MarketingStrategy[]> {
-    return [...this.store.values()];
+    return this.get(this.latestId);
   }
 
   async reset(): Promise<void> {
     this.store.clear();
     this.latestId = null;
-    this.counter = 0;
   }
 }

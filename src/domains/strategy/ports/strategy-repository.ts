@@ -1,8 +1,9 @@
 import type { MarketingStrategy } from "@/types/marketing-strategy";
+import type { StrategyAggregate } from "../aggregates";
 
 export interface IStrategyRepository {
-  save(strategy: MarketingStrategy): Promise<string>;
-  get(strategyId: string): Promise<MarketingStrategy | null>;
-  getLatest(): Promise<MarketingStrategy | null>;
+  save(id: string, strategy: MarketingStrategy): Promise<void>;
+  get(strategyId: string): Promise<StrategyAggregate | null>;
+  getLatest(): Promise<StrategyAggregate | null>;
   reset(): Promise<void>;
 }

@@ -149,6 +149,35 @@ export interface BusinessDiscovery {
     urgency: "low" | "medium" | "high" | "critical";
   };
 
+  // --- Bloc 5 : Unit Economics (revenue-first marketing) ---
+
+  unitEconomics: {
+    cac: {
+      value: number | null; // Coût d'acquisition client en €
+      method: string | null; // Comment il est calculé (blended, par canal, etc.)
+      trend: "decreasing" | "stable" | "increasing" | "unknown";
+    };
+    ltv: {
+      value: number | null; // Lifetime value en €
+      averageLifespan: string | null; // Durée moyenne de la relation client
+      method: string | null; // Comment il est calculé
+    };
+    cacPayback: {
+      months: number | null; // Nombre de mois pour rembourser le CAC
+      known: boolean; // L'entreprise suit-elle ce KPI ?
+    };
+    acv: {
+      value: number | null; // Valeur moyenne d'un premier contrat/commande en €
+      contractType: "subscription" | "one_time" | "hybrid" | "unknown";
+    };
+    ltvCacRatio: number | null; // LTV / CAC — santé économique
+    qualifiedRevenuePipeline: {
+      value: number | null; // Pipeline de revenu qualifié en €
+      tracked: boolean; // L'entreprise suit-elle ce KPI ?
+    };
+    knowledgeLevel: "advanced" | "basic" | "none"; // Maturité de l'entreprise sur ses unit economics
+  };
+
   // --- Synthese ---
 
   narrativeSummary: string; // Brief de 10-15 lignes, lisible en 2 min

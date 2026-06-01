@@ -1,10 +1,10 @@
 import { NextRequest } from "next/server";
-import { query } from "@anthropic-ai/claude-agent-sdk";
-import { getStrategistSystemPrompt } from "@/agents/strategist";
+import { RequestContext } from "@mastra/core/request-context";
+import { getStrategyAgent } from "@/mastra";
 import {
-  createStrategyMcpServer,
-  createStrategyRequestState,
-} from "@/tools/strategy/tool-definitions";
+  STRATEGY_STATE_KEY,
+  createStrategySessionState,
+} from "@/mastra/runtime/strategy-state";
 
 export const runtime = "nodejs";
 export const maxDuration = 300; // 5 min max
@@ -14,11 +14,18 @@ interface ChatMessage {
   content: string;
 }
 
+interface ChoiceOption {
+  value: string;
+  label: string;
+  description?: string;
+}
+
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { messages, discoveryJson } = body as {
+  const { messages, discoveryJson, conversationId } = body as {
     messages?: ChatMessage[];
     discoveryJson?: string;
+    conversationId?: string;
   };
 
   if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -35,18 +42,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Create request-scoped state and MCP server
-  const requestState = createStrategyRequestState();
-  const strategyMcpServer = createStrategyMcpServer(requestState);
-
-  const systemPrompt = getStrategistSystemPrompt();
-
-  // Format messages as transcript for the agent
   const transcript = messages
-    .map(
-      (m) =>
-        `${m.role === "user" ? "Utilisateur" : "Lia"} : ${m.content}`
-    )
+    .map((m) => `${m.role === "user" ? "User" : "Lia"} : ${m.content}`)
     .join("\n\n");
 
   // Validate discoveryJson if provided
@@ -63,7 +60,12 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const prompt = `${transcript}${discoveryContext}\n\nContinue la session stratégique.`;
+  const prompt = `${transcript}${discoveryContext}\n\nContinue the strategy session.`;
+
+  // État de session porté par RequestContext (par requête, partagé avec les tools).
+  const sessionState = createStrategySessionState();
+  const requestContext = new RequestContext();
+  requestContext.set(STRATEGY_STATE_KEY, sessionState);
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -77,53 +79,45 @@ export async function POST(request: NextRequest) {
       try {
         sendEvent("start", { timestamp: new Date().toISOString() });
 
-        const result = query({
-          prompt,
-          options: {
-            model: "claude-sonnet-4-5-20250929",
-            systemPrompt,
-            permissionMode: "bypassPermissions",
-            allowDangerouslySkipPermissions: true,
-            tools: [],
-            mcpServers: {
-              "strategy-tools": strategyMcpServer,
-            },
-            maxTurns: 8, // More turns needed: diagnostic + OKR + actions + save
-          },
+        const agent = getStrategyAgent();
+        // maxSteps:16 — 3-level flow: diagnostic + 4 strategic subsystems + OKRs
+        // + roadmap validation + 2 tactical subsystems + tasks + save.
+        const result = await agent.stream(prompt, {
+          requestContext,
+          maxSteps: 16,
+          ...(conversationId
+            ? { memory: { resource: "strategy", thread: conversationId } }
+            : {}),
         });
 
-        for await (const msg of result) {
-          if (msg.type === "assistant") {
-            for (const block of msg.message.content) {
-              if (block.type === "text") {
-                sendEvent("message", { text: block.text });
-              }
-            }
-          } else if (msg.type === "result") {
-            if (msg.subtype === "success") {
-              sendEvent("success", {
-                result: msg.result,
-                cost: msg.total_cost_usd,
-                turns: msg.num_turns,
-              });
-            } else {
-              sendEvent("error", {
-                error: msg.errors?.join(", ") || "Unknown error",
-              });
-            }
+        let assembled = "";
+        for await (const delta of result.textStream) {
+          if (delta) {
+            assembled += delta;
+            sendEvent("message", { text: delta });
           }
         }
 
-        // Emit choices if the tool was called
-        if (requestState.pendingChoices) {
-          sendEvent("choices", requestState.pendingChoices);
+        const full = await result.getFullOutput();
+        const usage = full.usage as { totalTokens?: number } | undefined;
+        sendEvent("success", {
+          result: full.text || assembled,
+          cost: usage?.totalTokens ?? null,
+          turns: full.steps?.length ?? 1,
+        });
+
+        // État final lu depuis le RequestContext (muté par les tools).
+        const pendingChoices = sessionState.pendingChoices as
+          | { question: string; choices: ChoiceOption[] }
+          | null;
+        if (pendingChoices) {
+          sendEvent("choices", pendingChoices);
         }
 
-        // Emit strategy_complete if the session is done
-        if (requestState.strategyComplete) {
+        if (sessionState.strategyComplete) {
           sendEvent("strategy_complete", {
             timestamp: new Date().toISOString(),
-            okrCount: requestState.validatedOKRs.length,
+            okrCount: sessionState.validatedOKRs.length,
           });
         }
 

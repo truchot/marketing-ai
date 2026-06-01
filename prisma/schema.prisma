@@ -92,98 +92,18 @@ model ConfidenceSource {
 
 // ============================================================
 // Strategy Context
-// (domain ids like "okr-1" are not globally unique → internal
-//  autoincrement PKs + a `domainId` field carrying the DTO id)
+// The 3-level MarketingStrategy (strategic / tactical / operational)
+// is a deep document → stored as JSONB (hybrid normalization).
 // ============================================================
 
 model Strategy {
-  id                        String   @id
-  seq                       Int      @default(autoincrement())
-  companyName               String
-  generatedAt               String
-  discoveryCompletionStatus String
-  strategyVersion           Int
-  narrativeSummary          String
-
-  // Diagnostic (value object, embedded)
-  diagnosticMaturityScore Int
-  diagnosticStrengths     String[]
-  diagnosticWeaknesses    String[]
-  diagnosticOpportunities String[]
-  diagnosticThreats       String[]
-  diagnosticSummary       String
-
-  // Constraints (value object, embedded)
-  constraintsBudgetFit   Boolean
-  constraintsTeamFit     Boolean
-  constraintsAdaptations String[]
-
-  // ExecutionRoadmap (fixed-shape value object → JSON)
-  roadmap Json
-
-  createdAt DateTime @default(now())
-
-  okrs    Okr[]
-  actions StrategyAction[]
+  id          String   @id
+  seq         Int      @default(autoincrement())
+  companyName String
+  data        Json
+  createdAt   DateTime @default(now())
 
   @@map("strategies")
-}
-
-model Okr {
-  pk              Int    @id @default(autoincrement())
-  domainId        String
-  strategyId      String
-  objective       String
-  rationale       String
-  priority        String
-  linkedFromBlock String
-  linkedEvidence  String
-
-  strategy   Strategy    @relation(fields: [strategyId], references: [id], onDelete: Cascade)
-  keyResults KeyResult[]
-
-  @@index([strategyId])
-  @@map("okrs")
-}
-
-model KeyResult {
-  pk         Int     @id @default(autoincrement())
-  domainId   String
-  okrPk      Int
-  metric     String
-  current    String?
-  target     String
-  timeline   String
-  confidence String
-
-  okr Okr @relation(fields: [okrPk], references: [pk], onDelete: Cascade)
-
-  @@index([okrPk])
-  @@map("key_results")
-}
-
-model StrategyAction {
-  pk                Int      @id @default(autoincrement())
-  domainId          String
-  strategyId        String
-  okrId             String
-  keyResultId       String
-  title             String
-  description       String
-  type              String
-  effort            String
-  impact            String
-  requiredSkills    String[]
-  requiredTools     String[]
-  dependencies      String[]
-  suggestedTimeline String
-  channel           String?
-  audienceSegment   String?
-
-  strategy Strategy @relation(fields: [strategyId], references: [id], onDelete: Cascade)
-
-  @@index([strategyId])
-  @@map("actions")
 }
 
 // ============================================================

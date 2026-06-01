@@ -1,12 +1,5 @@
 import { NextRequest } from "next/server";
-import { query } from "@anthropic-ai/claude-agent-sdk";
-import {
-  getDiscoverySystemPrompt,
-} from "@/agents/discovery";
-import {
-  createDiscoveryMcpServer,
-  createRequestState,
-} from "@/tools/discovery/tool-definitions";
+import { getDiscoveryAgent } from "@/mastra";
 
 export const runtime = "nodejs";
 export const maxDuration = 300; // 5 min max for long interviews
@@ -16,9 +9,32 @@ interface ChatMessage {
   content: string;
 }
 
+/** Forme permissive d'un tool-call agrégé (compatibilité de version Mastra). */
+interface LooseToolCall {
+  toolName?: string;
+  args?: Record<string, unknown>;
+  input?: Record<string, unknown>;
+  payload?: { toolName?: string; args?: Record<string, unknown>; input?: Record<string, unknown> };
+}
+
+interface ChoiceOption {
+  value: string;
+  label: string;
+  description?: string;
+}
+
+function readToolCall(tc: LooseToolCall): { name: string | undefined; args: Record<string, unknown> } {
+  const name = tc.toolName ?? tc.payload?.toolName;
+  const args = tc.args ?? tc.input ?? tc.payload?.args ?? tc.payload?.input ?? {};
+  return { name, args };
+}
+
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { messages } = body as { messages?: ChatMessage[] };
+  const { messages, conversationId } = body as {
+    messages?: ChatMessage[];
+    conversationId?: string;
+  };
 
   if (!messages || !Array.isArray(messages) || messages.length === 0) {
     return new Response(
@@ -34,21 +50,11 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Create request-scoped state and MCP server
-  const requestState = createRequestState();
-  const discoveryMcpServer = createDiscoveryMcpServer(requestState);
-
-  const systemPrompt = getDiscoverySystemPrompt();
-
-  // Format messages as transcript for the agent
+  // Transcript aplati (l'agent reçoit tout l'historique à chaque tour, comme avant).
   const transcript = messages
-    .map(
-      (m) =>
-        `${m.role === "user" ? "Utilisateur" : "Lia"} : ${m.content}`
-    )
+    .map((m) => `${m.role === "user" ? "User" : "Lia"} : ${m.content}`)
     .join("\n\n");
-
-  const prompt = `${transcript}\n\nContinue l'entretien de découverte.`;
+  const prompt = `${transcript}\n\nContinue the discovery interview.`;
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -62,61 +68,73 @@ export async function POST(request: NextRequest) {
       try {
         sendEvent("start", { timestamp: new Date().toISOString() });
 
-        const result = query({
+        const agent = getDiscoveryAgent();
+        // La mémoire conversationnelle Mastra (working memory + recall) n'est
+        // activée que si le client fournit un `conversationId` stable. Sans id
+        // (front actuel, qui renvoie tout l'historique), on garde le comportement
+        // sans persistance — pas de régression.
+        // maxSteps:5 = parité avec l'ancien maxTurns:5 (enrichissement + choix + signaux).
+        const result = await agent.stream(
           prompt,
-          options: {
-            model: "claude-sonnet-4-5-20250929",
-            systemPrompt,
-            permissionMode: "bypassPermissions",
-            allowDangerouslySkipPermissions: true,
-            tools: [],
-            mcpServers: {
-              "discovery-tools": discoveryMcpServer,
-            },
-            maxTurns: 5, // Allow multiple turns for tool usage (enrichment + choices + signals)
-          },
-        });
+          conversationId
+            ? { maxSteps: 5, memory: { resource: "discovery", thread: conversationId } }
+            : { maxSteps: 5 }
+        );
 
-        for await (const msg of result) {
-          if (msg.type === "assistant") {
-            for (const block of msg.message.content) {
-              if (block.type === "text") {
-                sendEvent("message", { text: block.text });
-              }
-            }
-          } else if (msg.type === "result") {
-            if (msg.subtype === "success") {
-              sendEvent("success", {
-                result: msg.result,
-                cost: msg.total_cost_usd,
-                turns: msg.num_turns,
-              });
-            } else {
-              sendEvent("error", {
-                error: msg.errors?.join(", ") || "Unknown error",
-              });
-            }
+        // 1) Stream du texte en temps réel -> events `message`
+        let assembled = "";
+        for await (const delta of result.textStream) {
+          if (delta) {
+            assembled += delta;
+            sendEvent("message", { text: delta });
           }
         }
 
-        // Emit choices if the tool was called
-        if (requestState.pendingChoices) {
-          sendEvent("choices", requestState.pendingChoices);
+        // 2) Résultat agrégé : tool-calls, texte final, usage
+        const full = await result.getFullOutput();
+        const toolCalls = (full.toolCalls ?? []) as unknown as LooseToolCall[];
+
+        let pendingChoices: { question: string; choices: ChoiceOption[] } | null = null;
+        let interviewComplete = false;
+        let fastTrackComplete = false;
+        let fastTrackSummary: string | null = null;
+        for (const tc of toolCalls) {
+          const { name, args } = readToolCall(tc);
+          if (name === "present_choices") {
+            pendingChoices = {
+              question: String(args.question ?? ""),
+              choices: (args.choices as ChoiceOption[]) ?? [],
+            };
+          } else if (name === "signal_interview_complete") {
+            interviewComplete = true;
+          } else if (name === "signal_fast_track_complete") {
+            fastTrackComplete = true;
+            fastTrackSummary = typeof args.summary === "string" ? args.summary : null;
+          }
         }
 
-        // Emit fast_track_complete if the Fast Track phase is done
-        if (requestState.fastTrackComplete) {
+        const usage = full.usage as { totalTokens?: number } | undefined;
+        sendEvent("success", {
+          result: full.text || assembled,
+          cost: usage?.totalTokens ?? null,
+          turns: full.steps?.length ?? 1,
+        });
+
+        if (pendingChoices) {
+          sendEvent("choices", pendingChoices);
+        }
+
+        // Fin de la phase Fast Track (consommé par le front pour basculer de phase).
+        if (fastTrackComplete) {
           sendEvent("fast_track_complete", {
             timestamp: new Date().toISOString(),
-            summary: requestState.fastTrackSummary,
+            summary: fastTrackSummary,
           });
         }
 
-        // Emit discovery_complete if the full interview is done
-        if (requestState.interviewComplete) {
-          sendEvent("discovery_complete", {
-            timestamp: new Date().toISOString(),
-          });
+        // Fin de l'entretien complet (Deep Dive).
+        if (interviewComplete) {
+          sendEvent("discovery_complete", { timestamp: new Date().toISOString() });
         }
 
         sendEvent("complete", { timestamp: new Date().toISOString() });

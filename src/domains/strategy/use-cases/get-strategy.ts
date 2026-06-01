@@ -1,25 +1,23 @@
 import type { IStrategyRepository } from "../ports";
-import type { MarketingStrategy } from "@/types/marketing-strategy";
+import type { StrategyAggregate } from "../aggregates";
 import { Result, NotFoundError } from "@/domains/shared";
 
 export class GetStrategyUseCase {
   constructor(private strategyRepo: IStrategyRepository) {}
 
-  async execute(strategyId?: string): Promise<Result<MarketingStrategy>> {
-    const strategy = strategyId
+  async execute(strategyId?: string): Promise<Result<StrategyAggregate>> {
+    const aggregate = strategyId
       ? await this.strategyRepo.get(strategyId)
       : await this.strategyRepo.getLatest();
 
-    if (!strategy) {
+    if (!aggregate) {
       return Result.fail(
         new NotFoundError(
-          strategyId
-            ? `Strategy ${strategyId} not found`
-            : "No strategy found"
+          strategyId ? `Strategy ${strategyId} not found` : "No strategy found"
         )
       );
     }
 
-    return Result.ok(strategy);
+    return Result.ok(aggregate);
   }
 }

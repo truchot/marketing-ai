@@ -1,19 +1,15 @@
-import type { MemoryQueryOptions, SearchResult, MemoryStats } from "@/types/memory";
+import type { MemoryQueryOptions } from "@/types/memory";
 import type { MemoryQueryService } from "../services/memory-query-service";
-import { Result, ValidationError } from "@/domains/shared";
+import { executeUseCase } from "@/domains/shared";
 
 export class QueryMemoryUseCase {
   constructor(private queryService: MemoryQueryService) {}
 
-  async execute(options: MemoryQueryOptions): Promise<Result<{ memory: SearchResult; stats: MemoryStats }>> {
-    try {
+  execute(options: MemoryQueryOptions) {
+    return executeUseCase(async () => {
       const memory = await this.queryService.query(options);
       const stats = await this.queryService.getStats();
-      return Result.ok({ memory, stats });
-    } catch (error) {
-      return Result.fail(new ValidationError(
-        error instanceof Error ? error.message : "Unknown query error"
-      ));
-    }
+      return { memory, stats };
+    });
   }
 }

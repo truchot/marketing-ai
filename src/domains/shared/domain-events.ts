@@ -4,6 +4,116 @@
 // between domain modules.
 // ============================================================
 
+// --- Typed event payloads ---
+
+export interface EpisodeRecordedPayload {
+  episodeId: string;
+  type: string;
+  tags: string[];
+  importance: string;
+}
+
+export interface PatternDetectedPayload {
+  patternType: string;
+  occurrences: number;
+}
+
+export interface PatternPromotedPayload {
+  patternId: string;
+  confidence: string;
+}
+
+export interface ClientFactAddedPayload {
+  factId: string;
+  category: string;
+}
+
+export interface PreferenceUpdatedPayload {
+  preferenceId: string;
+  category: string;
+  key: string;
+}
+
+export interface FeedbackRecordedPayload {
+  feedbackId: string;
+  sentiment: string;
+}
+
+export interface OnboardingCompletedPayload {
+  profileId: string;
+  companyName: string;
+  discoveryId: string;
+}
+
+export interface MessageSentPayload {
+  userMessageId: string;
+  assistantMessageId: string;
+}
+
+export interface StrategyGeneratedPayload {
+  strategyId: string;
+  companyName: string;
+  okrCount: number;
+  segmentCount: number;
+  hypothesisCount: number;
+  campaignCount: number;
+  processCount: number;
+  taskCount: number;
+  maturityScore: number;
+}
+
+export interface OKRRemovedPayload {
+  okrId: string;
+  removedCampaignIds: string[];
+}
+
+export type CompanyProfileField = "name" | "description" | "sector" | "target" | "brandTone";
+
+export interface CompanyProfileUpdatedPayload {
+  profileId: string;
+  field: CompanyProfileField;
+  oldValue: string;
+  newValue: string;
+}
+
+export interface DiscoveryLinkedPayload {
+  profileId: string;
+  discoveryId: string;
+}
+
+export interface ExperimentCreatedPayload {
+  experimentId: string;
+  keyResultId: string;
+  okrId: string;
+  companyName: string;
+  priorityScore: number;
+}
+
+export interface ExperimentConcludedPayload {
+  experimentId: string;
+  keyResultId: string;
+  metThreshold: boolean;
+  measuredValue: string;
+}
+
+// --- Discriminated union of all domain events ---
+
+export type DomainEvent =
+  | { readonly type: typeof EPISODE_RECORDED; readonly occurredAt: string; readonly payload: EpisodeRecordedPayload }
+  | { readonly type: typeof PATTERN_DETECTED; readonly occurredAt: string; readonly payload: PatternDetectedPayload }
+  | { readonly type: typeof PATTERN_PROMOTED; readonly occurredAt: string; readonly payload: PatternPromotedPayload }
+  | { readonly type: typeof CLIENT_FACT_ADDED; readonly occurredAt: string; readonly payload: ClientFactAddedPayload }
+  | { readonly type: typeof PREFERENCE_UPDATED; readonly occurredAt: string; readonly payload: PreferenceUpdatedPayload }
+  | { readonly type: typeof FEEDBACK_RECORDED; readonly occurredAt: string; readonly payload: FeedbackRecordedPayload }
+  | { readonly type: typeof ONBOARDING_COMPLETED; readonly occurredAt: string; readonly payload: OnboardingCompletedPayload }
+  | { readonly type: typeof MESSAGE_SENT; readonly occurredAt: string; readonly payload: MessageSentPayload }
+  | { readonly type: typeof STRATEGY_GENERATED; readonly occurredAt: string; readonly payload: StrategyGeneratedPayload }
+  | { readonly type: typeof OKR_REMOVED; readonly occurredAt: string; readonly payload: OKRRemovedPayload }
+  | { readonly type: typeof COMPANY_PROFILE_UPDATED; readonly occurredAt: string; readonly payload: CompanyProfileUpdatedPayload }
+  | { readonly type: typeof DISCOVERY_LINKED; readonly occurredAt: string; readonly payload: DiscoveryLinkedPayload }
+  | { readonly type: typeof EXPERIMENT_CREATED; readonly occurredAt: string; readonly payload: ExperimentCreatedPayload }
+  | { readonly type: typeof EXPERIMENT_CONCLUDED; readonly occurredAt: string; readonly payload: ExperimentConcludedPayload };
+
 // --- Event type constants ---
 
 export const EPISODE_RECORDED = "EPISODE_RECORDED" as const;
@@ -15,16 +125,11 @@ export const FEEDBACK_RECORDED = "FEEDBACK_RECORDED" as const;
 export const ONBOARDING_COMPLETED = "ONBOARDING_COMPLETED" as const;
 export const MESSAGE_SENT = "MESSAGE_SENT" as const;
 export const STRATEGY_GENERATED = "STRATEGY_GENERATED" as const;
+export const OKR_REMOVED = "OKR_REMOVED" as const;
+export const COMPANY_PROFILE_UPDATED = "COMPANY_PROFILE_UPDATED" as const;
+export const DISCOVERY_LINKED = "DISCOVERY_LINKED" as const;
 export const EXPERIMENT_CREATED = "EXPERIMENT_CREATED" as const;
 export const EXPERIMENT_CONCLUDED = "EXPERIMENT_CONCLUDED" as const;
-
-// --- Event interface ---
-
-export interface DomainEvent {
-  readonly type: string;
-  readonly occurredAt: string;
-  readonly payload: Record<string, unknown>;
-}
 
 // --- Event Bus ---
 
@@ -36,14 +141,25 @@ type EventHandler = (event: DomainEvent) => void;
  * Handlers are invoked synchronously in subscription order when an event is
  * published. This keeps things predictable and easy to reason about for the
  * current in-memory, single-process architecture.
+ *
+ * Note: Some bounded contexts (Conversation, Memory) publish events directly
+ * from use cases rather than through aggregates. This is an accepted trade-off
+ * for contexts where introducing a full aggregate would be over-engineering.
  */
 export class DomainEventBus {
   private handlers: Map<string, EventHandler[]> = new Map();
 
-  subscribe(eventType: string, handler: EventHandler): void {
+  subscribe(eventType: DomainEvent["type"], handler: EventHandler): () => void {
     const existing = this.handlers.get(eventType) ?? [];
     existing.push(handler);
     this.handlers.set(eventType, existing);
+
+    return () => {
+      const handlers = this.handlers.get(eventType);
+      if (!handlers) return;
+      const index = handlers.indexOf(handler);
+      if (index !== -1) handlers.splice(index, 1);
+    };
   }
 
   publish(event: DomainEvent): void {

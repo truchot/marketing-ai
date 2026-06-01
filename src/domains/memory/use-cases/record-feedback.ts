@@ -1,6 +1,6 @@
 import type { IEpisodicMemoryRepository } from "../ports";
-import type { Feedback, FeedbackSentiment } from "@/types/memory";
-import { Result, ValidationError } from "@/domains/shared";
+import type { FeedbackSentiment } from "@/types/memory";
+import { domainEventBus, FEEDBACK_RECORDED, executeUseCase } from "@/domains/shared";
 
 interface RecordFeedbackInput {
   source: string;
@@ -12,19 +12,20 @@ interface RecordFeedbackInput {
 export class RecordFeedbackUseCase {
   constructor(private episodicRepo: IEpisodicMemoryRepository) {}
 
-  async execute(input: RecordFeedbackInput): Promise<Result<Feedback>> {
-    try {
+  execute(input: RecordFeedbackInput) {
+    return executeUseCase(async () => {
       const feedback = await this.episodicRepo.recordFeedback(
         input.source,
         input.sentiment,
         input.content,
         input.taskId
       );
-      return Result.ok(feedback);
-    } catch (error) {
-      return Result.fail(new ValidationError(
-        error instanceof Error ? error.message : "Unknown validation error"
-      ));
-    }
+      domainEventBus.publish({
+        type: FEEDBACK_RECORDED,
+        occurredAt: new Date().toISOString(),
+        payload: { feedbackId: feedback.id, sentiment: input.sentiment },
+      });
+      return feedback;
+    });
   }
 }

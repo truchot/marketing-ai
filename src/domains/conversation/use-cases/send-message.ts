@@ -1,6 +1,6 @@
 import type { IConversationRepository } from "../ports";
 import type { IEpisodicMemoryRepository } from "@/domains/memory/ports";
-import type { IResponseGenerator } from "../ports/response-generator";
+import type { IResponseGenerator, ResponseContext } from "../ports/response-generator";
 import type { ConversationMessage } from "@/types";
 import { domainEventBus, MESSAGE_SENT, Result, ValidationError } from "@/domains/shared";
 
@@ -11,7 +11,7 @@ export class SendMessageUseCase {
     private responseGenerator: IResponseGenerator
   ) {}
 
-  async execute(content: string): Promise<Result<{
+  async execute(content: string, ctx?: ResponseContext): Promise<Result<{
     userMessage: ConversationMessage;
     assistantMessage: ConversationMessage;
   }>> {
@@ -25,7 +25,7 @@ export class SendMessageUseCase {
         { tags: ["conversation", "user_message"], importance: "medium" }
       );
 
-      const responseContent = this.responseGenerator.generate();
+      const responseContent = await this.responseGenerator.generate(content, ctx);
       const assistantMessage = await this.conversationRepo.add(
         "assistant",
         responseContent
