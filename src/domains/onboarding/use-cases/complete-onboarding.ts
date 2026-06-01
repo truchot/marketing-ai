@@ -14,15 +14,15 @@ export class CompleteOnboardingUseCase {
     private conversationRepo: IConversationRepository
   ) {}
 
-  execute(
+  async execute(
     discovery: BusinessDiscovery,
     messages: { role: "user" | "assistant"; content: string }[]
-  ): Result<CompanyProfile> {
+  ): Promise<Result<CompanyProfile>> {
     try {
-      const discoveryId = this.storeDiscovery(discovery);
-      const profile = this.createProfile(discovery, discoveryId);
-      this.memoryFacade.storeDiscoveryFacts(discovery);
-      this.saveConversationHistory(messages);
+      const discoveryId = await this.storeDiscovery(discovery);
+      const profile = await this.createProfile(discovery, discoveryId);
+      await this.memoryFacade.storeDiscoveryFacts(discovery);
+      await this.saveConversationHistory(messages);
       this.publishCompletionEvent(profile, discovery, discoveryId);
       return Result.ok(profile);
     } catch (error) {
@@ -32,14 +32,14 @@ export class CompleteOnboardingUseCase {
     }
   }
 
-  private storeDiscovery(discovery: BusinessDiscovery): string {
+  private storeDiscovery(discovery: BusinessDiscovery): Promise<string> {
     return this.discoveryRepo.save(discovery);
   }
 
   private createProfile(
     discovery: BusinessDiscovery,
     discoveryId: string
-  ): CompanyProfile {
+  ): Promise<CompanyProfile> {
     return this.profileRepo.save({
       name: discovery.metadata.companyName,
       sector: discovery.metadata.sector,
@@ -51,10 +51,10 @@ export class CompleteOnboardingUseCase {
     });
   }
 
-  private saveConversationHistory(
+  private async saveConversationHistory(
     messages: { role: "user" | "assistant"; content: string }[]
-  ): void {
-    this.conversationRepo.addBulk(messages);
+  ): Promise<void> {
+    await this.conversationRepo.addBulk(messages);
   }
 
   private publishCompletionEvent(

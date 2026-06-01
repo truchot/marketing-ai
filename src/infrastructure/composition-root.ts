@@ -37,6 +37,13 @@ import { CompleteOnboardingUseCase } from "@/domains/onboarding/use-cases/comple
 import { SaveStrategyUseCase } from "@/domains/strategy/use-cases/save-strategy";
 import { GetStrategyUseCase } from "@/domains/strategy/use-cases/get-strategy";
 import { strategyRepository } from "@/data/strategy-repository";
+import {
+  GenerateBacklogUseCase,
+  PlanWeekUseCase,
+  ProduceAssetUseCase,
+  DailyPlanProjection,
+} from "@/domains/experimentation";
+import { experimentRepository } from "@/data/experiment-repository";
 
 // --- Wire use case instances ---
 
@@ -76,6 +83,12 @@ export const createProfileUseCase = new CreateProfileUseCase(
 // Strategy
 export const saveStrategyUseCase = new SaveStrategyUseCase(strategyRepository);
 export const getStrategyUseCase = new GetStrategyUseCase(strategyRepository);
+
+// Experimentation
+export const generateBacklogUseCase = new GenerateBacklogUseCase(experimentRepository);
+export const planWeekUseCase = new PlanWeekUseCase(experimentRepository);
+export const produceAssetUseCase = new ProduceAssetUseCase(experimentRepository);
+export const dailyPlanProjection = new DailyPlanProjection(experimentRepository);
 
 // Onboarding
 const memoryFacade = new MemoryFacade(semanticMemory);

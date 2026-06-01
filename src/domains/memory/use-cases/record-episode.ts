@@ -14,7 +14,7 @@ interface RecordEpisodeInput {
 export class RecordEpisodeUseCase {
   constructor(private episodicRepo: IEpisodicMemoryRepository) {}
 
-  execute(input: RecordEpisodeInput): Result<Episode> {
+  async execute(input: RecordEpisodeInput): Promise<Result<Episode>> {
     try {
       // Create rich aggregate - validates invariants and raises domain events
       const aggregate = EpisodeAggregate.create(
@@ -30,7 +30,7 @@ export class RecordEpisodeUseCase {
       aggregate.clearUncommittedEvents();
 
       // Persist via repository using DTO
-      const episode = this.episodicRepo.recordEpisode(
+      const episode = await this.episodicRepo.recordEpisode(
         aggregate.type,
         aggregate.description,
         aggregate.data,

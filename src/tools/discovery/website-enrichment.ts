@@ -311,16 +311,16 @@ async function runEnrichmentPipeline(
   };
 
   // 6. Store as ClientFacts
-  storeInsightsAsFacts(websiteUrl, insights, addClientFact);
+  await storeInsightsAsFacts(websiteUrl, insights, addClientFact);
 
   return insights;
 }
 
-function storeInsightsAsFacts(
+async function storeInsightsAsFacts(
   websiteUrl: string,
   insights: WebsiteInsights,
   addClientFact: AddClientFactUseCase,
-): void {
+): Promise<void> {
   const source = "website_enrichment";
 
   const facts: { category: string; fact: string }[] = [
@@ -392,7 +392,7 @@ function storeInsightsAsFacts(
   // Store each fact individually — one failure doesn't block the others
   for (const { category, fact } of facts) {
     try {
-      addClientFact.execute({ category, fact, source });
+      await addClientFact.execute({ category, fact, source });
     } catch (err) {
       console.warn(`[website-enrichment] Failed to store fact "${category}":`, err);
     }

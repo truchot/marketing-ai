@@ -5,9 +5,9 @@ import { Result, ValidationError } from "@/domains/shared";
 export class GetProfileUseCase {
   constructor(private profileRepo: ICompanyProfileRepository) {}
 
-  execute(): Result<CompanyProfile | null> {
+  async execute(): Promise<Result<CompanyProfile | null>> {
     try {
-      const profile = this.profileRepo.get();
+      const profile = await this.profileRepo.get();
       return Result.ok(profile);
     } catch (error) {
       return Result.fail(new ValidationError(

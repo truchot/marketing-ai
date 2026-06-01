@@ -11,14 +11,14 @@ export class SendMessageUseCase {
     private responseGenerator: IResponseGenerator
   ) {}
 
-  execute(content: string): Result<{
+  async execute(content: string): Promise<Result<{
     userMessage: ConversationMessage;
     assistantMessage: ConversationMessage;
-  }> {
+  }>> {
     try {
-      const userMessage = this.conversationRepo.add("user", content);
+      const userMessage = await this.conversationRepo.add("user", content);
 
-      this.episodicRepo.recordEpisode(
+      await this.episodicRepo.recordEpisode(
         "interaction",
         content,
         { messageId: userMessage.id, role: "user" },
@@ -26,7 +26,7 @@ export class SendMessageUseCase {
       );
 
       const responseContent = this.responseGenerator.generate();
-      const assistantMessage = this.conversationRepo.add(
+      const assistantMessage = await this.conversationRepo.add(
         "assistant",
         responseContent
       );

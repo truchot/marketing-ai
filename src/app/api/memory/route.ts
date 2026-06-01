@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
   const category = categoryParam || undefined;
   const limit = limitParam ? parseInt(limitParam, 10) : undefined;
 
-  const result = queryMemoryUseCase.execute({ types, tags, category, limit });
+  const result = await queryMemoryUseCase.execute({ types, tags, category, limit });
   if (result.isErr()) {
     return NextResponse.json(
       { error: result.error.message },
@@ -45,14 +45,14 @@ type MemoryAction =
   | { action: "recordFeedback"; params: { source: string; sentiment: "positive" | "neutral" | "negative"; content: string; taskId?: string } }
   | { action: "startSession"; params: { task: string; objective: string } };
 
-const actionHandlers: Record<string, (params: Record<string, unknown>) => Result<unknown, DomainError>> = {
+const actionHandlers: Record<string, (params: Record<string, unknown>) => Promise<Result<unknown, DomainError>>> = {
   addFact: (p) => addClientFactUseCase.execute(p as { category: string; fact: string; source: string }),
   addPreference: (p) => addPreferenceUseCase.execute(p as { category: string; key: string; value: string; confidence: "low" | "medium" | "strong" }),
   addPattern: (p) => addValidatedPatternUseCase.execute(p as { type: string; description: string; trigger: string; outcome: string; recommendation: string }),
   addRule: (p) => addLearnedRuleUseCase.execute(p as { description: string; domain: string; action: string; confidence: "low" | "medium" | "strong" }),
   recordEpisode: (p) => recordEpisodeUseCase.execute(p as { type: "interaction" | "task_result" | "feedback" | "discovery"; description: string; data: Record<string, unknown>; tags: string[]; importance: "low" | "medium" | "high" }),
   recordFeedback: (p) => recordFeedbackUseCase.execute(p as { source: string; sentiment: "positive" | "neutral" | "negative"; content: string; taskId?: string }),
-  startSession: (p) => startSessionUseCase.execute(p as { task: string; objective: string }) as Result<unknown, DomainError>,
+  startSession: (p) => startSessionUseCase.execute(p as { task: string; objective: string }) as Promise<Result<unknown, DomainError>>,
 };
 
 export async function POST(request: NextRequest) {
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
   if (!handler) {
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });
   }
-  const result = handler(body.params as Record<string, unknown>);
+  const result = await handler(body.params as Record<string, unknown>);
   if (result.isErr()) {
     return NextResponse.json(
       { error: result.error.message },

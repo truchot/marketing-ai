@@ -288,7 +288,7 @@ export async function saveStrategy(
   strategy: MarketingStrategy
 ): Promise<SaveStrategyOutput> {
   // Delegate to use case (validates invariants via aggregate, persists via repository)
-  const result = saveStrategyUseCase.execute(strategy);
+  const result = await saveStrategyUseCase.execute(strategy);
 
   if (result.isErr()) {
     return {

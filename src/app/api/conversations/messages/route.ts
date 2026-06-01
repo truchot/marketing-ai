@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getHistoryUseCase, sendMessageUseCase } from "@/infrastructure/composition-root";
 
 export async function GET() {
-  const result = getHistoryUseCase.execute();
+  const result = await getHistoryUseCase.execute();
   if (result.isErr()) {
     return NextResponse.json(
       { error: result.error.message },
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const result = sendMessageUseCase.execute(content);
+  const result = await sendMessageUseCase.execute(content);
   if (result.isErr()) {
     return NextResponse.json(
       { error: result.error.message },

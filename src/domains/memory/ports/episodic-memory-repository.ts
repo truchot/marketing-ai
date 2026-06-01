@@ -14,26 +14,26 @@ export interface IEpisodicMemoryRepository {
     description: string,
     data: Record<string, unknown>,
     metadata: { tags: string[]; importance: "low" | "medium" | "high" }
-  ): Episode;
+  ): Promise<Episode>;
 
   recordFeedback(
     source: string,
     sentiment: FeedbackSentiment,
     content: string,
     taskId?: string
-  ): Feedback;
+  ): Promise<Feedback>;
 
   recordTaskResult(result: {
     taskId: string;
     description: string;
     outcome: "success" | "partial" | "failure";
     data: Record<string, unknown>;
-  }): TaskResult;
+  }): Promise<TaskResult>;
 
-  getEpisodicContext(retentionDays?: number): EpisodicContext;
-  getEpisodes(): Episode[];
-  getFeedback(): Feedback[];
-  getEmergentPatterns(): EmergentPattern[];
-  prune(retentionDays: number): void;
-  reset(): void; // For testing
+  getEpisodicContext(retentionDays?: number): Promise<EpisodicContext>;
+  getEpisodes(): Promise<Episode[]>;
+  getFeedback(): Promise<Feedback[]>;
+  getEmergentPatterns(): Promise<EmergentPattern[]>;
+  prune(retentionDays: number): Promise<void>;
+  reset(): Promise<void>; // For testing
 }

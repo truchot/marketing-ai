@@ -13,9 +13,9 @@ interface AddValidatedPatternInput {
 export class AddValidatedPatternUseCase {
   constructor(private semanticRepo: ISemanticMemoryRepository) {}
 
-  execute(input: AddValidatedPatternInput): Result<ValidatedPattern> {
+  async execute(input: AddValidatedPatternInput): Promise<Result<ValidatedPattern>> {
     try {
-      const pattern = this.semanticRepo.addValidatedPattern(
+      const pattern = await this.semanticRepo.addValidatedPattern(
         input.type,
         input.description,
         input.trigger,

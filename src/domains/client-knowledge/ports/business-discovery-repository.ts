@@ -1,8 +1,8 @@
 import type { BusinessDiscovery } from "@/types/business-discovery";
 
 export interface IBusinessDiscoveryRepository {
-  save(discovery: BusinessDiscovery): string; // returns discoveryId
-  get(discoveryId: string): BusinessDiscovery | null;
-  getLatest(): BusinessDiscovery | null;
-  reset(): void; // For testing
+  save(discovery: BusinessDiscovery): Promise<string>; // returns discoveryId
+  get(discoveryId: string): Promise<BusinessDiscovery | null>;
+  getLatest(): Promise<BusinessDiscovery | null>;
+  reset(): Promise<void>; // For testing
 }

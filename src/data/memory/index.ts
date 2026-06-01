@@ -1,14 +1,14 @@
-import { WorkingMemoryStore } from "./working-memory";
-import { EpisodicMemoryStore } from "./episodic-memory";
-import { SemanticMemoryStore } from "./semantic-memory";
+import { PrismaWorkingMemoryRepository } from "./prisma-working-memory";
+import { PrismaEpisodicMemoryRepository } from "./prisma-episodic-memory";
+import { PrismaSemanticMemoryRepository } from "./prisma-semantic-memory";
 import { ConsolidationPipeline } from "@/domains/memory/services/consolidation-pipeline";
 import { MemoryQueryService } from "@/domains/memory/services/memory-query-service";
 
-// --- Singleton instances ---
+// --- Singleton instances (Postgres-backed) ---
 
-export const workingMemory = new WorkingMemoryStore();
-export const episodicMemory = new EpisodicMemoryStore();
-export const semanticMemory = new SemanticMemoryStore();
+export const workingMemory = new PrismaWorkingMemoryRepository();
+export const episodicMemory = new PrismaEpisodicMemoryRepository();
+export const semanticMemory = new PrismaSemanticMemoryRepository();
 
 export const consolidationPipeline = new ConsolidationPipeline(
   workingMemory,
@@ -22,7 +22,7 @@ export const memoryQuery = new MemoryQueryService(
   semanticMemory
 );
 
-// Re-export classes for consumers that need them
+// In-memory store classes — used as test doubles by the unit tests.
 export { WorkingMemoryStore } from "./working-memory";
 export { EpisodicMemoryStore } from "./episodic-memory";
 export { SemanticMemoryStore } from "./semantic-memory";

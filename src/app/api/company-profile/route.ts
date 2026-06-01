@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getProfileUseCase, createProfileUseCase } from "@/infrastructure/composition-root";
 
 export async function GET() {
-  const result = getProfileUseCase.execute();
+  const result = await getProfileUseCase.execute();
   if (result.isErr()) {
     return NextResponse.json(
       { error: result.error.message },
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const result = createProfileUseCase.execute({ name, sector, description, target, brandTone });
+  const result = await createProfileUseCase.execute({ name, sector, description, target, brandTone });
   if (result.isErr()) {
     return NextResponse.json(
       { error: result.error.message },

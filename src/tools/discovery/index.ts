@@ -48,7 +48,7 @@ export async function saveDiscoveryBlock(
 
   const importance = validatedBy && blockNumber === 4 ? "high" : validatedBy ? "medium" : "low";
 
-  const result = recordEpisodeUseCase.execute({
+  const result = await recordEpisodeUseCase.execute({
     type: "discovery",
     description,
     data: {
@@ -73,7 +73,7 @@ export async function saveDiscoveryBlock(
 
   // Optionally enrich semantic memory with key facts if validated
   if (validatedBy && data.metadata?.companyName) {
-    const factResult = addClientFactUseCase.execute({
+    const factResult = await addClientFactUseCase.execute({
       category: "discovery",
       fact: `${blockNameMap[blockName]} complété pour ${data.metadata.companyName}`,
       source: "discovery_agent",

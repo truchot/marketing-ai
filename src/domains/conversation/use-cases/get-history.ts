@@ -5,9 +5,9 @@ import { Result, ValidationError } from "@/domains/shared";
 export class GetHistoryUseCase {
   constructor(private conversationRepo: IConversationRepository) {}
 
-  execute(): Result<ConversationMessage[]> {
+  async execute(): Promise<Result<ConversationMessage[]>> {
     try {
-      const messages = this.conversationRepo.getAll();
+      const messages = await this.conversationRepo.getAll();
       return Result.ok(messages);
     } catch (error) {
       return Result.fail(new ValidationError(

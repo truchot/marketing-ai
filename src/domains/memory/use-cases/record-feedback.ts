@@ -12,9 +12,9 @@ interface RecordFeedbackInput {
 export class RecordFeedbackUseCase {
   constructor(private episodicRepo: IEpisodicMemoryRepository) {}
 
-  execute(input: RecordFeedbackInput): Result<Feedback> {
+  async execute(input: RecordFeedbackInput): Promise<Result<Feedback>> {
     try {
-      const feedback = this.episodicRepo.recordFeedback(
+      const feedback = await this.episodicRepo.recordFeedback(
         input.source,
         input.sentiment,
         input.content,

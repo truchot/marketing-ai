@@ -5,10 +5,10 @@ import { Result, NotFoundError } from "@/domains/shared";
 export class GetStrategyUseCase {
   constructor(private strategyRepo: IStrategyRepository) {}
 
-  execute(strategyId?: string): Result<MarketingStrategy> {
+  async execute(strategyId?: string): Promise<Result<MarketingStrategy>> {
     const strategy = strategyId
-      ? this.strategyRepo.get(strategyId)
-      : this.strategyRepo.getLatest();
+      ? await this.strategyRepo.get(strategyId)
+      : await this.strategyRepo.getLatest();
 
     if (!strategy) {
       return Result.fail(

@@ -12,12 +12,12 @@ interface AddPreferenceInput {
 export class AddPreferenceUseCase {
   constructor(private semanticRepo: ISemanticMemoryRepository) {}
 
-  execute(input: AddPreferenceInput): Result<Preference> {
+  async execute(input: AddPreferenceInput): Promise<Result<Preference>> {
     try {
       // Validate via Value Object
       ConfidenceLevelVO.create(input.confidence);
 
-      const pref = this.semanticRepo.addPreference(
+      const pref = await this.semanticRepo.addPreference(
         input.category,
         input.key,
         input.value,

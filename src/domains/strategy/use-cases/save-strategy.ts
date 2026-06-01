@@ -6,7 +6,7 @@ import { domainEventBus, Result, ValidationError } from "@/domains/shared";
 export class SaveStrategyUseCase {
   constructor(private strategyRepo: IStrategyRepository) {}
 
-  execute(strategy: MarketingStrategy): Result<string> {
+  async execute(strategy: MarketingStrategy): Promise<Result<string>> {
     try {
       const aggregate = StrategyAggregate.create(strategy);
 
@@ -16,7 +16,7 @@ export class SaveStrategyUseCase {
       aggregate.clearUncommittedEvents();
 
       // Persist
-      const id = this.strategyRepo.save(aggregate.toStrategy());
+      const id = await this.strategyRepo.save(aggregate.toStrategy());
       return Result.ok(id);
     } catch (error) {
       return Result.fail(

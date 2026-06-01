@@ -12,12 +12,12 @@ interface AddLearnedRuleInput {
 export class AddLearnedRuleUseCase {
   constructor(private semanticRepo: ISemanticMemoryRepository) {}
 
-  execute(input: AddLearnedRuleInput): Result<LearnedRule> {
+  async execute(input: AddLearnedRuleInput): Promise<Result<LearnedRule>> {
     try {
       // Validate via Value Object
       ConfidenceLevelVO.create(input.confidence);
 
-      const rule = this.semanticRepo.addLearnedRule(
+      const rule = await this.semanticRepo.addLearnedRule(
         input.description,
         input.domain,
         input.action,

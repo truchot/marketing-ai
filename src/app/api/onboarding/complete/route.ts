@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const result = completeOnboardingUseCase.execute(discovery, messages);
+  const result = await completeOnboardingUseCase.execute(discovery, messages);
   if (result.isErr()) {
     return NextResponse.json(
       { error: result.error.message },

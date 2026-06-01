@@ -9,18 +9,23 @@ import {
 } from "@/types/memory";
 import type { IEpisodicMemoryRepository } from "@/domains/memory/ports";
 
+/**
+ * In-memory episodic store. Kept as the test double for the Memory context
+ * (the unit tests instantiate it directly). The production singleton uses the
+ * Prisma-backed implementation — see ./prisma-episodic-memory.
+ */
 export class EpisodicMemoryStore implements IEpisodicMemoryRepository {
   private episodes: Episode[] = [];
   private feedback: Feedback[] = [];
   private taskResults: TaskResult[] = [];
   private emergentPatterns: EmergentPattern[] = [];
 
-  recordEpisode(
+  async recordEpisode(
     type: EpisodeType,
     description: string,
     data: Record<string, unknown>,
     metadata: { tags: string[]; importance: "low" | "medium" | "high" }
-  ): Episode {
+  ): Promise<Episode> {
     const episode: Episode = {
       id: `ep-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       type,
@@ -36,12 +41,12 @@ export class EpisodicMemoryStore implements IEpisodicMemoryRepository {
     return episode;
   }
 
-  recordFeedback(
+  async recordFeedback(
     source: string,
     sentiment: FeedbackSentiment,
     content: string,
     taskId?: string
-  ): Feedback {
+  ): Promise<Feedback> {
     const fb: Feedback = {
       id: `fb-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       source,
@@ -54,12 +59,12 @@ export class EpisodicMemoryStore implements IEpisodicMemoryRepository {
     return fb;
   }
 
-  recordTaskResult(result: {
+  async recordTaskResult(result: {
     taskId: string;
     description: string;
     outcome: "success" | "partial" | "failure";
     data: Record<string, unknown>;
-  }): TaskResult {
+  }): Promise<TaskResult> {
     const tr: TaskResult = {
       id: `tr-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       ...result,
@@ -69,54 +74,42 @@ export class EpisodicMemoryStore implements IEpisodicMemoryRepository {
     return tr;
   }
 
-  getEpisodicContext(retentionDays: number = 30): EpisodicContext {
+  async getEpisodicContext(retentionDays: number = 30): Promise<EpisodicContext> {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - retentionDays);
     const cutoffStr = cutoff.toISOString();
 
     return {
-      episodes: this.episodes.filter(
-        (e) => e.metadata.timestamp >= cutoffStr
-      ),
-      recentFeedback: this.feedback.filter(
-        (f) => f.timestamp >= cutoffStr
-      ),
-      taskResults: this.taskResults.filter(
-        (t) => t.timestamp >= cutoffStr
-      ),
+      episodes: this.episodes.filter((e) => e.metadata.timestamp >= cutoffStr),
+      recentFeedback: this.feedback.filter((f) => f.timestamp >= cutoffStr),
+      taskResults: this.taskResults.filter((t) => t.timestamp >= cutoffStr),
       emergentPatterns: [...this.emergentPatterns],
     };
   }
 
-  getEpisodes(): Episode[] {
+  async getEpisodes(): Promise<Episode[]> {
     return this.episodes;
   }
 
-  getFeedback(): Feedback[] {
+  async getFeedback(): Promise<Feedback[]> {
     return this.feedback;
   }
 
-  getEmergentPatterns(): EmergentPattern[] {
+  async getEmergentPatterns(): Promise<EmergentPattern[]> {
     return this.emergentPatterns;
   }
 
-  prune(retentionDays: number): void {
+  async prune(retentionDays: number): Promise<void> {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - retentionDays);
     const cutoffStr = cutoff.toISOString();
 
-    this.episodes = this.episodes.filter(
-      (e) => e.metadata.timestamp >= cutoffStr
-    );
-    this.feedback = this.feedback.filter(
-      (f) => f.timestamp >= cutoffStr
-    );
-    this.taskResults = this.taskResults.filter(
-      (t) => t.timestamp >= cutoffStr
-    );
+    this.episodes = this.episodes.filter((e) => e.metadata.timestamp >= cutoffStr);
+    this.feedback = this.feedback.filter((f) => f.timestamp >= cutoffStr);
+    this.taskResults = this.taskResults.filter((t) => t.timestamp >= cutoffStr);
   }
 
-  reset(): void {
+  async reset(): Promise<void> {
     this.episodes = [];
     this.feedback = [];
     this.taskResults = [];
@@ -125,9 +118,7 @@ export class EpisodicMemoryStore implements IEpisodicMemoryRepository {
 
   private detectPattern(episode: Episode): void {
     const key = `${episode.type}:${episode.metadata.tags.sort().join(",")}`;
-    const existing = this.emergentPatterns.find(
-      (p) => p.type === key
-    );
+    const existing = this.emergentPatterns.find((p) => p.type === key);
     if (existing) {
       existing.occurrences++;
       existing.lastSeen = episode.metadata.timestamp;

@@ -15,7 +15,7 @@ export class MemoryQueryService {
     private semanticMemory: ISemanticMemoryRepository
   ) {}
 
-  query(options: MemoryQueryOptions): SearchResult {
+  async query(options: MemoryQueryOptions): Promise<SearchResult> {
     const types = options.types || ["working", "episodic", "semantic"];
     const result: SearchResult = {
       working: null,
@@ -24,11 +24,11 @@ export class MemoryQueryService {
     };
 
     if (types.includes("working")) {
-      result.working = this.workingMemory.getWorkingContext();
+      result.working = await this.workingMemory.getWorkingContext();
     }
 
     if (types.includes("episodic")) {
-      const ctx = this.episodicMemory.getEpisodicContext();
+      const ctx = await this.episodicMemory.getEpisodicContext();
       if (options.tags && options.tags.length > 0) {
         result.episodic = {
           ...ctx,
@@ -47,7 +47,7 @@ export class MemoryQueryService {
     }
 
     if (types.includes("semantic")) {
-      const ctx = this.semanticMemory.getSemanticContext();
+      const ctx = await this.semanticMemory.getSemanticContext();
       if (options.category) {
         result.semantic = {
           clientFacts: ctx.clientFacts.filter(
@@ -71,23 +71,29 @@ export class MemoryQueryService {
     return result;
   }
 
-  getContextForTask(taskType: string): TaskContext {
+  async getContextForTask(taskType: string): Promise<TaskContext> {
+    const [relevantFacts, relevantPreferences, episodes, validatedPatterns, learnedRules] =
+      await Promise.all([
+        this.semanticMemory.getClientFacts(),
+        this.semanticMemory.getPreferences(),
+        this.episodicMemory.getEpisodes(),
+        this.semanticMemory.getValidatedPatterns(),
+        this.semanticMemory.getLearnedRules(),
+      ]);
     return {
-      relevantFacts: this.semanticMemory.getClientFacts(),
-      relevantPreferences: this.semanticMemory.getPreferences(),
-      recentEpisodes: this.episodicMemory.getEpisodes().slice(-10),
-      patterns: this.semanticMemory.getValidatedPatterns().filter(
-        (p) => p.type === taskType
-      ),
-      rules: this.semanticMemory.getLearnedRules().filter(
-        (r) => r.domain === taskType
-      ),
+      relevantFacts,
+      relevantPreferences,
+      recentEpisodes: episodes.slice(-10),
+      patterns: validatedPatterns.filter((p) => p.type === taskType),
+      rules: learnedRules.filter((r) => r.domain === taskType),
     };
   }
 
-  getFullContext(): string {
-    const semantic = this.semanticMemory.getSemanticContext();
-    const episodic = this.episodicMemory.getEpisodicContext();
+  async getFullContext(): Promise<string> {
+    const [semantic, episodic] = await Promise.all([
+      this.semanticMemory.getSemanticContext(),
+      this.episodicMemory.getEpisodicContext(),
+    ]);
     const parts: string[] = [];
 
     if (semantic.clientFacts.length > 0) {
@@ -129,10 +135,12 @@ export class MemoryQueryService {
     return parts.join("\n");
   }
 
-  getStats(): MemoryStats {
-    const workingCtx = this.workingMemory.getWorkingContext();
-    const episodicCtx = this.episodicMemory.getEpisodicContext();
-    const semanticCtx = this.semanticMemory.getSemanticContext();
+  async getStats(): Promise<MemoryStats> {
+    const [workingCtx, episodicCtx, semanticCtx] = await Promise.all([
+      this.workingMemory.getWorkingContext(),
+      this.episodicMemory.getEpisodicContext(),
+      this.semanticMemory.getSemanticContext(),
+    ]);
 
     return {
       working: { hasActiveSession: workingCtx.session !== null },

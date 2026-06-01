@@ -11,9 +11,9 @@ interface AddClientFactInput {
 export class AddClientFactUseCase {
   constructor(private semanticRepo: ISemanticMemoryRepository) {}
 
-  execute(input: AddClientFactInput): Result<ClientFact> {
+  async execute(input: AddClientFactInput): Promise<Result<ClientFact>> {
     try {
-      const fact = this.semanticRepo.addClientFact(
+      const fact = await this.semanticRepo.addClientFact(
         input.category,
         input.fact,
         input.source

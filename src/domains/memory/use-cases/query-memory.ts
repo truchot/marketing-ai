@@ -5,10 +5,10 @@ import { Result, ValidationError } from "@/domains/shared";
 export class QueryMemoryUseCase {
   constructor(private queryService: MemoryQueryService) {}
 
-  execute(options: MemoryQueryOptions): Result<{ memory: SearchResult; stats: MemoryStats }> {
+  async execute(options: MemoryQueryOptions): Promise<Result<{ memory: SearchResult; stats: MemoryStats }>> {
     try {
-      const memory = this.queryService.query(options);
-      const stats = this.queryService.getStats();
+      const memory = await this.queryService.query(options);
+      const stats = await this.queryService.getStats();
       return Result.ok({ memory, stats });
     } catch (error) {
       return Result.fail(new ValidationError(

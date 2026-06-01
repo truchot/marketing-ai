@@ -9,9 +9,9 @@ interface StartSessionInput {
 export class StartSessionUseCase {
   constructor(private workingRepo: IWorkingMemoryRepository) {}
 
-  execute(input: StartSessionInput): Result<void> {
+  async execute(input: StartSessionInput): Promise<Result<void>> {
     try {
-      this.workingRepo.startSession(input.task, input.objective);
+      await this.workingRepo.startSession(input.task, input.objective);
       return Result.ok(undefined as void);
     } catch (error) {
       return Result.fail(new ValidationError(

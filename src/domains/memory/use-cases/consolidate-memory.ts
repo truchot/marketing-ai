@@ -9,10 +9,10 @@ export class ConsolidateMemoryUseCase {
     private queryService: MemoryQueryService
   ) {}
 
-  execute(): Result<MemoryStats> {
+  async execute(): Promise<Result<MemoryStats>> {
     try {
-      this.pipeline.runConsolidation();
-      const stats = this.queryService.getStats();
+      await this.pipeline.runConsolidation();
+      const stats = await this.queryService.getStats();
       return Result.ok(stats);
     } catch (error) {
       return Result.fail(new ValidationError(

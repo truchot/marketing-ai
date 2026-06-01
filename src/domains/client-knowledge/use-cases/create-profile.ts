@@ -14,7 +14,7 @@ interface CreateProfileInput {
 export class CreateProfileUseCase {
   constructor(private profileRepo: ICompanyProfileRepository) {}
 
-  execute(input: CreateProfileInput): Result<CompanyProfile> {
+  async execute(input: CreateProfileInput): Promise<Result<CompanyProfile>> {
     try {
       // Create rich aggregate - validates invariants
       const aggregate = CompanyProfileAggregate.create({
@@ -31,7 +31,7 @@ export class CreateProfileUseCase {
       aggregate.clearUncommittedEvents();
 
       // Persist via repository using DTO (without id, createdAt, updatedAt)
-      const profile = this.profileRepo.save({
+      const profile = await this.profileRepo.save({
         name: aggregate.name,
         sector: aggregate.sector,
         description: aggregate.description,
