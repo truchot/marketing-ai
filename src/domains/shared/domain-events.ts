@@ -15,6 +15,8 @@ export const FEEDBACK_RECORDED = "FEEDBACK_RECORDED" as const;
 export const ONBOARDING_COMPLETED = "ONBOARDING_COMPLETED" as const;
 export const MESSAGE_SENT = "MESSAGE_SENT" as const;
 export const STRATEGY_GENERATED = "STRATEGY_GENERATED" as const;
+export const EXPERIMENT_CREATED = "EXPERIMENT_CREATED" as const;
+export const EXPERIMENT_CONCLUDED = "EXPERIMENT_CONCLUDED" as const;
 
 // --- Event interface ---
 

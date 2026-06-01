@@ -23,6 +23,8 @@ export {
   ONBOARDING_COMPLETED,
   MESSAGE_SENT,
   STRATEGY_GENERATED,
+  EXPERIMENT_CREATED,
+  EXPERIMENT_CONCLUDED,
 } from "./domain-events";
 
 export { AggregateRoot } from "./aggregate-root";
