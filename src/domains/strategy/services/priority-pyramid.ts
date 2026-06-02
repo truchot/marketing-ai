@@ -195,6 +195,170 @@ export const PYRAMID_ITEMS: readonly PyramidItem[] = [
 /** Canonical list of foundation items, used by the scorer and the assessment. */
 export const FOUNDATION_ITEMS = PYRAMID_ITEMS.filter((i) => i.tier === "foundation");
 
+// ------------------------------------------------------------
+// Detail — the actual data an organization has stored for each item.
+// Powers the "tap a chip to see what's stored" interaction.
+// ------------------------------------------------------------
+export interface PyramidItemField {
+  label: string;
+  values: string[];
+}
+
+export interface PyramidItemDetail {
+  fields: PyramidItemField[];
+  /** Set when there is nothing to show (untracked, or tracked-but-empty). */
+  note?: string;
+}
+
+/** Build a field, dropping empty/blank values. Returns null when nothing remains. */
+function field(label: string, value: string | (string | undefined | null)[]): PyramidItemField | null {
+  const raw = Array.isArray(value) ? value : [value];
+  const values = raw.map((v) => (v ?? "").trim()).filter((v) => v !== "");
+  return values.length > 0 ? { label, values } : null;
+}
+
+function fields(...items: (PyramidItemField | null)[]): PyramidItemField[] {
+  return items.filter((f): f is PyramidItemField => f !== null);
+}
+
+/** Per-item extractors of the stored data, keyed by item id (tracked items only). */
+const DETAIL_EXTRACTORS: Record<string, (s: MarketingStrategy) => PyramidItemField[]> = {
+  "precise-icp": (s) => {
+    const icp = s.strategic.targetMarket.icp;
+    return fields(
+      field("Description", icp.description),
+      field("Pain points", icp.painPoints),
+      field("Trigger moments", icp.triggerMoments),
+      field("Buying context", icp.buyingContext),
+      field("Preferred channels", icp.preferredChannels),
+      field("Common objections", icp.commonObjections),
+      field("Decision criteria", icp.decisionCriteria)
+    );
+  },
+  "market-research": (s) => {
+    const tm = s.strategic.targetMarket;
+    return fields(
+      field("Market definition", tm.marketDefinition),
+      field(
+        "Segments",
+        tm.segments.map((seg) => `${seg.segment} (${seg.priority}) — ${seg.mainPain}`)
+      )
+    );
+  },
+  "strong-value-proposition": (s) => {
+    const bs = s.strategic.businessStrategy;
+    return fields(
+      field("Value proposition", bs.valueProposition),
+      field("Transformation", `${bs.transformation.before} → ${bs.transformation.after}`),
+      field("Time to value", bs.transformation.timeToValue)
+    );
+  },
+  "unique-selling-point": (s) => {
+    const bs = s.strategic.businessStrategy;
+    return fields(
+      field("Differentiator", bs.uniqueDifferentiator),
+      field("Competitive angle", bs.competitiveAngle)
+    );
+  },
+  "clear-positioning": (s) => {
+    const p = s.strategic.marketingFoundation.positioning;
+    return fields(
+      field("Target market", p.targetMarket),
+      field("Unique value", p.uniqueValue),
+      field("Competitive angle", p.competitiveAngle),
+      field("Brand personality", p.brandPersonality)
+    );
+  },
+  "consistent-messaging": (s) => {
+    const m = s.strategic.marketingFoundation.messaging;
+    return fields(
+      field("Primary message", m.primaryMessage),
+      field(
+        "Segment messages",
+        m.segmentMessages.map((sm) => `${sm.segment}: ${sm.message} (${sm.tone})`)
+      ),
+      field("Proof points", m.proofPoints)
+    );
+  },
+  offers: (s) => fields(field("Offer", s.strategic.marketingFoundation.offer)),
+  "brand-narrative": (s) =>
+    fields(
+      field("Narrative", s.narrativeSummary),
+      field("Vision", s.strategic.businessStrategy.vision)
+    ),
+  "feedback-loop": (s) => {
+    const fl = s.strategic.feedbackLoop;
+    return fields(
+      field("Hypotheses", fl.hypotheses),
+      field(
+        "Validation tests",
+        fl.validationTests.map((t) => `${t.hypothesis} — ${t.metric} (${t.status})`)
+      ),
+      field("Review cadence", fl.reviewCadence),
+      field("Pivot triggers", fl.pivotTriggers)
+    );
+  },
+  "marketing-discipline": (s) =>
+    fields(
+      field("Review cadence", s.strategic.feedbackLoop.reviewCadence),
+      field(
+        "Processes",
+        s.tactical.marketingSystem.processes.map((p) => `${p.name} (${p.frequency})`)
+      )
+    ),
+  "content-systems": (s) =>
+    fields(
+      field(
+        "Content pillars",
+        s.tactical.marketingPlan.contentPlan.map(
+          (c) => `${c.pillar} — ${c.themes.join(", ")} [${c.cadence}]`
+        )
+      )
+    ),
+  "repurposing-workflows": (s) =>
+    fields(
+      field(
+        "Automations",
+        s.tactical.marketingSystem.automations.map((a) => `${a.name}: ${a.trigger} → ${a.action}`)
+      )
+    ),
+  "warm-outbound": (s) =>
+    fields(
+      field(
+        "Acquisition channels",
+        s.tactical.marketingPlan.channelStrategy
+          .filter((c) => c.role === "acquisition")
+          .map((c) => `${c.channel} — ${c.frequency}`)
+      )
+    ),
+  "allbound-approach": (s) =>
+    fields(
+      field("Inbound pillars", s.tactical.marketingPlan.contentPlan.map((c) => c.pillar)),
+      field(
+        "Outbound channels",
+        s.tactical.marketingPlan.channelStrategy
+          .filter((c) => c.role === "acquisition")
+          .map((c) => c.channel)
+      )
+    ),
+};
+
+const UNTRACKED_NOTE: Record<PriorityTier, string> = {
+  foundation: "Not tracked yet.",
+  leverage: "Not modeled yet — capturing this is a planned follow-up.",
+  surface: "Surface noise — intentionally not optimized for.",
+};
+
+/** Extract the stored data for an item, or a note explaining why there's none. */
+export function getItemDetail(item: PyramidItem, strategy: MarketingStrategy): PyramidItemDetail {
+  if (!item.tracked) return { fields: [], note: UNTRACKED_NOTE[item.tier] };
+  const extracted = DETAIL_EXTRACTORS[item.id]?.(strategy) ?? [];
+  if (extracted.length === 0) {
+    return { fields: [], note: "No data stored for this item yet." };
+  }
+  return { fields: extracted };
+}
+
 export type ItemStatus = "covered" | "missing" | "untracked";
 
 export interface PyramidItemAssessment {
@@ -202,6 +366,8 @@ export interface PyramidItemAssessment {
   label: string;
   tier: PriorityTier;
   status: ItemStatus;
+  /** The stored data backing this item (or a note when there's none). */
+  detail: PyramidItemDetail;
 }
 
 export interface TierAssessment {
@@ -248,6 +414,7 @@ export function assessPriorityPyramid(strategy: MarketingStrategy): PyramidAsses
       label: i.label,
       tier: i.tier,
       status: statusOf(i, strategy),
+      detail: getItemDetail(i, strategy),
     }));
     const trackedCount = items.filter((i) => i.status !== "untracked").length;
     const coveredCount = items.filter((i) => i.status === "covered").length;

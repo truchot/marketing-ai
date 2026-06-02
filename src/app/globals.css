@@ -124,3 +124,9 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Priority pyramid drawer: morph between the 62vh and 100vh configs. */
+::view-transition-group(pyramid-drawer) {
+  animation-duration: 280ms;
+  animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+}

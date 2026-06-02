@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   assessPriorityPyramid,
+  getItemDetail,
   PYRAMID_ITEMS,
   FOUNDATION_ITEMS,
   TIER_ORDER,
@@ -88,6 +89,48 @@ describe("assessPriorityPyramid — sparse strategy", () => {
     const foundation = assessment.tiers.find((t) => t.tier === "foundation")!;
     expect(foundation.coveredCount).toBe(0);
     expect(foundation.items.every((i) => i.status === "missing")).toBe(true);
+  });
+});
+
+describe("item detail extraction", () => {
+  const full = makeStrategy();
+
+  it("attaches a detail to every assessed item", () => {
+    const items = assessPriorityPyramid(full).tiers.flatMap((t) => t.items);
+    expect(items.every((i) => i.detail !== undefined)).toBe(true);
+  });
+
+  it("extracts the stored ICP data for a covered foundation item", () => {
+    const icp = PYRAMID_ITEMS.find((i) => i.id === "precise-icp")!;
+    const detail = getItemDetail(icp, full);
+    expect(detail.note).toBeUndefined();
+    const desc = detail.fields.find((f) => f.label === "Description");
+    expect(desc?.values[0]).toBe(full.strategic.targetMarket.icp.description);
+    const pains = detail.fields.find((f) => f.label === "Pain points");
+    expect(pains?.values).toEqual(full.strategic.targetMarket.icp.painPoints);
+  });
+
+  it("returns a 'no data' note for a tracked-but-empty item", () => {
+    const sparse = makeStrategy();
+    sparse.strategic.marketingFoundation.offer = "";
+    const offers = PYRAMID_ITEMS.find((i) => i.id === "offers")!;
+    const detail = getItemDetail(offers, sparse);
+    expect(detail.fields).toHaveLength(0);
+    expect(detail.note).toBeTruthy();
+  });
+
+  it("returns the 'noise' note for surface items", () => {
+    const trend = PYRAMID_ITEMS.find((i) => i.id === "new-trends")!;
+    const detail = getItemDetail(trend, full);
+    expect(detail.fields).toHaveLength(0);
+    expect(detail.note).toMatch(/noise/i);
+  });
+
+  it("returns a 'not modeled' note for untracked leverage items", () => {
+    const intent = PYRAMID_ITEMS.find((i) => i.id === "intent-signals")!;
+    const detail = getItemDetail(intent, full);
+    expect(detail.fields).toHaveLength(0);
+    expect(detail.note).toMatch(/not modeled/i);
   });
 });
 
