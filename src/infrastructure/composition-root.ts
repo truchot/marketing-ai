@@ -37,6 +37,15 @@ import { CompleteOnboardingUseCase } from "@/domains/onboarding/use-cases/comple
 import { SaveStrategyUseCase } from "@/domains/strategy/use-cases/save-strategy";
 import { GetStrategyUseCase } from "@/domains/strategy/use-cases/get-strategy";
 import { strategyRepository } from "@/data/strategy-repository";
+import { GetChannelCacUseCase } from "@/domains/metrics/use-cases/get-channel-cac";
+import { CompositeChannelMetricsProvider } from "@/infrastructure/metrics/composite-provider";
+import { DiscoveryDerivedMetricsProvider } from "@/infrastructure/metrics/discovery-derived-provider";
+import {
+  Ga4MetricsProvider,
+  MetaAdsMetricsProvider,
+  LinkedInAdsMetricsProvider,
+  HubSpotMetricsProvider,
+} from "@/infrastructure/metrics/connectors";
 
 // --- Wire use case instances ---
 
@@ -76,6 +85,23 @@ export const createProfileUseCase = new CreateProfileUseCase(
 // Strategy
 export const saveStrategyUseCase = new SaveStrategyUseCase(strategyRepository);
 export const getStrategyUseCase = new GetStrategyUseCase(strategyRepository);
+
+// Marketing metrics — live connectors (env-gated) with a discovery-derived
+// estimate fallback. Add credentials to activate a connector; until then the
+// dashboard renders estimated figures.
+const channelMetricsProvider = new CompositeChannelMetricsProvider(
+  [
+    new Ga4MetricsProvider(),
+    new MetaAdsMetricsProvider(),
+    new LinkedInAdsMetricsProvider(),
+    new HubSpotMetricsProvider(),
+  ],
+  new DiscoveryDerivedMetricsProvider(businessDiscoveryRepository)
+);
+export const getChannelCacUseCase = new GetChannelCacUseCase(
+  channelMetricsProvider,
+  businessDiscoveryRepository
+);
 
 // Onboarding
 const memoryFacade = new MemoryFacade(semanticMemory);
