@@ -184,7 +184,7 @@ export function PriorityPyramid({
             "mx-auto h-dvh bg-zinc-900 text-zinc-100 transition-[width,border-radius] duration-200",
             expanded
               ? "w-full max-w-none border-x-0 border-zinc-800"
-              : "w-[calc(100%-1.5rem)] max-w-2xl rounded-2xl border border-zinc-700 shadow-2xl shadow-black/50"
+              : "w-[calc(100%-1.5rem)] max-w-2xl rounded-2xl border border-zinc-700 shadow-2xl shadow-black/50 lg:w-[81%] lg:max-w-[1200px]"
           )}
         >
           {selected && (
