@@ -14,8 +14,8 @@ import { PriorityPyramid } from "@/components/strategy/priority-pyramid";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export default function StrategyPage() {
-  const result = getStrategyUseCase.execute();
+export default async function StrategyPage() {
+  const result = await getStrategyUseCase.execute();
 
   if (result.isErr()) {
     return (
