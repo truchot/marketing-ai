@@ -21,6 +21,7 @@ import type {
   MarketingPlan,
   MarketingSystem,
 } from "@/types/marketing-strategy";
+import type { StrategyProgressSnapshot } from "@/lib/strategy-stages";
 
 export interface ChoiceOption {
   value: string;
@@ -62,5 +63,27 @@ export function createStrategySessionState(): StrategySessionState {
     marketingSystem: null,
     strategyComplete: false,
     pendingChoices: null,
+  };
+}
+
+/**
+ * Derive a boolean progress snapshot from the session state. Mirrors the
+ * StrategyProgressSnapshot contract consumed by the funnel UI. Each artifact is
+ * "done" once its subsystem has been produced by the corresponding tool.
+ */
+export function snapshotFromState(
+  s: StrategySessionState
+): StrategyProgressSnapshot {
+  return {
+    diagnostic: s.diagnostic !== null,
+    targetMarket: s.targetMarket !== null,
+    businessStrategy: s.businessStrategy !== null,
+    marketingFoundation: s.marketingFoundation !== null,
+    feedbackLoop: s.feedbackLoop !== null,
+    okrs: s.validatedOKRs.length > 0,
+    roadmapValidation: s.roadmapValidation !== null,
+    marketingPlan: s.marketingPlan !== null,
+    marketingSystem: s.marketingSystem !== null,
+    complete: s.strategyComplete,
   };
 }

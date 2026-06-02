@@ -10,8 +10,11 @@ export type ErrorContext =
   | "onboarding:complete"
   | "onboarding:history"
   | "page:load"
+  | "page:discovery"
   | "project:load"
-  | "project:update";
+  | "project:update"
+  | "strategy:stream"
+  | "metrics:cac";
 
 export function logError(context: ErrorContext, error: unknown): void {
   const message = error instanceof Error ? error.message : String(error);

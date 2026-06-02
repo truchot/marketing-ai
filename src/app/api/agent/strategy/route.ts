@@ -4,6 +4,7 @@ import { getStrategyAgent } from "@/mastra";
 import {
   STRATEGY_STATE_KEY,
   createStrategySessionState,
+  snapshotFromState,
 } from "@/mastra/runtime/strategy-state";
 
 export const runtime = "nodejs";
@@ -76,8 +77,22 @@ export async function POST(request: NextRequest) {
         );
       };
 
+      // Emit a `progress` event whenever the strategy session state advances.
+      // The strategy tools mutate `sessionState` synchronously as they run, so
+      // diffing it across stream ticks surfaces near-real-time stage progress.
+      let lastProgress = "";
+      const emitProgress = () => {
+        const snapshot = snapshotFromState(sessionState);
+        const serialized = JSON.stringify(snapshot);
+        if (serialized !== lastProgress) {
+          lastProgress = serialized;
+          sendEvent("progress", snapshot as unknown as Record<string, unknown>);
+        }
+      };
+
       try {
         sendEvent("start", { timestamp: new Date().toISOString() });
+        emitProgress();
 
         const agent = getStrategyAgent();
         // maxSteps:16 — 3-level flow: diagnostic + 4 strategic subsystems + OKRs
@@ -96,9 +111,11 @@ export async function POST(request: NextRequest) {
             assembled += delta;
             sendEvent("message", { text: delta });
           }
+          emitProgress();
         }
 
         const full = await result.getFullOutput();
+        emitProgress();
         const usage = full.usage as { totalTokens?: number } | undefined;
         sendEvent("success", {
           result: full.text || assembled,
