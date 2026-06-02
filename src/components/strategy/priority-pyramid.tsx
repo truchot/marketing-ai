@@ -11,6 +11,7 @@
 // ============================================================
 
 import { useState } from "react";
+import { flushSync } from "react-dom";
 import { XIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -79,6 +80,24 @@ export interface PriorityPyramidProps {
 // full-screen, edge-to-edge view.
 const SNAP_POINTS: (number | string)[] = [0.62, 1];
 
+type DocumentWithViewTransition = Document & {
+  startViewTransition?: (cb: () => void) => unknown;
+};
+
+/**
+ * Apply a state update inside a View Transition when available, so the morph
+ * between the 62vh (floating) and 100vh (full-screen) configs animates
+ * smoothly. Falls back to a plain update on unsupported browsers.
+ */
+function withViewTransition(update: () => void) {
+  const doc = typeof document !== "undefined" ? (document as DocumentWithViewTransition) : null;
+  if (doc?.startViewTransition) {
+    doc.startViewTransition(() => flushSync(update));
+  } else {
+    update();
+  }
+}
+
 export function PriorityPyramid({
   assessment,
   companyName,
@@ -101,6 +120,17 @@ export function PriorityPyramid({
   function openItem(item: PyramidItemAssessment) {
     setSnap(SNAP_POINTS[0]); // always reopen at the 62% snap
     setSelected(item);
+  }
+
+  // Vaul drives snap changes (drag/release). When the snap crosses the
+  // 62vh ↔ 100vh boundary, morph the config change with a View Transition.
+  function handleSnapChange(next: number | string | null) {
+    const crossesBoundary = next === 1 || snap === 1;
+    if (crossesBoundary) {
+      withViewTransition(() => setSnap(next));
+    } else {
+      setSnap(next);
+    }
   }
 
   return (
@@ -176,12 +206,12 @@ export function PriorityPyramid({
         onOpenChange={(open) => !open && setSelected(null)}
         snapPoints={SNAP_POINTS}
         activeSnapPoint={snap}
-        setActiveSnapPoint={setSnap}
+        setActiveSnapPoint={handleSnapChange}
         fadeFromIndex={0}
       >
         <DrawerContent
           className={cn(
-            "mx-auto h-dvh bg-zinc-900 text-zinc-100 transition-[width,border-radius] duration-200",
+            "mx-auto h-dvh bg-zinc-900 text-zinc-100 transition-[width,border-radius] duration-200 [view-transition-name:pyramid-drawer]",
             expanded
               ? "w-full max-w-none border-x-0 border-zinc-800"
               : "w-[calc(100%-1.5rem)] max-w-2xl rounded-2xl border border-zinc-700 shadow-2xl shadow-black/50 lg:w-[81%] lg:max-w-[1200px]"
