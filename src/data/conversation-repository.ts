@@ -27,4 +27,12 @@ export class InMemoryConversationRepository implements IConversationRepository {
   }
 }
 
-export const conversationRepository = new InMemoryConversationRepository();
+// Shared via globalThis so all Next dev route bundles see the same history
+// (see business-discovery-repository for the rationale).
+const globalForConversation = globalThis as unknown as {
+  __conversationRepository?: InMemoryConversationRepository;
+};
+export const conversationRepository =
+  globalForConversation.__conversationRepository ??
+  (globalForConversation.__conversationRepository =
+    new InMemoryConversationRepository());

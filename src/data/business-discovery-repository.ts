@@ -30,5 +30,15 @@ export class InMemoryBusinessDiscoveryRepository
   }
 }
 
+// Cache the instance on globalThis. In Next dev (Turbopack) each API route is
+// a separate bundle, so a plain module-level singleton is NOT shared across
+// routes — a value written by /api/onboarding/complete would be invisible to
+// /api/metrics/*. globalThis is process-wide and survives HMR, so every route
+// (and every reload) sees the same store.
+const globalForDiscovery = globalThis as unknown as {
+  __businessDiscoveryRepository?: InMemoryBusinessDiscoveryRepository;
+};
 export const businessDiscoveryRepository =
-  new InMemoryBusinessDiscoveryRepository();
+  globalForDiscovery.__businessDiscoveryRepository ??
+  (globalForDiscovery.__businessDiscoveryRepository =
+    new InMemoryBusinessDiscoveryRepository());

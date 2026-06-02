@@ -28,4 +28,11 @@ export class InMemoryStrategyRepository implements IStrategyRepository {
   }
 }
 
-export const strategyRepository = new InMemoryStrategyRepository();
+// Shared via globalThis so all Next dev route bundles see the same strategies
+// (see business-discovery-repository for the rationale).
+const globalForStrategy = globalThis as unknown as {
+  __strategyRepository?: InMemoryStrategyRepository;
+};
+export const strategyRepository =
+  globalForStrategy.__strategyRepository ??
+  (globalForStrategy.__strategyRepository = new InMemoryStrategyRepository());

@@ -20,4 +20,12 @@ export class InMemoryCompanyProfileRepository
   }
 }
 
-export const companyProfileRepository = new InMemoryCompanyProfileRepository();
+// Shared via globalThis so all Next dev route bundles see the same profile
+// (see business-discovery-repository for the rationale).
+const globalForProfile = globalThis as unknown as {
+  __companyProfileRepository?: InMemoryCompanyProfileRepository;
+};
+export const companyProfileRepository =
+  globalForProfile.__companyProfileRepository ??
+  (globalForProfile.__companyProfileRepository =
+    new InMemoryCompanyProfileRepository());
