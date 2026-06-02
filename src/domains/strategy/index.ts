@@ -3,6 +3,7 @@ export type { IStrategyRepository } from "./ports";
 export { SaveStrategyUseCase, GetStrategyUseCase } from "./use-cases";
 export {
   assessPriorityPyramid,
+  getItemDetail,
   PYRAMID_ITEMS,
   FOUNDATION_ITEMS,
   TIER_FRAMING,
@@ -12,6 +13,8 @@ export type {
   PriorityTier,
   PyramidItem,
   ItemStatus,
+  PyramidItemField,
+  PyramidItemDetail,
   PyramidItemAssessment,
   TierAssessment,
   PyramidVerdict,
