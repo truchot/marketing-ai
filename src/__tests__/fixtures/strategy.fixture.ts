@@ -70,6 +70,19 @@ export function makeStrategy(
     strategic: {
       diagnostic: {
         maturityScore: 55,
+        problems: [
+          {
+            key: "painless_problem",
+            label: "The problem solved is not painful enough",
+            severity: "problematic",
+            isStrategic: true,
+            evidence: 'Pain level reported as "bloquant".',
+            recommendation: "Re-anchor on a more acute, urgent pain.",
+            confidence: "high",
+            dataSufficiency: "measured",
+          },
+        ],
+        criticalProblems: [],
         strengths: ["Good SEO"],
         weaknesses: ["No paid ads"],
         opportunities: ["Content marketing"],

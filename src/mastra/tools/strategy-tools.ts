@@ -50,14 +50,14 @@ const recordOrError = z.union([
 
 const generateDiagnosticTool = createTool({
   id: "generateDiagnostic",
-  description: `Analyzes the BusinessDiscovery and produces a SWOT diagnostic + marketing maturity score.
+  description: `Analyzes the BusinessDiscovery and produces a SWOT diagnostic + marketing maturity score + an assessment of the 16 common marketing problems (each scored on a 5-band difficulty scale, with the strategy-tier ones flagged).
 
 WHEN TO USE IT:
 - At the very start of the strategy session, as soon as the discovery is received
 - ONLY ONCE per session
 
 AFTER THE CALL:
-- Present the diagnostic to the client concisely, then ask for validation before continuing.`,
+- Present the diagnostic to the client concisely — highlight the maturity score and any criticalProblems — then ask for validation before continuing.`,
   inputSchema: z.object({
     discovery: z.record(z.string(), z.unknown()).describe("The complete BusinessDiscovery object"),
   }),
@@ -232,6 +232,9 @@ const validateRoadmapTool = createTool({
       marketingFoundation: state.marketingFoundation,
       feedbackLoop: state.feedbackLoop,
       okrs: state.validatedOKRs,
+      criticalProblems: (state.diagnostic?.problems ?? []).filter(
+        (p) => p.isStrategic && (p.severity === "critical" || p.severity === "deep")
+      ),
     });
     state.roadmapValidation = result;
     return asRecord(result);

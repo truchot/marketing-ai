@@ -13,8 +13,54 @@
 
 // --- Diagnostic (cross-cutting) ---
 
+// The 5 difficulty-to-solve bands (easiest → hardest), from the
+// "16 Common Marketing Problems" framework.
+export type ProblemSeverity =
+  | "easily_fixed" // band 1 — easily fixed with a consultant
+  | "normal" // band 2 — normal problem, needs iteration
+  | "problematic" // band 3 — problematic, requires a plan
+  | "deep" // band 4 — deep problem, review culture
+  | "critical"; // band 5 — critical, solve it with strategy
+
+// The 16 named problems. The 4 strategy-tier ones (isStrategic) are
+// undefined_audience, weak_product, standard_positioning, painless_problem.
+export type ProblemKey =
+  | "outdated_tactics"
+  | "unclear_messaging"
+  | "undefined_audience"
+  | "weak_product"
+  | "poor_measurement"
+  | "wrong_talents"
+  | "standard_positioning"
+  | "painless_problem"
+  | "insufficient_content"
+  | "imperfect_pricing"
+  | "inconsistent_efforts"
+  | "guesswork"
+  | "bad_creative"
+  | "poor_systems"
+  | "rough_sales"
+  | "no_innovation";
+
+// How the severity was determined — drives honesty: "insufficient" means
+// the discovery data does not let us judge this problem, so we do not pretend to.
+export type ProblemDataSufficiency = "measured" | "inferred" | "insufficient";
+
+export interface ProblemAssessment {
+  key: ProblemKey;
+  label: string; // human label, e.g. "The target audience is not properly defined"
+  severity: ProblemSeverity;
+  isStrategic: boolean; // one of the 4 strategy-tier problems
+  evidence: string; // citation/reference to discovery (or "insufficient data")
+  recommendation: string; // one-line action
+  confidence: "low" | "medium" | "high";
+  dataSufficiency: ProblemDataSufficiency;
+}
+
 export interface MarketingDiagnostic {
   maturityScore: number; // 0-100
+  problems: ProblemAssessment[]; // the 16-problem grid
+  criticalProblems: ProblemKey[]; // convenience: keys flagged most severe (see selectCriticalProblems)
   strengths: string[];
   weaknesses: string[];
   opportunities: string[];

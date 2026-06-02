@@ -10,6 +10,7 @@ import type {
   FeedbackLoop,
   OKR,
   RoadmapValidation,
+  ProblemAssessment,
 } from "@/types/marketing-strategy";
 import { callClaudeHaiku, extractJsonFromResponse } from "@/tools/discovery/index";
 
@@ -19,6 +20,9 @@ interface ValidateRoadmapInput {
   marketingFoundation: MarketingFoundation;
   feedbackLoop: FeedbackLoop;
   okrs: OKR[];
+  // Strategy-tier problems from the diagnostic that are still severe — surfaced
+  // as gaps and used to block a premature "proceed".
+  criticalProblems?: ProblemAssessment[];
 }
 
 export async function validateRoadmap(
@@ -73,6 +77,19 @@ Réponds en JSON strict :
 
   const responseText = await callClaudeHaiku(prompt, 1024);
   const result = extractJsonFromResponse<RoadmapValidation>(responseText);
+
+  // --- Gate: unresolved strategy-tier problems block a premature "proceed" ---
+  const criticalProblems = input.criticalProblems ?? [];
+  if (criticalProblems.length > 0) {
+    const existingGaps = Array.isArray(result.gaps) ? result.gaps : [];
+    const problemGaps = criticalProblems.map(
+      (p) => `Problème stratégique non résolu : ${p.label} — ${p.recommendation}`
+    );
+    result.gaps = Array.from(new Set([...existingGaps, ...problemGaps]));
+    if (result.recommendation === "proceed") {
+      result.recommendation = "refine";
+    }
+  }
 
   recordEpisodeUseCase.execute({
     type: "task_result",
