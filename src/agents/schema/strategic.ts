@@ -1,10 +1,40 @@
 // JSON Schema for StrategicLayer — mirrors types in src/types/marketing-strategy.ts
 
+const PROBLEM_KEYS = [
+  "outdated_tactics", "unclear_messaging", "undefined_audience", "weak_product",
+  "poor_measurement", "wrong_talents", "standard_positioning", "painless_problem",
+  "insufficient_content", "imperfect_pricing", "inconsistent_efforts", "guesswork",
+  "bad_creative", "poor_systems", "rough_sales", "no_innovation",
+];
+
+const problemAssessmentSchema = {
+  type: "object",
+  required: [
+    "key", "label", "severity", "isStrategic",
+    "evidence", "recommendation", "confidence", "dataSufficiency",
+  ],
+  properties: {
+    key: { type: "string", enum: PROBLEM_KEYS },
+    label: { type: "string" },
+    severity: { type: "string", enum: ["easily_fixed", "normal", "problematic", "deep", "critical"] },
+    isStrategic: { type: "boolean" },
+    evidence: { type: "string" },
+    recommendation: { type: "string" },
+    confidence: { type: "string", enum: ["low", "medium", "high"] },
+    dataSufficiency: { type: "string", enum: ["measured", "inferred", "insufficient"] },
+  },
+};
+
 const diagnosticSchema = {
   type: "object",
   required: ["maturityScore", "strengths", "weaknesses", "opportunities", "threats", "summary"],
   properties: {
     maturityScore: { type: "number", minimum: 0, maximum: 100 },
+    // problems/criticalProblems are produced deterministically by generateDiagnostic
+    // (the 16-problem grid) — permitted here but intentionally not required, so the
+    // structured-output agent is not forced to hand-author them.
+    problems: { type: "array", items: problemAssessmentSchema },
+    criticalProblems: { type: "array", items: { type: "string", enum: PROBLEM_KEYS } },
     strengths: { type: "array", items: { type: "string" } },
     weaknesses: { type: "array", items: { type: "string" } },
     opportunities: { type: "array", items: { type: "string" } },
